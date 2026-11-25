@@ -9,7 +9,7 @@
  *   SEAT | human|harness                         run the seat verb (who may act); written to the manifest as a caption row
  *   SHOT | name | who | act | look | frames | gap_ms | caption
  *      who   : human = the action is a KEY into the window relay (the driver maps it exactly like a person's key); harness = the action is an rmmc_verb call as seat harness
- *      act   : idle (project --idle: a drop still showing is collected) | verb:<verb> <arg> (harness) e.g. verb:walk e | xkey:<xdotool key name> (human) e.g. xkey:Right xkey:space xkey:b | key:<decimal> (a line in the window relay, not the engine; rarely useful) | none (camera only, a hold)
+ *      act   : click:<x>,<y> (a real mouse click at that window pixel) | idle (project --idle: a drop still showing is collected) | verb:<verb> <arg> (harness) e.g. verb:walk e | xkey:<xdotool key name> (human) e.g. xkey:Right xkey:space xkey:b | key:<decimal> (a line in the window relay, not the engine; rarely useful) | none (camera only, a hold)
  *      look  : sel <dist> <yaw> <pitch> (orbit Asa) | <x> <y> <z> <dist> <yaw> <pitch> (orbit a cell) | off
  *      frames: PNGs to take after the action; an optional 9th field `window` captures the whole editor window (the UI) instead of the raw 3D frame; gap_ms: pause between frames (0 = as fast as the engine renders)
  * Outputs: <outdir>/<name>_NNN.png, <outdir>/manifest.txt (png | hold seconds | caption), <outdir>/director.log. Raw copies are deleted once converted (3 MB each) and the folder is capped at 600 frames.
@@ -111,9 +111,14 @@ int main(int argc, char **argv) {
         if (strcmp(look, "keep")) do_look(look);
         if (!strncmp(act, "verb:", 5)) { char v[40], a[120] = ""; if (sscanf(act + 5, "%39s %119[^\n]", v, a) >= 1) do_verb(v, a); }
         else if (!strcmp(act, "idle")) do_idle();
+        else if (!strncmp(act, "click:", 6)) {   /* a real mouse click at window pixel x,y (board_ctl click: pointer onto the spot, then the press through the window relay), as a person clicks a hotbar slot */
+            int cx = 0, cy = 0; char bin[PATH_MAX + 80], app[PATH_MAX + 40], o[300], sx[16], sy[16]; sscanf(act + 6, "%d,%d", &cx, &cy); snprintf(sx, sizeof sx, "%d", cx); snprintf(sy, sizeof sy, "%d", cy);
+            snprintf(bin, sizeof bin, "%s/&.widgits/board-viewer/tools/+x/board_ctl.+x", HOUSE); snprintf(app, sizeof app, "%s/@.apps/rpg-edit-hq", HOUSE); char *ev[] = { "BOARD_CTL_SIZE=1365x934", NULL }; char *av[] = { bin, "click", app, sx, sy, NULL };
+            int r = run(av, ev, o, sizeof o); fprintf(LOG, "click %d,%d -> %d %s\n", cx, cy, r, o); }
         else if (!strncmp(act, "xkey:", 5)) {   /* a real X key into the board window, exactly what a person does (board_ctl key: pointer onto the window, focus, xdotool key, wait) */
             char bin[PATH_MAX + 80], app[PATH_MAX + 40], o[300], kn[64], ms[16] = "500"; snprintf(bin, sizeof bin, "%s/&.widgits/board-viewer/tools/+x/board_ctl.+x", HOUSE); snprintf(app, sizeof app, "%s/@.apps/rpg-edit-hq", HOUSE);
-            snprintf(kn, sizeof kn, "%s", act + 5); char *ev[] = { "BOARD_CTL_SIZE=1365x934", NULL }; char *av[] = { bin, "key", app, kn, ms, NULL }; int r = run(av, ev, o, sizeof o); fprintf(LOG, "xkey %s -> %d %s\n", kn, r, o); }
+            char seq[160]; snprintf(seq, sizeof seq, "%s", act + 5); char *ev[] = { "BOARD_CTL_SIZE=1365x934", NULL };   /* xkey:<key> [<key> ...]: a sequence, as a person types a nav number then Enter (2 2 Return) */
+            for (char *sv, *tk = strtok_r(seq, " ", &sv); tk; tk = strtok_r(NULL, " ", &sv)) { snprintf(kn, sizeof kn, "%s", tk); char *av[] = { bin, "key", app, kn, ms, NULL }; int r = run(av, ev, o, sizeof o); fprintf(LOG, "xkey %s -> %d %s\n", kn, r, o); } }
         else if (!strncmp(act, "key:", 4)) { char l[64]; snprintf(l, sizeof l, "KEY_PRESSED: %d\n", atoi(act + 4)); append(WRELAY, l); fprintf(LOG, "key %s -> %s\n", act + 4, WRELAY); }
         for (int i = 0; i < frames && total < 600; i++) {
             if (!strncmp(look, "asa", 3) && i > 0) do_look(look);

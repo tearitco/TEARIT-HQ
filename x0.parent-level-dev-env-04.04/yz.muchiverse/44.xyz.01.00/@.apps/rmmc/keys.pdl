@@ -11,3 +11,13 @@ KEYVERB | craft | craft | -
 # RULE rows: poll_ms = how often the driver looks at the relay file; idle_after_ms = how long after the last key the pose goes back to idle (the ledger has no clock, so the DRIVER owns the expiry: it re-projects with --idle)
 RULE | poll_ms | 100
 RULE | idle_after_ms | 400
+KEYVERB | slot1 | pick | 1
+KEYVERB | slot2 | pick | 2
+KEYVERB | slot3 | pick | 3
+KEYVERB | slot4 | pick | 4
+KEYVERB | slot5 | pick | 5
+KEYVERB | slot6 | pick | 6
+KEYVERB | slot7 | pick | 7
+KEYVERB | slot8 | pick | 8
+KEYVERB | slot9 | pick | 9
+KEYVERB | page | pick | page

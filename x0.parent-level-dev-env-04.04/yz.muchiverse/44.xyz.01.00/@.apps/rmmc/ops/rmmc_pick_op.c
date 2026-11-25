@@ -10,8 +10,8 @@
 #include <string.h>
 #include <sys/stat.h>
 int main(int argc, char **argv) {
-    if (argc != 2) { fprintf(stderr, "usage: rmmc_pick_op <item>\n"); return 2; }
-    const char *item = argv[1];
+    if (argc != 2 && !(argc == 3 && !strcmp(argv[1], "__slot"))) { fprintf(stderr, "usage: rmmc_pick_op <item> | __page | __slot <1..9>\n"); return 2; }
+    const char *item = argv[1]; int slotn = argc == 3 ? atoi(argv[2]) : 0;   /* __slot N = the Nth slot of the CURRENT hotbar page (the number keys 1..9) */
     int flip = !strcmp(item, "__page");   /* the hotbar page flip: not an item, a PREFERENCE (play/page.txt) */
     if (!*item || strlen(item) > 40) { fprintf(stderr, "rmmc_pick_op: bad item\n"); return 2; }
     for (const char *c = item; *c; c++) if (!((*c >= 'a' && *c <= 'z') || (*c >= '0' && *c <= '9') || *c == '_')) { fprintf(stderr, "rmmc_pick_op: bad item\n"); return 2; }
@@ -20,13 +20,14 @@ int main(int argc, char **argv) {
     for (int i = 0; i < 3; i++) { char *s = strrchr(book, '/'); if (!s) return 2; *s = 0; }          /* <book>/ops/+x/<this> */
     char hp[PATH_MAX + 32]; snprintf(hp, sizeof hp, "%s/hotbar.pdl", book);
     FILE *f = fopen(hp, "r"); if (!f) { fprintf(stderr, "rmmc_pick_op: %s missing\n", hp); return 3; }
-    char line[256]; int ok = 0;
+    char line[256]; int ok = 0; static char names[64][64];
     int nslots = 0;
     while (fgets(line, sizeof line, f)) {
-        char a[16], b[64]; if (sscanf(line, " %15[^| ] | %63[^| ]", a, b) != 2 || strcmp(a, "SLOT")) continue; nslots++;
+        char a[16], b[64]; if (sscanf(line, " %15[^| ] | %63[^| ]", a, b) != 2 || strcmp(a, "SLOT")) continue; if (nslots < 64) snprintf(names[nslots], 64, "%s", b); nslots++;
         if (!strcmp(b, item)) { ok = 1; break; }
     }
     fclose(f);
+    if (slotn) { int pg0 = 0; char p0[PATH_MAX + 48]; snprintf(p0, sizeof p0, "%s/play/page.txt", book); FILE *rf0 = fopen(p0, "r"); if (rf0) { if (fscanf(rf0, "%d", &pg0) != 1) pg0 = 0; fclose(rf0); } int idx = pg0 * 9 + slotn - 1; if (slotn < 1 || slotn > 9 || idx < 0 || idx >= nslots || idx >= 64) { fprintf(stderr, "rmmc_pick_op: no slot %d on this page\n", slotn); return 2; } item = names[idx]; ok = 1; }
     if (flip) { char dir2[PATH_MAX + 32], p2[PATH_MAX + 48], t2[PATH_MAX + 56]; snprintf(dir2, sizeof dir2, "%s/play", book); mkdir(dir2, 0755); snprintf(p2, sizeof p2, "%s/page.txt", dir2); snprintf(t2, sizeof t2, "%s.tmp", p2); int pg = 0; FILE *rf = fopen(p2, "r"); if (rf) { if (fscanf(rf, "%d", &pg) != 1) pg = 0; fclose(rf); } int pages = (nslots + 8) / 9; if (pages < 1) pages = 1; pg = (pg + 1) % pages;
         FILE *o2 = fopen(t2, "w"); if (!o2) return 6; fprintf(o2, "%d\n", pg); if (fclose(o2) || rename(t2, p2)) { remove(t2); return 6; } printf("page %d\n", pg); return 0; }
     if (!ok) { fprintf(stderr, "rmmc_pick_op: %s is not a hotbar slot\n", item); return 2; }

@@ -29,11 +29,11 @@ static int split(char *line, char **f, int max) {
     for (int i = 0; i < n; i++) { char *e = f[i] + strlen(f[i]); while (e > f[i] && isspace((unsigned char)e[-1])) *--e = 0; }
     return n;
 }
-static struct { char name[24]; int code; } GK[16]; static int ngk; static struct { char name[24], verb[24], arg[16]; } KV[16]; static int nkv; static int poll_ms = 100, idle_ms = 400;
+static struct { char name[24]; int code; } GK[32]; static int ngk; static struct { char name[24], verb[24], arg[16]; } KV[32]; static int nkv; static int poll_ms = 100, idle_ms = 400;
 static int load_keys(const char *kb, const char *kv) { char l[300], *x[6]; FILE *f = fopen(kb, "r"); if (!f) return 2;
-    while (fgets(l, sizeof l, f)) { int n = split(l, x, 6); if (n >= 3 && !strcmp(x[0], "GAMEKEY") && ngk < 16) { snprintf(GK[ngk].name, 24, "%s", x[1]); GK[ngk++].code = atoi(x[2]); } } fclose(f);
+    while (fgets(l, sizeof l, f)) { int n = split(l, x, 6); if (n >= 3 && !strcmp(x[0], "GAMEKEY") && ngk < 32) { snprintf(GK[ngk].name, 24, "%s", x[1]); GK[ngk++].code = atoi(x[2]); } } fclose(f);
     f = fopen(kv, "r"); if (!f) return 2;
-    while (fgets(l, sizeof l, f)) { int n = split(l, x, 6); if (n >= 4 && !strcmp(x[0], "KEYVERB") && nkv < 16) { snprintf(KV[nkv].name, 24, "%s", x[1]); snprintf(KV[nkv].verb, 24, "%s", x[2]); snprintf(KV[nkv].arg, 16, "%s", !strcmp(x[3], "-") ? "" : x[3]); nkv++; }
+    while (fgets(l, sizeof l, f)) { int n = split(l, x, 6); if (n >= 4 && !strcmp(x[0], "KEYVERB") && nkv < 32) { snprintf(KV[nkv].name, 24, "%s", x[1]); snprintf(KV[nkv].verb, 24, "%s", x[2]); snprintf(KV[nkv].arg, 16, "%s", !strcmp(x[3], "-") ? "" : x[3]); nkv++; }
         else if (n >= 3 && !strcmp(x[0], "RULE") && !strcmp(x[1], "poll_ms")) poll_ms = atoi(x[2]); else if (n >= 3 && !strcmp(x[0], "RULE") && !strcmp(x[1], "idle_after_ms")) idle_ms = atoi(x[2]); }
     fclose(f); return ngk && nkv ? 0 : 2; }
 static int owner_gone(long pid) {   /* gone = no such process, or a zombie (dead but not yet reaped by its parent) */
@@ -99,6 +99,10 @@ int main(int argc, char **argv) {
             fseek(f, cur, SEEK_SET); while (fgets(ln, sizeof ln, f)) { if (!strchr(ln, '\n')) break; cur += (long)strlen(ln); int code = 0; long ms = 0; if (sscanf(ln, "%d %ld", &code, &ms) < 1) continue; (void)ms;
                 const char *gk = NULL; for (int i = 0; i < ngk; i++) if (GK[i].code == code) gk = GK[i].name; if (!gk) continue;
                 int kv = -1; for (int i = 0; i < nkv; i++) if (!strcmp(KV[i].name, gk)) kv = i; if (kv < 0) continue;
+                if (!strcmp(KV[kv].verb, "pick")) {   /* the hotbar number keys: a PREFERENCE (play/pick.txt, play/page.txt), never the ledger, so no seat check and no pose; 1..9 pick that slot of the current page, 0 flips the page */
+                    char pk[PATH_MAX + 64], o4[200]; snprintf(pk, sizeof pk, "%.4000s/ops/+x/rmmc_pick_op.+x", book);
+                    if (!strcmp(KV[kv].arg, "page")) { char *av[] = { pk, "__page", NULL }; run_out(av, o4, sizeof o4); } else { char *av[] = { pk, "__slot", KV[kv].arg, NULL }; run_out(av, o4, sizeof o4); }
+                    last_key = now_ms(); last_feed = 0; continue; }
                 { char o2[100]; char *av[] = { vop, "seat", data, led, (char *)actor, NULL }; run_out(av, o2, sizeof o2); snprintf(seatn, sizeof seatn, "%s", strncmp(o2, "seat=", 5) ? "harness" : o2 + 5);
                   if (strcmp(seatn, "human")) { snprintf(msg, sizeof msg, "refused: the seat is %s, keys are ignored (exit 24)", seatn); if (!first_refusal) first_refusal = 24; if (once) { fprintf(stderr, "%s\n", msg); fclose(f); return 24; } continue; } }
                 int rc = rmmc_play_verb(house, book, KV[kv].verb, KV[kv].arg, "human", msg, sizeof msg); if (rc && !first_refusal) first_refusal = rc; last_key = now_ms(); idle_pending = 1; }

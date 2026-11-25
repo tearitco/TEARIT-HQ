@@ -11,3 +11,13 @@ GAMEKEY      | jump | 32
 GAMEKEY      | mine | 98
 GAMEKEY      | place | 103
 GAMEKEY      | craft | 99
+GAMEKEY      | slot1 | 49
+GAMEKEY      | slot2 | 50
+GAMEKEY      | slot3 | 51
+GAMEKEY      | slot4 | 52
+GAMEKEY      | slot5 | 53
+GAMEKEY      | slot6 | 54
+GAMEKEY      | slot7 | 55
+GAMEKEY      | slot8 | 56
+GAMEKEY      | slot9 | 57
+GAMEKEY      | page | 48
