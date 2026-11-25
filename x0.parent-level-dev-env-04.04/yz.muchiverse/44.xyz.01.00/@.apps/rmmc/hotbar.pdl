@@ -9,3 +9,8 @@ SLOT | snow | Snow | hotbar/snow-bgr.png
 SLOT | wood_side | Log | hotbar/wood_side-bgr.png
 SLOT | leaves | Leaves | hotbar/leaves-bgr.png
 SLOT | gravel | Gravel | hotbar/gravel-bgr.png
+# Tools: an item with a TOOL row in vox/rules.pdl is swung by the mine key (B) instead of being placed; the sprites are drawn from sprites.pdl by rmmc_sprite_op.
+SLOT | pick | Pickaxe | hotbar/pick-bgr.png
+SLOT | axe | Axe | hotbar/axe-bgr.png
+SLOT | shovel | Shovel | hotbar/shovel-bgr.png
+SLOT | shears | Shears | hotbar/shears-bgr.png

@@ -1,4 +1,5 @@
-/* rmmc_director - the second camera of the rmmc video: a shot list in, a folder of PNG frames and a manifest out (owner 2026-11-25: "make a second camera entity ... that can dump pngs ... think like director";
+if (n >= 9 && !strcmp(f[8], "window")) WINCAP = 1; else WINCAP = 0;
+        if (n < 8 || strcmp(f[0], "SHOT"))/* rmmc_director - the second camera of the rmmc video: a shot list in, a folder of PNG frames and a manifest out (owner 2026-11-25: "make a second camera entity ... that can dump pngs ... think like director";
  * "presentation proof of driven as well as autonomous behavior doing the same things").
  *   rmmc_director.+x <house> <shots.pdl> <outdir> [--only <name>] [--window-pid <pid>]
  * It never draws anything itself. It composes tools that already exist: bv_look (the engine's debug camera, cam_look.txt: absolute or orbiting the selector, which follows Asa once she is possessed),
@@ -11,7 +12,7 @@
  *      who   : human = the action is a KEY into the window relay (the driver maps it exactly like a person's key); harness = the action is an rmmc_verb call as seat harness
  *      act   : verb:<verb> <arg> (harness) e.g. verb:walk e | xkey:<xdotool key name> (human) e.g. xkey:Right xkey:space xkey:b | key:<decimal> (a line in the window relay, not the engine; rarely useful) | none (camera only, a hold)
  *      look  : sel <dist> <yaw> <pitch> (orbit Asa) | <x> <y> <z> <dist> <yaw> <pitch> (orbit a cell) | off
- *      frames: PNGs to take after the action; gap_ms: pause between frames (0 = as fast as the engine renders)
+ *      frames: PNGs to take after the action; an optional 9th field `window` captures the whole editor window (the UI) instead of the raw 3D frame; gap_ms: pause between frames (0 = as fast as the engine renders)
  * Outputs: <outdir>/<name>_NNN.png, <outdir>/manifest.txt (png | hold seconds | caption), <outdir>/director.log. Raw copies are deleted once converted (3 MB each) and the folder is capped at 600 frames.
  * Footprint: runs only while called; waits on the engine (no spin, 100 ms sleeps); writes at most 600 PNGs per call into the folder you give it (a scratch folder, never the repo).
  * Build: gcc -std=gnu11 -Wall -Wextra -O2 -o +x/rmmc_director.+x rmmc_director.c */
@@ -45,7 +46,13 @@ static char *trim(char *s) { while (*s == ' ' || *s == '\t') s++; char *e = s + 
 static int copy_file(const char *a, const char *b) { FILE *i = fopen(a, "rb"), *o = i ? fopen(b, "wb") : NULL; if (!o) { if (i) fclose(i); return 0; } char buf[65536]; size_t n; while ((n = fread(buf, 1, sizeof buf, i)) > 0) fwrite(buf, 1, n, o); fclose(i); fclose(o); return 1; }
 
 /* one frame: wake, wait for a frame newer than `after`, copy it, convert to png; returns 1 on success */
+static int WINCAP;   /* 1 = the whole editor window (bars, hotbar, Pals: the UI) instead of the engine's raw 3D frame */
+static int grab_window(const char *png) {
+    char cmd[PATH_MAX + 200], wid[64] = "", o[300]; FILE *p = popen("xwininfo -root -tree 2>/dev/null | grep ' 1365x934+' | head -1 | awk '{print $1}'", "r"); if (p) { if (fgets(wid, sizeof wid, p)) wid[strcspn(wid, "\r\n")] = 0; pclose(p); }
+    if (!wid[0]) return 0; long t0 = mtime_ns(RAW); wake(); for (int i = 0; i < 60 && mtime_ns(RAW) == t0; i++) usleep(100000); usleep(150000);
+    char bin[PATH_MAX + 80]; snprintf(bin, sizeof bin, "%s/&.widgits/_shared-lib/ops/+x/dump_frame_png_op.+x", HOUSE); snprintf(cmd, sizeof cmd, "%s", png); char *av[] = { bin, wid, cmd, NULL }; return run(av, NULL, o, sizeof o) == 0; }
 static int grab(const char *png) {
+    if (WINCAP) return grab_window(png);
     long t0 = mtime_ns(RAW), until = now_ms() + 12000; wake();
     while (now_ms() < until) { if (mtime_ns(RAW) != t0) break; usleep(100000); if (((until - now_ms()) / 1000) % 3 == 0) wake(); }
     if (mtime_ns(RAW) == t0) return 0;

@@ -23,6 +23,13 @@ static int run(char *const av[], char *out, size_t osz) {
     close(p[1]); size_t n = 0; ssize_t k; while (n < osz - 1 && (k = read(p[0], out + n, osz - 1 - n)) > 0) n += (size_t)k; out[n] = 0; close(p[0]);
     int st = 0; waitpid(c, &st, 0); char *e = strchr(out, '\n'); if (e) *e = 0; return WIFEXITED(st) ? WEXITSTATUS(st) : 99; }
 static void result(const char *rp, int code, const char *out) { FILE *f = fopen(rp, "w"); if (f) { if (code == 0) fputs("ok\n", f); else fprintf(f, "refused: %s [exit %d]\n", out[0] ? out : "no reason given", code); fclose(f); } }
+/* the picked hotbar item is a TOOL when vox/rules.pdl has a TOOL row of that name (hand excluded): data decides, no tool list in C */
+static int picked_tool(const char *book, const char *data, char *out, size_t n) {
+    char pp[PATH_MAX + 96], item[64] = ""; snprintf(pp, sizeof pp, "%s/play/pick.txt", book); FILE *f = fopen(pp, "r"); if (!f) return 0;
+    if (fgets(item, sizeof item, f)) item[strcspn(item, "\r\n'| ")] = 0; fclose(f); if (!item[0] || !strcmp(item, "hand")) return 0;
+    char rp[PATH_MAX + 96], l[256]; snprintf(rp, sizeof rp, "%s/rules.pdl", data); f = fopen(rp, "r"); if (!f) return 0; int ok = 0;
+    while (fgets(l, sizeof l, f)) { char k[16], a[64]; if (sscanf(l, " %15[^| ] | %63[^| \r\n]", k, a) == 2 && !strcmp(k, "TOOL") && !strcmp(a, item)) { ok = 1; break; } }
+    fclose(f); if (ok) snprintf(out, n, "%s", item); return ok; }
 /* facing from the LEDGER, by the rule the projection draws with (rmmc_project_op: the last horizontal MOVE delta or the last FACE row, whichever is later; a jump moves only in y and keeps it): so what she visibly faces is the column mine and place act on */
 static char facing_of(const char *ledger, const char *actor) {
     FILE *f = fopen(ledger, "r"); if (!f) return 0; char l[256], dir = 0; int px = 0, pz = 0, have = 0;
@@ -70,7 +77,9 @@ int main(int argc, char **argv) {
             int fx = ax + (fc == 'e') - (fc == 'w'), fz = az + (fc == 's') - (fc == 'n'); char gx[32], gz[32], o3[200]; snprintf(gx, sizeof gx, "%d", fx); snprintf(gz, sizeof gz, "%d", fz);
             char *g[] = { vop, "ground", data, led, gx, gz, NULL }; int c2 = run(g, o3, sizeof o3); int top = -1; if (c2 == 0) sscanf(o3, "top=%d", &top);
             if (c2 != 0 || top < 0) { snprintf(out, sizeof out, "no ground in front at %d,%d", fx, fz); code = 11; }
-            else if (!strcmp(v, "mine")) { char cell[96]; snprintf(cell, sizeof cell, "%d,%d,%d", fx, top, fz); char *av[] = { vop, "mine", data, led, (char *)actor, "hand", cell, NULL }; code = run(av, out, sizeof out); }
+            else if (!strcmp(v, "mine")) { char cell[96], tool[64] = "hand"; snprintf(cell, sizeof cell, "%d,%d,%d", fx, top, fz);
+                if (picked_tool(book, data, tool, sizeof tool)) { char one[8] = "1", og[200]; char *gv[] = { vop, "give", data, led, (char *)actor, tool, one, "hotbar", NULL }; run(gv, og, sizeof og); }   /* creative hotbar: the picked tool is given first, as for a placed block */
+                char *av[] = { vop, "mine", data, led, (char *)actor, tool, cell, NULL }; code = run(av, out, sizeof out); }
             else { char item[64] = "dirt", pp[PATH_MAX + 96]; snprintf(pp, sizeof pp, "%s/play/pick.txt", book); FILE *pf = fopen(pp, "r"); if (pf) { if (fgets(item, sizeof item, pf)) item[strcspn(item, "\r\n'| ")] = 0; fclose(pf); } if (!item[0]) snprintf(item, sizeof item, "dirt");
                 char cell[96], one[8] = "1"; snprintf(cell, sizeof cell, "%d,%d,%d", fx, top + 1, fz); char *gv[] = { vop, "give", data, led, (char *)actor, item, one, "hotbar", NULL }; char og[200]; run(gv, og, sizeof og);   /* creative hotbar: the picked block is given first, as a GIVE row */
                 char *av[] = { vop, "place", data, led, (char *)actor, item, cell, NULL }; code = run(av, out, sizeof out); } } }

@@ -68,6 +68,25 @@ ENV | GAME_ARG |
 RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/place | $T/h | ui
 EXPECT_HAS | led.txt | PLACE \p asa \p dirt \p 141 \p | a FACE row wins over the last step: after FACE n the next block goes on her own x (141), the row north of her, not east
 CLEAN |
+CASE | picked-tool-is-the-one-swung-stone-needs-a-pick-a-log-needs-an-axe
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+MKDIR | h/@.apps/rmmc/play/world
+ENV | MUCHI_TARGET_ENT | $T/h/@.apps/rmmc/play/world
+ENV | GAME_ARG | 101 60
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/spawn | $T/h | ui
+ENV | GAME_ARG | w
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/face | $T/h | ui
+ENV | GAME_ARG |
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/mine | $T/h | ui
+EXPECT_HAS | h/@.apps/rmmc/play/result.txt | refused | by hand the stone is refused (the hand's power is below the stone's minimum)
+EXPECT_LACKS | led.txt | DAMAGE \p asa \p hand | and nothing is written
+WRITE | h/@.apps/rmmc/play/pick.txt | pick\n
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/mine | $T/h | ui
+EXPECT_HAS | h/@.apps/rmmc/play/result.txt | ok | with the pickaxe picked the same key is accepted
+EXPECT_HAS | led.txt | DAMAGE \p asa \p pick \p 100 | the swing is a pick swing on the stone column west of her
+EXPECT_HAS | led.txt | GIVE \p asa \p pick \p 1 \p hotbar | the creative hotbar gave the tool first, as a row
+CLEAN |
 CASE | refusals-write-nothing
 SCRATCH
 INCLUDE | ../fixtures/rmmc_house.pdl
