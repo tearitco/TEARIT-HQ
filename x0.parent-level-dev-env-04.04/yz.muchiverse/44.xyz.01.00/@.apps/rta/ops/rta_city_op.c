@@ -9,6 +9,7 @@
  * KIND rows (data, optional, before the FEAT rows): `KIND | <feature kind> | <painted kind> | <priority>`. A feature kind with a KIND row is painted as the named
  * kind (park path road water pier building beach) and beats a cell only when its priority is STRICTLY higher than the priority that set the cell (a tie keeps the first). A kind with no
  * row keeps priority = its own kind number, so a file with no KIND row paints exactly as before. `KIND | bridge | road | 9` lets a road span water and pier.
+ * `SHORE | off` skips the harbour flood (grass that can reach the border becomes water). Centon omits the row, so the peninsula still floods. Inland footprint slices set it.
  * Build: gcc -std=gnu11 -Wall -Wextra -O2 -o rta_city_op.+x rta_city_op.c -lpng -lz -lm
  */
 #include <png.h>
@@ -136,7 +137,7 @@ int main(int argc, char **argv) {
         return 2;
     }
     double south = 0, west = 0, north = 0, east = 0, meters = 10;
-    int have_box = 0, have_cell = 0;
+    int have_box = 0, have_cell = 0, shore = 1;
     FILE *fp = fopen(argv[2], "r");
     if (!fp) return 3;
     char line[512];
@@ -150,6 +151,8 @@ int main(int argc, char **argv) {
             if (sscanf(line, "KIND | %31[^ |] | %31[^ |] | %d", fk, pk, &pp) == 3 && base_kind(pk) >= 0 && pp >= 1 && pp <= 255) {
                 snprintf(kx[nkx].name, 32, "%s", fk); kx[nkx].paint = base_kind(pk); kx[nkx].prio = pp; nkx++;
             }
+        } else if (strncmp(line, "SHORE |", 7) == 0) {
+            if (strstr(line, "off")) shore = 0;
         } else if (strncmp(line, "CELL |", 6) == 0) {
             double olon, olat;
             if (sscanf(line, "CELL | meters | %lf | origin_lon | %lf | origin_lat | %lf", &meters, &olon, &olat) >= 1)
@@ -280,8 +283,9 @@ int main(int argc, char **argv) {
     fclose(fp);
 
     /* Grass that can reach the map border without crossing a road or a
-     * building is the harbour outside the peninsula, not a yard. */
-    {
+     * building is the harbour outside the peninsula, not a yard.
+     * SHORE | off keeps that grass (inland footprint slices). */
+    if (shore) {
         int *stack = malloc((size_t)gw * gh * sizeof(int));
         int sp = 0;
         if (!stack) return 5;
