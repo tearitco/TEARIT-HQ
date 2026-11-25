@@ -61,3 +61,19 @@ RUN | $T/tearit_map_op.+x | move | $T/a.txt | $T/walk2.txt | land
 EXPECT_EXIT | 0 | replay step
 RUN | cmp | -s | $T/walk.txt | $T/walk2.txt
 EXPECT_EXIT | 0 | same steps same ledger
+RUN | $T/tearit_map_op.+x | dig | $T/a.txt | $T/walk.txt
+EXPECT_EXIT | 4 | dig away from the mineral writes nothing
+RUN | $T/tearit_map_op.+x | approach | $T/a.txt | $T/ore.txt
+EXPECT_EXIT | 0 | walk to the mineral
+EXPECT_OUT | approach=1 | path was found
+RUN | $T/tearit_map_op.+x | dig | $T/a.txt | $T/ore.txt
+EXPECT_EXIT | 0 | dig the mineral cell
+EXPECT_OUT | dug= | a DIG row
+RUN | $T/tearit_map_op.+x | dig | $T/a.txt | $T/ore.txt
+EXPECT_EXIT | 4 | a second dig is refused
+RUN | $T/tearit_map_op.+x | desk | $T/a.txt | $T/ore-before
+EXPECT_EXIT | 0 | desk before dig
+RUN | $T/tearit_map_op.+x | desk | $T/a.txt | $T/ore-after | $T/ore.txt
+EXPECT_EXIT | 0 | desk after dig
+RUN | cmp | -s | $T/ore-before/cells.txt | $T/ore-after/cells.txt
+EXPECT_EXIT | 1 | the dug cell changes the picture

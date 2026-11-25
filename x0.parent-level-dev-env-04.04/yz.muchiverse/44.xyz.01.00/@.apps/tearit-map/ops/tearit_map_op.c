@@ -418,7 +418,34 @@ static int picture(const char *in, const char *ppm) {
     return 0;
 }
 
-static int desk(const char *in, const char *dir) {
+static int mineral_of(const char *path, int *mx, int *my) {
+    FILE *f = fopen(path, "r");
+    char line[256];
+    int x, y;
+    *mx = *my = -1;
+    if (!f) return 5;
+    while (fgets(line, sizeof line, f)) {
+        if (sscanf(line, "MINERAL | %d | %d", &x, &y) == 2) { *mx = x; *my = y; }
+    }
+    fclose(f);
+    return *mx < 0 ? 4 : 0;
+}
+
+static int ledger_has_dig(const char *ledger, int x, int y) {
+    FILE *f;
+    char line[256];
+    int a, b;
+    if (!ledger) return 0;
+    f = fopen(ledger, "r");
+    if (!f) return 0;
+    while (fgets(line, sizeof line, f)) {
+        if (sscanf(line, "DIG | %d | %d", &a, &b) == 2 && a == x && b == y) { fclose(f); return 1; }
+    }
+    fclose(f);
+    return 0;
+}
+
+static int desk(const char *in, const char *dir, const char *ledger) {
     FILE *f = fopen(in, "r");
     char line[256], kind[32], path[512];
     int w = 0, h = 0, x, y, *g, i, sx = 0, sy = 0, mx = 0, my = 0;
@@ -441,11 +468,14 @@ static int desk(const char *in, const char *dir) {
     }
     fclose(f);
     for (i = 0; i < w * h; i++) if (g[i] < 0) { free(g); return 4; }
+    if (mx >= 0 && my >= 0 && mx < w && my < h) {
+        g[my * w + mx] = ledger_has_dig(ledger, mx, my) ? GRASS : 9;
+    }
     if (mkdir(dir, 0755) != 0 && errno != EEXIST) { free(g); return 5; }
     snprintf(path, sizeof path, "%s/cells.txt", dir);
     f = fopen(path, "w");
     if (!f) { free(g); return 5; }
-    fprintf(f, "width=%d\nheight=%d\ntile_px=4\natlas_cols=1\natlas_tiles=9\ncells\n", w, h);
+    fprintf(f, "width=%d\nheight=%d\ntile_px=4\natlas_cols=1\natlas_tiles=10\ncells\n", w, h);
     for (y = 0; y < h; y++) {
         for (x = 0; x < w; x++) fprintf(f, "%s%d,0", x ? " " : "", g[y * w + x]);
         fputc('\n', f);
@@ -454,10 +484,13 @@ static int desk(const char *in, const char *dir) {
     snprintf(path, sizeof path, "%s/cells.rgba", dir);
     f = fopen(path, "w");
     if (!f) { free(g); return 5; }
-    for (i = 0; i < 9; i++) {
+    for (i = 0; i < 10; i++) {
         int pxs;
+        unsigned char r = i < 9 ? rgb[i][0] : 180;
+        unsigned char gg = i < 9 ? rgb[i][1] : 40;
+        unsigned char b = i < 9 ? rgb[i][2] : 200;
         for (pxs = 0; pxs < 16; pxs++) {
-            fputc(rgb[i][0], f); fputc(rgb[i][1], f); fputc(rgb[i][2], f); fputc(255, f);
+            fputc(r, f); fputc(gg, f); fputc(b, f); fputc(255, f);
         }
     }
     fclose(f);
@@ -465,7 +498,7 @@ static int desk(const char *in, const char *dir) {
     f = fopen(path, "w");
     if (!f) { free(g); return 5; }
     for (y = 0; y < h; y++) {
-        for (x = 0; x < w; x++) fputc(glyph[g[y * w + x]], f);
+        for (x = 0; x < w; x++) fputc(g[y * w + x] == 9 ? '*' : glyph[g[y * w + x]], f);
         fputc('\n', f);
     }
     fclose(f);
@@ -566,6 +599,75 @@ static int move_op(const char *map, const char *ledger, const char *which) {
     return 0;
 }
 
+static int approach_mineral(const char *map, const char *ledger) {
+    int *g, w, h, sx, sy, x, y, mx, my, rc, i, n = 0;
+    int *seen, *qx, *qy, *px, *py, qh, qt;
+    const int dx[4] = { 1, 0, -1, 0 };
+    const int dy[4] = { 0, 1, 0, -1 };
+    FILE *f;
+    rc = load_map(map, &g, &w, &h, &sx, &sy);
+    if (rc) return rc;
+    if (mineral_of(map, &mx, &my)) { free(g); return 4; }
+    where(ledger, sx, sy, &x, &y);
+    seen = calloc((size_t)w * h, sizeof(int));
+    qx = calloc((size_t)w * h, sizeof(int));
+    qy = calloc((size_t)w * h, sizeof(int));
+    px = calloc((size_t)w * h, sizeof(int));
+    py = calloc((size_t)w * h, sizeof(int));
+    qh = qt = 0;
+    qx[qt] = x; qy[qt] = y; qt++;
+    seen[y * w + x] = 1;
+    px[y * w + x] = x; py[y * w + x] = y;
+    while (qh < qt) {
+        int cx0 = qx[qh], cy0 = qy[qh];
+        qh++;
+        if (cx0 == mx && cy0 == my) break;
+        for (i = 0; i < 4; i++) {
+            int xx = cx0 + dx[i], yy = cy0 + dy[i];
+            if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+            if (!land(g[yy * w + xx]) || seen[yy * w + xx]) continue;
+            seen[yy * w + xx] = 1;
+            px[yy * w + xx] = cx0; py[yy * w + xx] = cy0;
+            qx[qt] = xx; qy[qt] = yy; qt++;
+        }
+    }
+    if (!seen[my * w + mx]) { free(seen); free(qx); free(qy); free(px); free(py); free(g); printf("fail no-path\n"); return 6; }
+    f = fopen(ledger, "a");
+    if (!f) { free(seen); free(qx); free(qy); free(px); free(py); free(g); return 5; }
+    {
+        int pathx[4096], pathy[4096], cx0 = mx, cy0 = my, nn = 0;
+        while (!(cx0 == x && cy0 == y) && nn < 4096) {
+            pathx[nn] = cx0; pathy[nn] = cy0; nn++;
+            { int nx0 = px[cy0 * w + cx0], ny0 = py[cy0 * w + cx0]; cx0 = nx0; cy0 = ny0; }
+        }
+        for (i = nn - 1; i >= 0; i--) fprintf(f, "MOVE | %d | %d | step\n", pathx[i], pathy[i]);
+        n = nn;
+    }
+    fclose(f);
+    printf("approach=%d steps=%d\n", 1, n);
+    free(seen); free(qx); free(qy); free(px); free(py); free(g);
+    return 0;
+}
+
+static int dig_op(const char *map, const char *ledger) {
+    int *g, w, h, sx, sy, x, y, mx, my, rc;
+    FILE *f;
+    rc = load_map(map, &g, &w, &h, &sx, &sy);
+    if (rc) return rc;
+    if (mineral_of(map, &mx, &my)) { free(g); return 4; }
+    where(ledger, sx, sy, &x, &y);
+    if (x != mx || y != my || ledger_has_dig(ledger, mx, my)) {
+        free(g); printf("fail dig\n"); return 4;
+    }
+    f = fopen(ledger, "a");
+    if (!f) { free(g); return 5; }
+    fprintf(f, "DIG | %d | %d\n", mx, my);
+    fclose(f);
+    printf("dug=%d,%d\n", mx, my);
+    free(g);
+    return 0;
+}
+
 int main(int argc, char **argv) {
     unsigned long seed;
     int w, h;
@@ -583,7 +685,10 @@ int main(int argc, char **argv) {
     if (!strcmp(argv[1], "check") && argc == 3) return check_file(argv[2]);
     if (!strcmp(argv[1], "sabotage") && argc == 4) return sabotage(argv[2], argv[3]);
     if (!strcmp(argv[1], "picture") && argc == 4) return picture(argv[2], argv[3]);
-    if (!strcmp(argv[1], "desk") && argc == 4) return desk(argv[2], argv[3]);
+    if (!strcmp(argv[1], "desk") && argc == 4) return desk(argv[2], argv[3], NULL);
+    if (!strcmp(argv[1], "desk") && argc == 5) return desk(argv[2], argv[3], argv[4]);
     if (!strcmp(argv[1], "move") && argc == 5) return move_op(argv[2], argv[3], argv[4]);
+    if (!strcmp(argv[1], "approach") && argc == 4) return approach_mineral(argv[2], argv[3]);
+    if (!strcmp(argv[1], "dig") && argc == 4) return dig_op(argv[2], argv[3]);
     return 2;
 }
