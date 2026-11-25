@@ -1,0 +1,4 @@
+# rig_convert.pal — RPG Maker MV charset -> box-limb rig colours (converter op, settings data, extra parts of bv_rig.h)
+exec ./ops/+x/harness_case_op.+x cases/rig_convert.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/rig_convert.pdl
+halt

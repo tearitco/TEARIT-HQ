@@ -1,5 +1,7 @@
 /* bv_rig_op boxes <direction> <pattern> <frame> [charset]: prints `boxes N` then the 6 boxes of the box-limb rig (header bv_rig.h), one `box i x0 y0 z0 x1 y1 z1` row each.
  *   charset defaults to rig:asa; a name that does not start with `rig:` gives `boxes 0` (the board stays as it was).
+ * bv_rig_op parts <direction> <pattern> <frame> <mask>: prints `parts N`, the box count with the extra parts (mask 1 hair, 2 sleeve, 4 shoe); boxes takes the mask as a 6th argument and prints each part's colour index (ci).
+ * bv_rig_op parsefile <rig_x.pdl>: prints `rows N mask M` (rows read; mask bit 1 hair, 2 sleeve, 4 shoe present), the parser the renderer uses.
  * bv_rig_op probe <what> <direction> <pattern> <frame>: one measured fact, for the harness.
  *   height (top of head minus feet) | torsomin (lowest y of the torso) | legfwd (right leg centre along the facing) | legsign (neg when the two legs are on opposite sides of the torso, pos when in phase)
  *   armfwd (right arm's rear face minus the torso's front face along the facing; > 0 = the arm is forward of the torso) | armtop (highest y of the arms) | axis (x or z: the axis the two legs are split on: use pattern 0, it is the lateral axis (south x, east z))
@@ -11,11 +13,13 @@ static float along(const float *b, int fx, int fz, int hi) {      /* box extent 
 }
 static float cen(const float *b, int fx, int fz) { return (along(b, fx, fz, 0) + along(b, fx, fz, 1)) / 2.f; }
 int main(int argc, char **argv) {
-    float o[6][6];
+    float o[BV_RIG_MAX][6]; int ci[BV_RIG_MAX];
+    if (argc == 3 && !strcmp(argv[1], "parsefile")) { unsigned char col[8][3] = {{0}}; int mask = 0; int n = bv_rig_parse(argv[2], col, &mask); printf("rows %d mask %d\n", n, mask); return 0; }
+    if (argc >= 6 && !strcmp(argv[1], "parts")) { printf("parts %d\n", bv_rig_boxes_ex(1, atoi(argv[5]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), o, ci)); return 0; }
     if (argc >= 5 && !strcmp(argv[1], "boxes")) {
-        int n = bv_rig_boxes(bv_rig_is(argc > 5 ? argv[5] : "rig:asa"), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), o);
+        int n = bv_rig_boxes_ex(bv_rig_is(argc > 5 ? argv[5] : "rig:asa"), argc > 6 ? atoi(argv[6]) : 0, atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), o, ci);
         printf("boxes %d\n", n);
-        for (int i = 0; i < n; i++) printf("box %d %.4f %.4f %.4f %.4f %.4f %.4f\n", i, o[i][0], o[i][1], o[i][2], o[i][3], o[i][4], o[i][5]);
+        for (int i = 0; i < n; i++) printf("box %d %.4f %.4f %.4f %.4f %.4f %.4f ci%d\n", i, o[i][0], o[i][1], o[i][2], o[i][3], o[i][4], o[i][5], ci[i]);
         return 0;
     }
     if (argc == 6 && !strcmp(argv[1], "probe")) {

@@ -1,0 +1,16 @@
+# rig_from_charset_op settings (BOOK 16.game/BOX-LIMB-RIG-FOR-WALKING-CHARACTERS-2026-11-25.md). Fractions are of the figure's opaque bounding-box height, top = 0.
+# CONVERT | key | value
+CONVERT | head_end | 0.56
+CONVERT | torso_end | 0.84
+CONVERT | hair_top_frac | 0.40
+CONVERT | hair_side_frac | 0.18
+CONVERT | skin_band_lo | 0.40
+CONVERT | skin_band_hi | 0.85
+CONVERT | eye_band_lo | 0.40
+CONVERT | eye_band_hi | 0.85
+CONVERT | sleeve_side_frac | 0.22
+CONVERT | shoe_frac | 0.15
+CONVERT | alpha_min | 128
+CONVERT | outline_max | 24
+CONVERT | same_colour_dist | 40
+CONVERT | quant_shift | 3

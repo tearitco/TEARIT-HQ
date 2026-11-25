@@ -1,0 +1,113 @@
+# RPG Maker MV charset -> box-limb rig colours (BOOK 16.game/BOX-LIMB-RIG-FOR-WALKING-CHARACTERS-2026-11-25.md). Op rig_from_charset_op + settings data/rig_convert.pdl + header bv_rig.h; synthetic sheets from rig_sheet_make_op; no window, no engine.
+RESULTS | ../results/rig_convert.txt
+ENV | LC_ALL | C
+CASE | conv
+SCRATCH |
+MKDIR | h
+MKDIR | h/ops
+MKDIR | h/ops/+x
+MKDIR | h/data
+COPY | &.widgits/board-viewer/ops/rig_from_charset_op.c | rig_from_charset_op.c
+COPY | &.widgits/board-viewer/ops/rig_sheet_make_op.c | rig_sheet_make_op.c
+COPY | &.widgits/board-viewer/ops/bv_rig.h | bv_rig.h
+COPY | &.widgits/board-viewer/ops/bv_rig_op.c | bv_rig_op.c
+COPY | &.widgits/board-viewer/data/rig_convert.pdl | h/data/rig_convert.pdl
+RUN | /usr/bin/gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/h/ops/+x/rig_from_charset_op | $T/rig_from_charset_op.c | -lpng | -lz | -lm
+EXPECT_EXIT | 0 | the-converter-compiles
+RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -o | $T/rig_sheet_make_op | $T/rig_sheet_make_op.c | -lpng | -lz
+EXPECT_EXIT | 0 | the-sheet-maker-compiles
+RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -o | $T/bv_rig_op | $T/bv_rig_op.c
+EXPECT_EXIT | 0 | the-rig-op-compiles
+# synthetic sheets
+RUN | $T/rig_sheet_make_op | $T/$test.png | single
+EXPECT_EXIT | 0 | single-sheet-made
+RUN | $T/rig_sheet_make_op | $T/sheet.png | sheet
+EXPECT_EXIT | 0 | normal-sheet-made
+RUN | $T/rig_sheet_make_op | $T/empty.png | empty
+EXPECT_EXIT | 0 | empty-sheet-made
+RUN | $T/rig_sheet_make_op | $T/$empty1.png | emptysingle
+EXPECT_EXIT | 0 | empty-single-sheet-made
+# a $ sheet: the op finds its settings beside its own folder (ops/+x/../../data) and ignores the char index
+RUN | $T/h/ops/+x/rig_from_charset_op | $T/$test.png | 5 | $T/single.pdl
+EXPECT_EXIT | 0 | dollar-sheet-converts-with-default-settings-lookup
+EXPECT_HAS | $T/single.pdl | RIG \p head \p 220 170 130 | skin-is-tan
+EXPECT_HAS | $T/single.pdl | RIG \p hair \p 100 60 30 | hair-is-brown
+EXPECT_HAS | $T/single.pdl | RIG \p torso \p 40 80 200 | shirt-is-blue
+EXPECT_HAS | $T/single.pdl | RIG \p sleeve \p 40 80 200 | sleeve-follows-the-shirt-when-the-sides-are-shirt
+EXPECT_HAS | $T/single.pdl | RIG \p arm \p 40 80 200 | arm-follows-the-shirt-when-the-sides-are-shirt
+EXPECT_HAS | $T/single.pdl | RIG \p leg \p 20 30 90 | trousers-are-dark-blue
+EXPECT_HAS | $T/single.pdl | RIG \p shoe \p 0 0 0 | shoes-are-black-though-black-is-an-outline-colour-elsewhere
+EXPECT_LACKS | $T/single.pdl | RIG \p face | no-eyes-in-the-picture-no-face-row
+EXPECT_NOFILE | $T/single.pdl.tmp | no-half-written-file-is-left
+# a normal sheet: index 3 is the block at the right of the top row, index 0 holds another figure, index 1 is empty
+RUN | $T/h/ops/+x/rig_from_charset_op | $T/sheet.png | 3 | $T/c3.pdl
+EXPECT_EXIT | 0 | sheet-index-3-converts
+EXPECT_HAS | $T/c3.pdl | RIG \p torso \p 40 80 200 | index-3-is-the-blue-figure
+EXPECT_HAS | $T/c3.pdl | RIG \p leg \p 20 30 90 | index-3-trousers
+RUN | $T/h/ops/+x/rig_from_charset_op | $T/sheet.png | 0 | $T/c0.pdl
+EXPECT_HAS | $T/c0.pdl | RIG \p torso \p 200 40 40 | index-0-is-the-red-figure
+EXPECT_HAS | $T/c0.pdl | RIG \p hair \p 240 220 60 | index-0-hair-is-yellow
+EXPECT_HAS | $T/c0.pdl | RIG \p shoe \p 120 70 20 | index-0-shoes-are-brown
+EXPECT_LACKS | $T/c0.pdl | 40 80 200 | NEGATIVE-index-0-has-no-blue-from-index-3
+RUN | $T/h/ops/+x/rig_from_charset_op | $T/sheet.png | 1 | $T/c1.pdl
+EXPECT_EXIT | 3 | an-empty-block-of-a-real-sheet-exits-3
+EXPECT_NOFILE | $T/c1.pdl | an-empty-block-writes-nothing
+RUN | $T/h/ops/+x/rig_from_charset_op | $T/empty.png | 0 | $T/e.pdl
+EXPECT_EXIT | 3 | an-all-transparent-sheet-exits-3
+EXPECT_NOFILE | $T/e.pdl | an-all-transparent-sheet-writes-nothing
+RUN | $T/h/ops/+x/rig_from_charset_op | $T/$empty1.png | 0 | $T/e1.pdl
+EXPECT_EXIT | 3 | an-all-transparent-dollar-sheet-exits-3
+# argument errors
+RUN | $T/h/ops/+x/rig_from_charset_op | $T/sheet.png | 9 | $T/x.pdl
+EXPECT_EXIT | 2 | char-index-9-is-refused
+RUN | $T/h/ops/+x/rig_from_charset_op | $T/nope.png | 0 | $T/x.pdl
+EXPECT_EXIT | 4 | a-missing-png-exits-4
+# a plain-named sheet shaped 3:4 (width*4 == height*3, like the generator-hq cast sheets) is ONE character as well
+RUN | /bin/cp | $T/$test.png | $T/plain34.png
+RUN | $T/h/ops/+x/rig_from_charset_op | $T/plain34.png | 6 | $T/p34.pdl
+EXPECT_EXIT | 0 | a-3-to-4-plain-name-is-one-character
+EXPECT_HAS | $T/p34.pdl | RIG \p torso \p 40 80 200 | a-3-to-4-sheet-gives-the-blue-shirt
+RUN | $T/h/ops/+x/rig_from_charset_op | $T/$test.png | 0 | $T/g.pdl | $T/missing_settings.pdl
+EXPECT_EXIT | 5 | missing-settings-file-exits-5
+# NEGATIVE control: the mutant settings put the head/leg fractions in the wrong places; the same picture must NOT give the same colours
+WRITE | cfg_mut.pdl | CONVERT | head_end | 0.84\nCONVERT | torso_end | 0.90\nCONVERT | hair_top_frac | 0.40\nCONVERT | hair_side_frac | 0.18\nCONVERT | skin_band_lo | 0.50\nCONVERT | skin_band_hi | 0.90\nCONVERT | eye_band_lo | 0.35\nCONVERT | eye_band_hi | 0.70\nCONVERT | sleeve_side_frac | 0.22\nCONVERT | shoe_frac | 0.15\nCONVERT | alpha_min | 128\nCONVERT | outline_max | 24\nCONVERT | same_colour_dist | 40\nCONVERT | quant_shift | 3\n
+RUN | $T/h/ops/+x/rig_from_charset_op | $T/$test.png | 0 | $T/m.pdl | $T/cfg_mut.pdl
+EXPECT_EXIT | 0 | the-mutant-settings-still-convert
+EXPECT_OUT | wrote | the-mutant-run-wrote
+RUN | /usr/bin/grep | -c | RIG \p head \p 220 170 130 | $T/m.pdl
+EXPECT_OUT | 0 | NEGATIVE-mutant-fractions-do-not-give-the-tan-head
+RUN | /usr/bin/grep | -c | RIG \p torso \p 40 80 200 | $T/m.pdl
+EXPECT_OUT | 0 | NEGATIVE-mutant-fractions-do-not-give-the-blue-shirt
+# the rig reads what the converter wrote: old 5-row file = 6 boxes, converted file = hair + sleeves + shoes
+WRITE | old.pdl | RIG | head | 224 172 130\nRIG | torso | 60 90 200\nRIG | arm | 224 172 130\nRIG | leg | 40 40 90\nRIG | face | 20 20 20\n
+RUN | $T/bv_rig_op | parsefile | $T/old.pdl
+EXPECT_OUT | rows 5 mask 0 | old-rig-file-has-no-extra-parts
+RUN | $T/bv_rig_op | parsefile | $T/single.pdl
+EXPECT_OUT | rows 7 mask 7 | converted-file-carries-hair-sleeve-and-shoe
+RUN | $T/bv_rig_op | parts | 2 | 0 | 0 | 0
+EXPECT_OUT | parts 6 | no-extra-rows-give-6-boxes
+RUN | $T/bv_rig_op | parts | 2 | 0 | 0 | 7
+EXPECT_OUT | parts 12 | all-extras-give-12-boxes
+RUN | $T/bv_rig_op | parts | 6 | 1 | 1 | 1
+EXPECT_OUT | parts 8 | hair-adds-2-boxes
+RUN | $T/bv_rig_op | parts | 4 | 4 | 0 | 2
+EXPECT_OUT | parts 8 | sleeves-add-2-boxes
+RUN | $T/bv_rig_op | parts | 8 | 5 | 0 | 4
+EXPECT_OUT | parts 8 | shoes-add-2-boxes
+RUN | $T/bv_rig_op | boxes | 2 | 0 | 0 | rig:asa | 7
+EXPECT_OUT | ci5 | hair-boxes-use-colour-index-5
+EXPECT_OUT | ci6 | sleeve-boxes-use-colour-index-6
+EXPECT_OUT | ci7 | shoe-boxes-use-colour-index-7
+RUN | $T/bv_rig_op | boxes | 2 | 0 | 0 | rig:asa | 0
+EXPECT_OUT_LACKS | ci5 | NEGATIVE-mask-0-has-no-hair-box
+# direction-aware hair back: facing south the back slab is at the north side (smaller z), facing north at the larger z
+RUN | $T/bv_rig_op | boxes | 2 | 0 | 0 | rig:asa | 1
+CAPTURE | hs
+RUN | $T/bv_rig_op | boxes | 8 | 0 | 0 | rig:asa | 1
+CAPTURE | hn
+EXPECT_NE | $hs | $hn | hair-back-moves-with-the-facing
+# wiring
+COPY | &.widgits/board-viewer/ops/bv_render_3d.c | bv_render_3d.c
+RUN | /usr/bin/grep | -q | -F | bv_rig_boxes_ex | bv_render_3d.c
+EXPECT_EXIT | 0 | the-renderer-draws-the-extra-parts
+CLEAN |

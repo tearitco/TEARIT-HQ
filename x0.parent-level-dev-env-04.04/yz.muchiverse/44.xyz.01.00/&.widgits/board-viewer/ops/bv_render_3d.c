@@ -4629,10 +4629,10 @@ static int render_one_frame(void) {
             int hm = -1;
             if (hero_phymoji_count > 0)
                 if (bv_rig_is(g_mk.ev[i].name)) {      /* box-limb rig: 6 boxes, colours from rig_<name>.pdl beside the desk, pose from dir / pat and a 140 ms step of the wall clock */
-                    float rb[6][6]; unsigned char rc[5][3]; int rfb[3] = { g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b }; struct timespec rt; clock_gettime(CLOCK_MONOTONIC, &rt);
-                    bv_rig_colors(g_mk.key, g_mk.ev[i].name, rfb, rc);
-                    bv_rig_boxes(1, g_mk.ev[i].dir, g_mk.ev[i].pat, (int)(((long long)rt.tv_sec * 1000 + rt.tv_nsec / 1000000) / 140), rb);
-                    for (int rp = 0; rp < 6; rp++) { const unsigned char *k = rc[rp == 0 ? 0 : rp == 1 ? 1 : rp < 4 ? 2 : 3];
+                    float rb[BV_RIG_MAX][6]; unsigned char rc[8][3]; int rci[BV_RIG_MAX], rmask = 0, rfb[3] = { g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b }; struct timespec rt; clock_gettime(CLOCK_MONOTONIC, &rt);
+                    bv_rig_colors(g_mk.key, g_mk.ev[i].name, rfb, rc, &rmask);
+                    int rn = bv_rig_boxes_ex(1, rmask, g_mk.ev[i].dir, g_mk.ev[i].pat, (int)(((long long)rt.tv_sec * 1000 + rt.tv_nsec / 1000000) / 140), rb, rci);
+                    for (int rp = 0; rp < rn; rp++) { const unsigned char *k = rc[rci[rp]];
                         ADDBOX(g_mk.ev[i].x + 0.5f + rb[rp][0], 1.0f + lift + rb[rp][1], g_mk.ev[i].y + 0.5f + rb[rp][2], g_mk.ev[i].x + 0.5f + rb[rp][3], 1.0f + lift + rb[rp][4], g_mk.ev[i].y + 0.5f + rb[rp][5], k[0], k[1], k[2], 0); }
                 } else
                 hm = GPU_ADD_MODEL(g_hero_phymoji, hero_phymoji_count,

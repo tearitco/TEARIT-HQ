@@ -1,0 +1,9 @@
+# rig colours from Evil.png (char 0, frame 48x48, figure rows 0..47) by rig_from_charset_op; no texture, boxes only
+RIG | head | 162 30 146
+RIG | hair | 168 112 64
+RIG | torso | 248 192 152
+RIG | sleeve | 81 81 87
+RIG | arm | 81 81 87
+RIG | leg | 192 192 192
+RIG | shoe | 70 0 70
+RIG | face | 117 0 117

@@ -38,3 +38,25 @@ RIG | face  | 20 20 20
 
 ## Harness
 `&.widgits/_shared-lib/harness/bv_rig.pal` + `cases/bv_rig.pdl`, op `board-viewer/ops/bv_rig_op.c`: 6 boxes always; idle height 1.8 +- 0.1; walk legs on opposite signs; periodic; jump lifts the torso; mine/place arm forward of the torso; facing north/east swaps the axes; a non-rig charset gives 0 boxes; renderer wiring greps; NEGATIVE: header compiled with `-DBV_RIG_MUTANT_LEGS_IN_PHASE` reads `pos` where the real one reads `neg`. Run: `/tmp/prisc bv_rig.pal` from the harness folder (README there).
+
+## Extra parts and the RPG Maker converter (2026-11-25, owner priority 1: a Minecraft-style Asa, and any RPG Maker MV sprite the same way)
+STATUS: built and unit-proved by harness `rig_convert` (51 checks; `bv_rig` still 35). NOT seen on screen: the installed `bv_render_3d.+x` was not rebuilt (the edited file compiles to /tmp only), so nothing here has been looked at in a live board.
+
+### New RIG rows (all optional; an old file with only head/torso/arm/leg/face still draws exactly 6 boxes)
+```
+RIG | hair   | r g b     hair cap on the top 2/16 of the head + a slab behind the head (direction-aware, follows the pose)     +2 boxes
+RIG | sleeve | r g b     the upper half of each arm, a hair wider than the arm                                              +2 boxes
+RIG | shoe   | r g b     the bottom quarter of each leg                                                                     +2 boxes
+```
+Maximum 12 boxes. `bv_rig.h`: `bv_rig_boxes_ex(part_set, mask, direction, pattern, frame, out[12][6], ci[12])` returns the count and a colour index per box (0 head, 1 torso, 2 arm, 3 leg, 4 face, 5 hair, 6 sleeve, 7 shoe); mask bits 1 hair, 2 sleeve, 4 shoe come from `bv_rig_parse(path, col[8][3], &mask)` / `bv_rig_colors(..., &mask)` (the rows present). `bv_rig_boxes` is the old 6-box call. The renderer's rig block loops over the returned count. `bv_rig_op parts <d> <p> <f> <mask>`, `boxes ... <charset> <mask>` (prints `ciN`) and `parsefile <file>` expose it.
+
+### Converter: `board-viewer/ops/rig_from_charset_op <charset.png> <char_index 0..7> <out_rig.pdl> [convert.pdl]`
+Reads the down-facing standing frame (middle column, first row of the character's block). Normal sheet: 12x8 frames, 4 characters across and 2 down; frame = w/12 x h/8. A file name starting with `$`, or a sheet shaped 3:4 (like the generator-hq cast sheets), is ONE character (frame = w/3 x h/4) and the index is ignored. Settings are data in `board-viewer/data/rig_convert.pdl` (`CONVERT | key | value`: head/torso/leg fractions, hair, skin and eye bands, sleeve side fraction, shoe fraction, alpha and outline thresholds), found at `ops/+x/../../data` or given as the 4th argument. Colour = the mode of a 5-bit histogram over opaque, non-outline pixels (a region with nothing else falls back to the dark pixels, so a black suit is black). Exit 0 written, 2 usage, 3 no opaque pixel in the block, 4 PNG unreadable, 5 settings missing, 6 not written (written via `.tmp` + rename).
+Test helper: `rig_sheet_make_op` makes the synthetic sheets of harness `rig_convert`.
+Converted files live in `@.apps/rmmc/rigs/` (`rig_asa.pdl`, `rig_actor1_0.pdl`, `rig_actor2_1.pdl`, `rig_evil_0.pdl`); the lead copies the chosen one next to the desk as `rig_<name>.pdl`.
+
+### What it cannot do
+- Colours only: no textures, no face plate (a `face` row is the commonest non-skin eye-band colour and is still not drawn).
+- ONE set of fractions for every sprite. RPG Maker figures are chibi and vary (head 45 to 65 percent of the height): Asa (cast sheet) converts well (tan head, red mohawk, black suit); Actor1/Actor2/Evil come out muddy (the face skin lands in the torso band, hair shadow in the head). Tune the fractions per sprite via the 4th argument.
+- Two-tone clothing, capes, accessories and the sprite's own pose are lost; the sleeve is the torso's side-column colour (bare arms: skin arm, shirt-coloured sleeve).
+- Asa has no RPG Maker sheet of her own: `rig_asa.pdl` was converted from the generator-hq cast sheet `#.NNEST_ASSETS/generator-hq/interim/cast/asa.png` (144x192, from the `CAST | asa` row of `@.apps/generator-hq/events/gen_cast/cast.pdl`); `tsots-characters` holds only a frame `.rgba`.
