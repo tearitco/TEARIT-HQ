@@ -46,3 +46,18 @@ EXPECT_EXIT | 0 | desk rebuilt
 EXPECT_OUT | marker=2 | marker grew
 RUN | cmp | -s | $T/d1/cells.txt | $T/d2/cells.txt
 EXPECT_EXIT | 0 | rebuilt cells match
+RUN | $T/tearit_map_op.+x | move | $T/a.txt | $T/walk.txt | land
+EXPECT_EXIT | 0 | one land step
+EXPECT_OUT | move= | a move row was printed
+RUN | cp | $T/walk.txt | $T/walk.keep
+EXPECT_EXIT | 0 | ledger saved
+RUN | $T/tearit_map_op.+x | move | $T/a.txt | $T/walk.txt | water
+EXPECT_EXIT | 4 | water is refused
+RUN | cmp | -s | $T/walk.txt | $T/walk.keep
+EXPECT_EXIT | 0 | a refused step writes nothing
+RUN | rm | -f | $T/walk2.txt
+EXPECT_EXIT | 0 | second ledger cleared
+RUN | $T/tearit_map_op.+x | move | $T/a.txt | $T/walk2.txt | land
+EXPECT_EXIT | 0 | replay step
+RUN | cmp | -s | $T/walk.txt | $T/walk2.txt
+EXPECT_EXIT | 0 | same steps same ledger

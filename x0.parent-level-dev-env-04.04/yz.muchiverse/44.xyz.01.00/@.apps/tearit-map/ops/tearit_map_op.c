@@ -498,6 +498,69 @@ static int desk(const char *in, const char *dir) {
     return 0;
 }
 
+static int load_map(const char *path, int **g, int *w, int *h, int *sx, int *sy) {
+    FILE *f = fopen(path, "r");
+    char line[256], kind[32];
+    int x, y, i;
+    if (!f) return 5;
+    if (!fgets(line, sizeof line, f)) { fclose(f); return 4; }
+    if (sscanf(line, "MAP | %*d | %*u | %d | %d", w, h) != 2) { fclose(f); return 4; }
+    *g = calloc((size_t)(*w) * (*h), sizeof(int));
+    for (i = 0; i < (*w) * (*h); i++) (*g)[i] = -1;
+    *sx = *sy = 0;
+    while (fgets(line, sizeof line, f)) {
+        if (sscanf(line, "CELL | %d | %d | %31s", &x, &y, kind) == 3) {
+            int k = cell_kind(kind);
+            if (k >= 0 && x >= 0 && y >= 0 && x < *w && y < *h) (*g)[y * (*w) + x] = k;
+        } else if (sscanf(line, "START | 0 | %d | %d", &x, &y) == 2) { *sx = x; *sy = y; }
+    }
+    fclose(f);
+    for (i = 0; i < (*w) * (*h); i++) if ((*g)[i] < 0) return 4;
+    return 0;
+}
+
+static int where(const char *ledger, int sx, int sy, int *x, int *y) {
+    FILE *f = fopen(ledger, "r");
+    char line[256];
+    int a, b;
+    *x = sx; *y = sy;
+    if (!f) return 0;
+    while (fgets(line, sizeof line, f)) {
+        if (sscanf(line, "MOVE | %d | %d", &a, &b) == 2) { *x = a; *y = b; }
+    }
+    fclose(f);
+    return 0;
+}
+
+static int move_op(const char *map, const char *ledger, const char *which) {
+    int *g, w, h, sx, sy, x, y, i, rc, nx, ny, found = 0;
+    const int dx[4] = { 1, 0, -1, 0 };
+    const int dy[4] = { 0, 1, 0, -1 };
+    FILE *f;
+    rc = load_map(map, &g, &w, &h, &sx, &sy);
+    if (rc) return rc;
+    where(ledger, sx, sy, &x, &y);
+    for (i = 0; i < 4; i++) {
+        int xx = x + dx[i], yy = y + dy[i];
+        if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+        if (!strcmp(which, "land") && land(g[yy * w + xx])) { nx = xx; ny = yy; found = 1; break; }
+        if (!strcmp(which, "water") && g[yy * w + xx] == WATER) { nx = xx; ny = yy; found = 1; break; }
+    }
+    if (!found) { free(g); printf("fail no-neighbor\n"); return 6; }
+    if (!land(g[ny * w + nx])) {
+        free(g);
+        printf("fail water\n");
+        return 4;
+    }
+    f = fopen(ledger, "a");
+    if (!f) { free(g); return 5; }
+    fprintf(f, "MOVE | %d | %d | %s\n", nx, ny, kname[g[ny * w + nx]]);
+    fclose(f);
+    printf("move=%d,%d\n", nx, ny);
+    free(g);
+    return 0;
+}
+
 int main(int argc, char **argv) {
     unsigned long seed;
     int w, h;
@@ -516,5 +579,6 @@ int main(int argc, char **argv) {
     if (!strcmp(argv[1], "sabotage") && argc == 4) return sabotage(argv[2], argv[3]);
     if (!strcmp(argv[1], "picture") && argc == 4) return picture(argv[2], argv[3]);
     if (!strcmp(argv[1], "desk") && argc == 4) return desk(argv[2], argv[3]);
+    if (!strcmp(argv[1], "move") && argc == 5) return move_op(argv[2], argv[3], argv[4]);
     return 2;
 }
