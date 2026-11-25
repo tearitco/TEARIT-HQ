@@ -1,0 +1,46 @@
+# legend of map.txt (written by rmmc_biome_op from biomes.pdl; do not edit by hand)
+# glyph = the cell's height H in levels above the floor level. '.' = no land.
+# glyph | H | engine extrusion value
+GLYPH | c | 0 | -1
+GLYPH | 1 | 1 | 1
+GLYPH | 2 | 2 | 2
+GLYPH | 3 | 3 | 3
+GLYPH | 4 | 4 | 4
+GLYPH | 5 | 5 | 5
+GLYPH | 6 | 6 | 6
+GLYPH | 7 | 7 | 7
+GLYPH | 8 | 8 | 8
+GLYPH | 9 | 9 | 9
+GLYPH | A | 10 | 10
+GLYPH | B | 11 | 11
+GLYPH | C | 12 | 12
+GLYPH | D | 13 | 13
+GLYPH | E | 14 | 14
+GLYPH | F | 15 | 15
+GLYPH | G | 16 | 16
+GLYPH | H | 17 | 17
+GLYPH | I | 18 | 18
+GLYPH | J | 19 | 19
+GLYPH | K | 20 | 20
+GLYPH | L | 21 | 21
+GLYPH | M | 22 | 22
+GLYPH | N | 23 | 23
+GLYPH | O | 24 | 24
+GLYPH | P | 25 | 25
+GLYPH | Q | 26 | 26
+GLYPH | R | 27 | 27
+# atlas slot | tile name | source png
+SLOT | 1 | grass_top | ITEMS/mcl_core/textures/mcl_core_grass_block_top.png
+SLOT | 2 | grass_side | ITEMS/mcl_core/textures/default_dirt.png
+SLOT | 3 | dirt | ITEMS/mcl_core/textures/default_dirt.png
+SLOT | 4 | stone | ITEMS/mcl_core/textures/default_stone.png
+SLOT | 5 | sand | ITEMS/mcl_core/textures/default_sand.png
+SLOT | 6 | snow | ITEMS/mcl_core/textures/default_snow.png
+SLOT | 7 | snow_side | ITEMS/mcl_core/textures/mcl_core_grass_side_snowed.png
+SLOT | 8 | water | ITEMS/mcl_core/textures/default_water_source_animated.png
+SLOT | 9 | water_deep | ITEMS/mcl_core/textures/default_water_source_animated.png
+SLOT | 10 | wood_side | ITEMS/mcl_core/textures/default_tree.png
+SLOT | 11 | wood_top | ITEMS/mcl_core/textures/default_tree_top.png
+SLOT | 12 | leaves | ITEMS/mcl_core/textures/default_leaves.png
+SLOT | 13 | gravel | ITEMS/mcl_core/textures/default_gravel.png
+SLOT | rock_slot | stone | blocks hung under the island

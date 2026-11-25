@@ -179,7 +179,7 @@
       <row id="game-bar" class="canvas-overlay-bottom ov-chrome ov-slide-x rp-hotbar theme" show="${gmbar_on}">
         <text label="${gmbar_title}" class="hb-quiet ov-title theme-3"/>
         <item id="gmbar-min" class="ov-min hb-slot skin-bar theme-3" label="_" action="${gmbar_min_act}"/>
-        <repeat count="${gmbar_n}" bind="gmbar"><item id="gmbar${gmbar.#}" class="hb-slot skin-bar" label="${gmbar.label}" action="${gmbar.act}"/></repeat>
+        <repeat count="${gmbar_n}" bind="gmbar"><item id="gmbar${gmbar.#}" class="hb-slot skin-bar sprite-inline sprite-big" label="${gmbar.label}" sprite="${gmbar.sprite}" action="${gmbar.act}"/></repeat>
       </row>
       <!-- 2026-11-08 the TRADE SCREEN (Teropoly M9): four panes left to right, [my tiles] [I give] [I get] [their tiles], placed by the vars tpa_x/tpa_y.. and filled by the game feed (tp_on, tp<id>_title, tp<id>_n, tp<id>_<i>_label/act). Generic: a game that publishes no tp_on never shows them. Pressing a tile item moves it across, so no drag and drop is needed (owner 2026-11-08: "use nav to click in or out"). -->
       <row id="tpa" class="canvas-overlay-at ov-chrome rp-chat-ov theme" show="${tp_on}">

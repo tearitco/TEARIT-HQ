@@ -1,0 +1,11 @@
+# hotbar.pdl (rmmc) - the Minecraft hotbar: the blocks Asa can pick to place. A CONFIG (a human edits it); the picked slot is a PREFERENCE (play/pick.txt), not a ledger row (it changes no outcome).
+# The slots become the generic bottom strip of the editor (game-bar, keys gmbar_*) in the feed rmmc_driver writes; a click runs rmmc_pick_op <item>.
+# Items are block kinds of vox/blocks.pdl that drop themselves. TODO (not built): a `plank` block (the reference video places planks) needs a block row and an atlas tile first.
+# SLOT | item | label | sprite: a PNG beside this file, cut from the atlas tile of the same slot (ffmpeg crop 16x16 at x = 16 * slot of rmmc-0001/cells.rgba, scaled 3x nearest) AND with red and blue SWAPPED: the editor draws a sprite= PNG with the channels swapped (seen 2026-11-25, sand showed blue), so the file is stored pre-swapped.
+SLOT | dirt | Dirt | hotbar/dirt-bgr.png
+SLOT | stone | Stone | hotbar/stone-bgr.png
+SLOT | sand | Sand | hotbar/sand-bgr.png
+SLOT | snow | Snow | hotbar/snow-bgr.png
+SLOT | wood_side | Log | hotbar/wood_side-bgr.png
+SLOT | leaves | Leaves | hotbar/leaves-bgr.png
+SLOT | gravel | Gravel | hotbar/gravel-bgr.png

@@ -16,3 +16,6 @@ FILE | events/<verb>/ | CONFIG | verbgen gen from verbs.pdl (a page runs rmmc_ve
 FILE | play/result.txt (beside this book) | PROJECTION | rmmc_verb writes "ok" or "refused: <reason> [exit N]" after each verb | deleted any time
 FILE | play/beat.txt (beside this book) | PREFERENCE | rmmc_beat_op writes the number of the last beat played: only a bookmark that picks which row `next` plays, it never changes an outcome | deleted any time (next starts at beat 1)
 FILE | EDIT state/game_ui.txt (the --feed path) | PROJECTION | rmmc_driver writes it only when its bytes change (who, where, the seat, the last message) | rewritten by the driver
+FILE | hotbar.pdl (beside this book) | CONFIG | a human | - (the Minecraft hotbar slots: item, label, sprite)
+FILE | hotbar/*-bgr.png (beside this book) | CONFIG | cut from the atlas of rmmc-0001 (ffmpeg, see hotbar.pdl) | regenerate with the ffmpeg line in hotbar.pdl
+FILE | play/pick.txt (beside this book) | PREFERENCE | rmmc_pick_op writes the picked block (the hotbar click); it changes no outcome | deleted any time

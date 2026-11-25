@@ -46,6 +46,30 @@ static int run_out(char *const av[], char *out, size_t osz) { int p[2]; if (pipe
 static void put_if_changed(const char *path, const char *buf, size_t n) {
     char cur[4096]; FILE *f = fopen(path, "r"); if (f) { size_t got = fread(cur, 1, sizeof cur, f); int more = fgetc(f) != EOF; fclose(f); if (!more && got == n && !memcmp(cur, buf, n)) return; }
     char t[4400]; snprintf(t, sizeof t, "%s.tmp", path); f = fopen(t, "w"); if (!f) return; fwrite(buf, 1, n, f); fclose(f); rename(t, path); }
+/* The editor chrome of this book (owner 2026-11-25: "we dont need palettes side bar, it can get custom sidebar of its own, can have pals; we still have a hotbar too, that can be used for MC").
+ * Feed keys only, no new window code (BOOK 02-architecture/BOARD-SIDEBAR-HOTBAR-AND-SELECTION-UI-2026-11-20.md):
+ *   LEFT BAR = the PALS bar, not the palettes: side_pal empty hides the tile palettes, side_left=1 shows the pals bar (party_<i>_*, n_party): Asa now, Terumon later (a data row, not code).
+ *   HOTBAR  = the generic bottom strip of the editor (game-bar: gmbar_on, gmbar_title, gmbar_n, gmbar_<i>_label / _act): the Minecraft block slots of hotbar.pdl; a click runs
+ *             rmmc_pick_op <item> (a PREFERENCE, play/pick.txt); the picked slot is marked "> ". gm_pop=0 keeps the centred popup away.
+ *   gm_on=1 stays (the daemon's liveness and clock-hold read it). All of this is a PROJECTION of the view; the ledger is the only game state. */
+static int chrome_feed(char *fb, size_t cap, const char *book, const char *actor, const char *where, const char *seatn, const char *msg) {
+    size_t n = 0; char p[PATH_MAX + 64], line[256], pick[64] = "";
+    snprintf(p, sizeof p, "%.4000s/play/pick.txt", book); { FILE *f = fopen(p, "r"); if (f) { if (fgets(pick, sizeof pick, f)) pick[strcspn(pick, "\r\n")] = 0; fclose(f); } }
+    n += (size_t)snprintf(fb + n, cap - n, "gm_on=1\ngm_title=rmmc\ngmt_0_text=%s: %s\ngmt_1_text=seat %s | %s\ngm_nt=2\ngm_nb=0\ngm_ne=0\ngm_nl=0\n", actor, where, seatn, msg);
+    n += (size_t)snprintf(fb + n, cap - n, "side_pal=\nside_left=1\nparty_0_label=> %s\nparty_0_id=rmmc_%s\nparty_0_cls=active\nn_party=1\ncoins=0\nnick_line=%s the builder\nstat_line=%s\nstat_line2=seat %s\n", actor, actor, actor, where, seatn);
+    int k = 0; char slots[2400] = ""; size_t sn = 0;
+    snprintf(p, sizeof p, "%.4000s/hotbar.pdl", book); FILE *f = fopen(p, "r");
+    while (f && fgets(line, sizeof line, f)) {
+        char a[16], item[64], label[64], spr[128] = ""; int nf = sscanf(line, " %15[^| ] | %63[^| ] | %63[^|\n] | %127[^|\n]", a, item, label, spr); if (nf < 3 || strcmp(a, "SLOT")) continue;
+        for (char *e = spr + strlen(spr); e > spr && (e[-1] == ' ' || e[-1] == '\t'); ) *--e = 0;
+        for (char *e = label + strlen(label); e > label && (e[-1] == ' ' || e[-1] == '\t'); ) *--e = 0;
+        if (sn + 400 > sizeof slots) break;
+        sn += (size_t)snprintf(slots + sn, sizeof slots - sn, "gmbar_%d_label=%s%s\ngmbar_%d_sprite=%s%s%s\ngmbar_%d_act=sh -c \"'%s/ops/+x/rmmc_pick_op.+x' %s\"\n", k, !strcmp(pick, item) ? "> " : "", label, k, spr[0] ? book : "", spr[0] ? "/" : "", spr, k, book, item); k++;
+    }
+    if (f) fclose(f);
+    n += (size_t)snprintf(fb + n, cap - n, "gm_pop=0\ngmbar_on=%s\ngmbar_title=Blocks  (picked: %s)\ngmbar_min_act=void\ngmbar_n=%d\n%s", k ? "1" : "", pick[0] ? pick : "none", k, slots);
+    return (int)(n < cap ? n : cap - 1);
+}
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: rmmc_driver <house> <relay_file> [--keys F] [--keybinds F] [--feed F] [--from-start] [--once] [--owner-pid N]\n"); return 2; }
     const char *house = argv[1], *relay = argv[2], *keys = NULL, *kbf = NULL, *feed = NULL; int from_start = 0, once = 0; long owner = 0;
@@ -74,7 +98,7 @@ int main(int argc, char **argv) {
                 int rc = rmmc_play_verb(house, book, KV[kv].verb, KV[kv].arg, "human", msg, sizeof msg); if (rc && !first_refusal) first_refusal = rc; last_key = now_ms(); idle_pending = 1; }
             fclose(f); }
         if (last_key > last_feed || now_ms() - last_feed >= 2000) { last_feed = now_ms(); char o2[300]; char *av[] = { vop, "where", data, led, (char *)actor, NULL }; run_out(av, o2, sizeof o2); snprintf(where, sizeof where, "%s", o2[0] ? o2 : "not spawned"); char o3[100]; char *a3[] = { vop, "seat", data, led, (char *)actor, NULL }; run_out(a3, o3, sizeof o3); snprintf(seatn, sizeof seatn, "%s", strncmp(o3, "seat=", 5) ? "harness" : o3 + 5);
-        if (feed) { char fb[1400]; int n = snprintf(fb, sizeof fb, "gm_on=1\ngm_title=rmmc\ngmt_0_text=%s: %s\ngmt_1_text=seat %s | %s\ngm_nt=2\ngm_nb=0\ngm_ne=0\ngm_nl=0\n", actor, where, seatn, msg); put_if_changed(feed, fb, (size_t)n); } }
+        if (feed) { char fb[4096]; int n = chrome_feed(fb, sizeof fb, book, actor, where, seatn, msg); put_if_changed(feed, fb, (size_t)n); } }
         if (once) return first_refusal;
         if (idle_pending && now_ms() - last_key >= idle_ms) { char o2[200]; char *av[] = { pop, "project", seed, desk, led, pose, hm, "--idle", "--no-marker", NULL }; run_out(av, o2, sizeof o2); idle_pending = 0; }
         if (stop_ || (owner > 0 && owner_gone(owner))) return 0;
