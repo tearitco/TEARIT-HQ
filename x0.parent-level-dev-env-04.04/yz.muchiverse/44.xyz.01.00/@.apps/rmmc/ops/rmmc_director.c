@@ -9,7 +9,7 @@
  *   SEAT | human|harness                         run the seat verb (who may act); written to the manifest as a caption row
  *   SHOT | name | who | act | look | frames | gap_ms | caption
  *      who   : human = the action is a KEY into the window relay (the driver maps it exactly like a person's key); harness = the action is an rmmc_verb call as seat harness
- *      act   : verb:<verb> <arg> (harness) e.g. verb:walk e | xkey:<xdotool key name> (human) e.g. xkey:Right xkey:space xkey:b | key:<decimal> (a line in the window relay, not the engine; rarely useful) | none (camera only, a hold)
+ *      act   : idle (project --idle: a drop still showing is collected) | verb:<verb> <arg> (harness) e.g. verb:walk e | xkey:<xdotool key name> (human) e.g. xkey:Right xkey:space xkey:b | key:<decimal> (a line in the window relay, not the engine; rarely useful) | none (camera only, a hold)
  *      look  : sel <dist> <yaw> <pitch> (orbit Asa) | <x> <y> <z> <dist> <yaw> <pitch> (orbit a cell) | off
  *      frames: PNGs to take after the action; an optional 9th field `window` captures the whole editor window (the UI) instead of the raw 3D frame; gap_ms: pause between frames (0 = as fast as the engine renders)
  * Outputs: <outdir>/<name>_NNN.png, <outdir>/manifest.txt (png | hold seconds | caption), <outdir>/director.log. Raw copies are deleted once converted (3 MB each) and the folder is capped at 600 frames.
@@ -73,6 +73,12 @@ static int do_look(const char *look) {
     char t[200]; if (!strncmp(look, "asa", 3)) { if (!asa_look(look, t, sizeof t)) return 1; } else snprintf(t, sizeof t, "%s", look);
     char *av[] = { bin, app, HOUSE, t, NULL }; int r = run(av, NULL, o, sizeof o); fprintf(LOG, "look '%s' -> %d %s\n", look, r, o); return r; }
 
+/* "idle" = the driver's expiry done by hand: project the desk with --idle, so a drop that is still showing is gone (collected) and the pose is back to idle */
+static void do_idle(void) {
+    char pop[PATH_MAX + 80], seed[PATH_MAX + 160], desk[PATH_MAX + 160], led[PATH_MAX + 120], pose[PATH_MAX + 60], hm[PATH_MAX + 80], o[300];
+    snprintf(pop, sizeof pop, "%s/@.apps/rmmc/ops/+x/rmmc_project_op.+x", HOUSE); snprintf(desk, sizeof desk, "%s/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001", HOUSE); snprintf(seed, sizeof seed, "%s/seed", desk);
+    snprintf(led, sizeof led, "%s/@.apps/rpg-edit-hq/state/games/rmmc/game/ledger.txt", HOUSE); snprintf(pose, sizeof pose, "%s/@.apps/rmmc/pose.pdl", HOUSE); snprintf(hm, sizeof hm, "%s/@.apps/rmmc/vox/terrain.heightmap", HOUSE);
+    char *av[] = { pop, "project", seed, desk, led, pose, hm, "--idle", NULL }; int r = run(av, NULL, o, sizeof o); fprintf(LOG, "idle -> %d %s\n", r, o); }
 static int do_verb(const char *verb, const char *arg) {
     char bin[PATH_MAX + 80], o[300], g[200], c[64]; snprintf(bin, sizeof bin, "%s/@.apps/rmmc/ops/+x/rmmc_verb.+x", HOUSE);
     snprintf(g, sizeof g, "GAME_ARG=%s", arg); snprintf(c, sizeof c, "RMMC_CALLER=%s", (NOCALLER || !strcmp(verb, "seat")) ? "" : "harness");
@@ -104,6 +110,7 @@ int main(int argc, char **argv) {
         if (frames > 120) frames = 120;
         if (strcmp(look, "keep")) do_look(look);
         if (!strncmp(act, "verb:", 5)) { char v[40], a[120] = ""; if (sscanf(act + 5, "%39s %119[^\n]", v, a) >= 1) do_verb(v, a); }
+        else if (!strcmp(act, "idle")) do_idle();
         else if (!strncmp(act, "xkey:", 5)) {   /* a real X key into the board window, exactly what a person does (board_ctl key: pointer onto the window, focus, xdotool key, wait) */
             char bin[PATH_MAX + 80], app[PATH_MAX + 40], o[300], kn[64], ms[16] = "500"; snprintf(bin, sizeof bin, "%s/&.widgits/board-viewer/tools/+x/board_ctl.+x", HOUSE); snprintf(app, sizeof app, "%s/@.apps/rpg-edit-hq", HOUSE);
             snprintf(kn, sizeof kn, "%s", act + 5); char *ev[] = { "BOARD_CTL_SIZE=1365x934", NULL }; char *av[] = { bin, "key", app, kn, ms, NULL }; int r = run(av, ev, o, sizeof o); fprintf(LOG, "xkey %s -> %d %s\n", kn, r, o); }

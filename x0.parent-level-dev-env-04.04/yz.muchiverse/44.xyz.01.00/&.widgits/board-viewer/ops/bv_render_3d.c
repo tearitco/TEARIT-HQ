@@ -4619,6 +4619,24 @@ static int render_one_frame(void) {
                 } else {
                 float lift = 0.f;
                 if (g_mk.evlift && g_mk.glyph && g_mk.ev[i].x >= 0 && g_mk.ev[i].y >= 0 && g_mk.ev[i].x < g_mk.w && g_mk.ev[i].y < g_mk.h) { int gh = g_mk.zh[(unsigned char)g_mk.glyph[g_mk.ev[i].y * g_mk.w + g_mk.ev[i].x]]; if (gh > 1) lift = (float)(gh - 1); }   /* D114: stand on the column top */
+                if (!strncmp(g_mk.ev[i].name, "item:", 5)) {      /* a DROPPED item (rmmc): a 0.28 cube in the block's colour hovering above the column top, bobbing on the wall clock; the projection writes it and takes it away when it is collected */
+                    struct timespec it; clock_gettime(CLOCK_MONOTONIC, &it); float bob = 0.06f * sinf((float)(((long long)it.tv_sec * 1000 + it.tv_nsec / 1000000) % 1600) * 6.2831853f / 1600.f), hy = 1.0f + lift + 0.22f + bob;
+                    ADDBOX(g_mk.ev[i].x + 0.33f, hy, g_mk.ev[i].y + 0.33f, g_mk.ev[i].x + 0.67f, hy + 0.34f, g_mk.ev[i].y + 0.67f, g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
+                } else if (!strncmp(g_mk.ev[i].name, "crack:", 6)) {      /* BREAK DAMAGE (rmmc): crack:<1..3> = dark slits down all four faces from the top edge, and lines across the top, more and longer with each stage (thin boxes a hair outside the block) */
+                    int st = atoi(g_mk.ev[i].name + 6); if (st < 1) st = 1; if (st > 3) st = 3; float x0 = (float)g_mk.ev[i].x, z0 = (float)g_mk.ev[i].y, yt = 1.0f + lift, e = 0.015f, w = 0.07f;
+                    unsigned char cr = g_mk.ev[i].r, cg = g_mk.ev[i].g, cb = g_mk.ev[i].b;
+                    #define CK_SLIT(u, len) do { \
+                        ADDBOX(x0 + (u) - w / 2, yt - (len), z0 - e, x0 + (u) + w / 2, yt, z0, cr, cg, cb, 0); \
+                        ADDBOX(x0 + (u) - w / 2, yt - (len), z0 + 1.f, x0 + (u) + w / 2, yt, z0 + 1.f + e, cr, cg, cb, 0); \
+                        ADDBOX(x0 - e, yt - (len), z0 + (u) - w / 2, x0, yt, z0 + (u) + w / 2, cr, cg, cb, 0); \
+                        ADDBOX(x0 + 1.f, yt - (len), z0 + (u) - w / 2, x0 + 1.f + e, yt, z0 + (u) + w / 2, cr, cg, cb, 0); } while (0)
+                    CK_SLIT(0.33f, 0.40f); ADDBOX(x0 + 0.04f, yt, z0 + 0.5f - w / 2, x0 + 0.96f, yt + e, z0 + 0.5f + w / 2, cr, cg, cb, 0);
+                    if (st >= 2) { CK_SLIT(0.68f, 0.60f); CK_SLIT(0.50f, 0.25f); ADDBOX(x0 + 0.5f - w / 2, yt, z0 + 0.04f, x0 + 0.5f + w / 2, yt + e, z0 + 0.96f, cr, cg, cb, 0); }
+                    if (st >= 3) { CK_SLIT(0.15f, 0.75f); CK_SLIT(0.85f, 0.70f);
+                        ADDBOX(x0 + 0.08f, yt - 0.38f, z0 - e, x0 + 0.92f, yt - 0.32f, z0, cr, cg, cb, 0); ADDBOX(x0 + 0.08f, yt - 0.38f, z0 + 1.f, x0 + 0.92f, yt - 0.32f, z0 + 1.f + e, cr, cg, cb, 0);
+                        ADDBOX(x0 - e, yt - 0.38f, z0 + 0.08f, x0, yt - 0.32f, z0 + 0.92f, cr, cg, cb, 0); ADDBOX(x0 + 1.f, yt - 0.38f, z0 + 0.08f, x0 + 1.f + e, yt - 0.32f, z0 + 0.92f, cr, cg, cb, 0); }
+                    #undef CK_SLIT
+                } else
                 ADDBOX(g_mk.ev[i].x + 0.15f, 1.0f + lift, g_mk.ev[i].y + 0.15f,
                        g_mk.ev[i].x + 0.85f, top + lift, g_mk.ev[i].y + 0.85f,
                        g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);

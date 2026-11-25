@@ -52,6 +52,8 @@ static void put_if_changed(const char *path, const char *buf, size_t n) {
  *   HOTBAR  = the generic bottom strip of the editor (game-bar: gmbar_on, gmbar_title, gmbar_n, gmbar_<i>_label / _act): the Minecraft block slots of hotbar.pdl; a click runs
  *             rmmc_pick_op <item> (a PREFERENCE, play/pick.txt); the picked slot is marked "> ". gm_pop=0 keeps the centred popup away.
  *   gm_on=1 stays (the daemon's liveness and clock-hold read it). All of this is a PROJECTION of the view; the ledger is the only game state. */
+static char g_bag[512];   /* "dirt:3,pick:1" from vox_op bag: the hotbar labels show how many of each item Asa holds */
+static int bag_count(const char *item) { char t[512]; snprintf(t, sizeof t, "%s", g_bag); for (char *s = strtok(t, ","); s; s = strtok(NULL, ",")) { char *c = strchr(s, ':'); if (c && (size_t)(c - s) == strlen(item) && !strncmp(s, item, strlen(item))) return atoi(c + 1); } return 0; }
 static int chrome_feed(char *fb, size_t cap, const char *book, const char *actor, const char *where, const char *seatn, const char *msg) {
     size_t n = 0; char p[PATH_MAX + 64], line[256], pick[64] = "";
     snprintf(p, sizeof p, "%.4000s/play/pick.txt", book); { FILE *f = fopen(p, "r"); if (f) { if (fgets(pick, sizeof pick, f)) pick[strcspn(pick, "\r\n")] = 0; fclose(f); } }
@@ -64,7 +66,8 @@ static int chrome_feed(char *fb, size_t cap, const char *book, const char *actor
         for (char *e = spr + strlen(spr); e > spr && (e[-1] == ' ' || e[-1] == '\t'); ) *--e = 0;
         for (char *e = label + strlen(label); e > label && (e[-1] == ' ' || e[-1] == '\t'); ) *--e = 0;
         if (sn + 400 > sizeof slots) break;
-        sn += (size_t)snprintf(slots + sn, sizeof slots - sn, "gmbar_%d_label=%s%s\ngmbar_%d_sprite=%s%s%s\ngmbar_%d_act=sh -c \"'%s/ops/+x/rmmc_pick_op.+x' %s\"\n", k, !strcmp(pick, item) ? "> " : "", label, k, spr[0] ? book : "", spr[0] ? "/" : "", spr, k, book, item); k++;
+        char cnt[24] = ""; { int bc = bag_count(item); if (bc > 0) snprintf(cnt, sizeof cnt, "  x%d", bc); }
+        sn += (size_t)snprintf(slots + sn, sizeof slots - sn, "gmbar_%d_label=%s%s%s\ngmbar_%d_sprite=%s%s%s\ngmbar_%d_act=sh -c \"'%s/ops/+x/rmmc_pick_op.+x' %s\"\n", k, !strcmp(pick, item) ? "> " : "", label, cnt, k, spr[0] ? book : "", spr[0] ? "/" : "", spr, k, book, item); k++;
     }
     if (f) fclose(f);
     n += (size_t)snprintf(fb + n, cap - n, "gm_pop=0\ngmbar_on=%s\ngmbar_title=Blocks  (picked: %s)\ngmbar_min_act=void\ngmbar_n=%d\n%s", k ? "1" : "", pick[0] ? pick : "none", k, slots);
@@ -97,7 +100,7 @@ int main(int argc, char **argv) {
                   if (strcmp(seatn, "human")) { snprintf(msg, sizeof msg, "refused: the seat is %s, keys are ignored (exit 24)", seatn); if (!first_refusal) first_refusal = 24; if (once) { fprintf(stderr, "%s\n", msg); fclose(f); return 24; } continue; } }
                 int rc = rmmc_play_verb(house, book, KV[kv].verb, KV[kv].arg, "human", msg, sizeof msg); if (rc && !first_refusal) first_refusal = rc; last_key = now_ms(); idle_pending = 1; }
             fclose(f); }
-        if (last_key > last_feed || now_ms() - last_feed >= 2000) { last_feed = now_ms(); char o2[300]; char *av[] = { vop, "where", data, led, (char *)actor, NULL }; run_out(av, o2, sizeof o2); snprintf(where, sizeof where, "%s", o2[0] ? o2 : "not spawned"); char o3[100]; char *a3[] = { vop, "seat", data, led, (char *)actor, NULL }; run_out(a3, o3, sizeof o3); snprintf(seatn, sizeof seatn, "%s", strncmp(o3, "seat=", 5) ? "harness" : o3 + 5);
+        if (last_key > last_feed || now_ms() - last_feed >= 2000) { last_feed = now_ms(); char o2[300]; char *av[] = { vop, "where", data, led, (char *)actor, NULL }; run_out(av, o2, sizeof o2); snprintf(where, sizeof where, "%s", o2[0] ? o2 : "not spawned"); char o3[100]; char *a3[] = { vop, "seat", data, led, (char *)actor, NULL }; run_out(a3, o3, sizeof o3); snprintf(seatn, sizeof seatn, "%s", strncmp(o3, "seat=", 5) ? "harness" : o3 + 5); { char ob[400]; char *ab[] = { vop, "bag", data, led, (char *)actor, NULL }; run_out(ab, ob, sizeof ob); snprintf(g_bag, sizeof g_bag, "%s", strncmp(ob, "bag=", 4) ? "" : ob + 4); }
         if (feed) { char fb[16384]; int n = chrome_feed(fb, sizeof fb, book, actor, where, seatn, msg); put_if_changed(feed, fb, (size_t)n); } }
         if (once) return first_refusal;
         if (idle_pending && now_ms() - last_key >= idle_ms) { char o2[200]; char *av[] = { pop, "project", seed, desk, led, pose, hm, "--idle", "--no-marker", NULL }; run_out(av, o2, sizeof o2); idle_pending = 0; }

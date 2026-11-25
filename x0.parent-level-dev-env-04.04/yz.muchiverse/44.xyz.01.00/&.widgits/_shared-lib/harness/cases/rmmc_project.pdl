@@ -83,6 +83,23 @@ WRITE | nopose.pdl | POSE | MOVE_ODD | 1\nDIR | n | 8\n
 RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out8 | $T/led.txt | $T/nopose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
 EXPECT_EXIT | 4 | NEGATIVE-a-pose-file-with-no-row-for-the-last-ledger-row-is-refused-4
 CLEAN |
+CASE | damage-shows-a-crack-a-break-shows-a-drop-and-idle-collects-it
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | 140 | 6 | 100
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | hand | 140 | 5 | 100
+EXPECT_OUT | damaged | a hand swing on the grass block (hardness 2, hand power 1) only damages it
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
+EXPECT_HAS | out/events.txt | 140 100 34 26 22 crack:1 0 2 0 | the damaged column carries a crack event, stage 1
+EXPECT_LACKS | out/events.txt | item: | and nothing has dropped yet
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | hand | 140 | 5 | 100
+EXPECT_OUT | broken | the second swing breaks it
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
+EXPECT_LACKS | out/events.txt | crack: | the crack is gone with the block
+EXPECT_HAS | out/events.txt | item:dirt 0 2 0 | the block that fell out is an item event at the mined cell
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap | --idle
+EXPECT_LACKS | out/events.txt | item: | the idle projection takes the drop away: it was collected
+CLEAN |
 CASE | mined-and-placed-top-block-NOT-VERIFIED-live
 SCRATCH
 INCLUDE | ../fixtures/rmmc_house.pdl

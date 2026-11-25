@@ -10,6 +10,7 @@
  *   wait <n>                             TURN row (a manual turn, n turns)         sleep <actor>   SLEEP + SPAWNPOINT + TURN skipping to the wake minute
  *   eat <actor> <item>                   EAT row (removes one food item from the bag, lowers hunger by RULE food_<item>) + TURN; refused: not food/none in bag (16), hunger 0 (23)
  *   craft <actor> <recipe>               CRAFT row: RECIPE rows of rules.pdl (name out outn in1 n1 in2 n2 station): inputs leave the bag, the output enters it, a station block (craft_table) must be within RULE craft_reach; refused 10 unknown actor, 16 no such recipe or inputs missing, 20 no station near; needs RULE turns_craft and craft_reach
+ *   bag <actor>                          read-only: bag=item:n,item:n (counts above 0; - when empty); refused 10 unknown actor
  *   walk <actor> <n|e|s|w>               MOVE one column on, resolving the target height from the terrain (highest solid + 1): refused 11 off the map or over no ground, 18 for a step up above RULE step_up, a fall above fall_max, water deeper than water_max_depth (D137)
  *   face <actor> <n|e|s|w>               FACE row (a turn on the spot; no cell change, no turn counted)      jump <actor>   two MOVE rows (up RULE jump_height, back down) in ONE write; 15 no ground under the feet, 18 no room
  *   seat <actor> <human|harness>         SEAT row: who drives the actor (a row, never a file); `seat <actor>` prints seat=human|harness (no row = harness)
@@ -33,7 +34,7 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #define MAXA 8
-#define MAXI 16
+#define MAXI 32
 #define MAXC 4096
 #define MAXB 32
 #define MAXR 64
@@ -536,6 +537,7 @@ int main(int argc, char **argv) {
     else if (!strcmp(v, "ground") && ac == 2) { int x = atoi(av[0]), z = atoi(av[1]); if (!inb(x, 0, z)) { fprintf(stderr, "out of bounds\n"); r = 11; } else { int t = top_solid(&w, x, z), wl = t >= 0 ? water_top(&w, x, z, t + 1) : -1;
         fprintf(OUT, "top=%d kind=%s water=%d\n", t, t >= 0 ? kind_at(&w, x, t, z) : "none", wl); r = 0; } }
     else if (!strcmp(v, "where") && ac == 1) { Actor *a = actor(&w, av[0], 0); if (!a || !a->has) { fprintf(stderr, "unknown actor\n"); r = 10; } else { fprintf(OUT, "at=%d,%d,%d spawn=%d,%d,%d face=%c\n", a->x, a->y, a->z, a->sx, a->sy, a->sz, a->dir ? a->dir : '-'); r = 0; } }
+    else if (!strcmp(v, "bag") && ac == 1) { Actor *a = actor(&w, av[0], 0); if (!a || !a->has) { fprintf(stderr, "unknown actor\n"); r = 10; } else { fputs("bag=", OUT); int first = 1; for (int i = 0; i < a->ni; i++) if (a->cnt[i] > 0) { fprintf(OUT, "%s%s:%d", first ? "" : ",", a->item[i], a->cnt[i]); first = 0; } if (first) fputc('-', OUT); fputc('\n', OUT); r = 0; } }
     else if (!strcmp(v, "hunger") && ac == 1) { Actor *a = actor(&w, av[0], 0);
         if (!a) { fprintf(stderr, "unknown actor\n"); r = 10; } else { fprintf(OUT, "hunger=%d max=%d starved=%d\n", a->hunger, R("hunger_max"), a->hunger >= R("starve_at")); r = 0; } }
     else if (!strcmp(v, "status") && ac == 0) {

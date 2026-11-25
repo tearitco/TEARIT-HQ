@@ -57,6 +57,17 @@ static Act *act(const char *n) { for (int i = 0; i < na; i++) if (!strcmp(A[i].n
 /* the seed desk */
 static int W, Hh, shift; static char tok[MAXD][MAXD][20]; static char glyph[MAXD][MAXD]; static int gh[256], gh_ok[256]; static char h2g[64]; static int h2g_ok[64], slot_of_name_n; static struct { char name[NM]; int slot; } SL[64];
 static int slot_by_name(const char *n) { for (int i = 0; i < slot_of_name_n; i++) if (!strcmp(SL[i].name, n)) return SL[i].slot; return 0; }
+/* BREAK FEEDBACK (owner 2026-11-25: "i didn't see breakage or empty space or collection of mini block"): the projection draws what the ledger says happened. A DAMAGE row leaves a crack:<1..3> event on that column until a MINE or PLACE
+ * at it; the hole is the column one level lower (edit_col, already); the block that fell out is an item:<name> event at the mined cell, in the average colour of its atlas tile, for as long as the MINE is the LAST action; --idle
+ * (the driver's expiry, the ledger has no clock) takes it away: it was collected into the bag. */
+static struct { int x, z, prog; } DM[64]; static int ndm; static int lastact, lastx = -1, lastz = -1; static char lastdrop[NM];
+static void dm_set(int x, int z, int prog) { for (int i = 0; i < ndm; i++) if (DM[i].x == x && DM[i].z == z) { DM[i].prog = prog; return; } if (ndm < 64) { DM[ndm].x = x; DM[ndm].z = z; DM[ndm++].prog = prog; } }
+static void dm_clear(int x, int z) { for (int i = 0; i < ndm; i++) if (DM[i].x == x && DM[i].z == z) { DM[i] = DM[--ndm]; return; } }
+static int tile_avg(const char *seed, int slot, int *r, int *g, int *b) {   /* mean colour of atlas tile <slot> (16x16, atlas_cols 16 = 256 px wide RGBA rows) */
+    char p[1300]; snprintf(p, sizeof p, "%s/cells.rgba", seed); FILE *f = fopen(p, "rb"); if (!f) return 0; fseek(f, 0, SEEK_END); long sz = ftell(f); rewind(f); unsigned char *d = malloc((size_t)sz); if (!d) { fclose(f); return 0; }
+    size_t got = fread(d, 1, (size_t)sz, f); fclose(f); long s = 0, rs = 0, gs = 0, bs = 0; int col = slot % 16, row = slot / 16;
+    for (int py = 0; py < 16; py++) for (int px = 0; px < 16; px++) { long o = ((long)(row * 16 + py) * 256 + col * 16 + px) * 4; if ((size_t)(o + 3) >= got) continue; rs += d[o]; gs += d[o + 1]; bs += d[o + 2]; s++; }
+    free(d); if (!s) return 0; *r = (int)(rs / s); *g = (int)(gs / s); *b = (int)(bs / s); return 1; }
 static int load_heightmap_shift(const char *p) { FILE *f = fopen(p, "r"); if (!f) return 3; char l[512], *x[10]; int ok = 0; while (fgets(l, sizeof l, f)) { int n = split(l, x, 10); if (n >= 3 && !strcmp(x[0], "META") && !strcmp(x[1], "shift")) { shift = atoi(x[2]); ok = 1; break; } } fclose(f); return ok ? 0 : 4; }
 static char *cells_head; static size_t cells_head_len; static char *seed_events;
 static int load_seed(const char *dir) {
@@ -83,17 +94,18 @@ static void edit_col(int x, int z, int y, int mine, const char *item) {   /* NOT
 static int fold_ledger(const char *p) {
     FILE *f = fopen(p, "r"); if (!f) return 3; char l[512], *x[10];
     while (fgets(l, sizeof l, f)) { int n = split(l, x, 10);
-        if (n >= 5 && !strcmp(x[0], "MOVE")) { Act *a = act(x[1]); if (!a) continue; int nx = atoi(x[2]), ny = atoi(x[3]), nz = atoi(x[4]);
+        if (n >= 4 && !strcmp(x[0], "DROP") && lastact == 1 && !lastdrop[0]) snprintf(lastdrop, sizeof lastdrop, "%s", x[2]);
+        if (n >= 5 && !strcmp(x[0], "MOVE")) { Act *a = act(x[1]); if (!a) continue; lastact = 0; int nx = atoi(x[2]), ny = atoi(x[3]), nz = atoi(x[4]);
             if (!a->has) { a->sx = nx; a->sy = ny; a->sz = nz; } else { int dx = nx - a->x, dz = nz - a->z;
                 if (dx || dz) { char d = abs(dx) >= abs(dz) ? (dx > 0 ? 'e' : 'w') : (dz > 0 ? 's' : 'n'); int c = dir_code(d); if (c >= 0) a->dir = c; }
                 if (ny != a->y) snprintf(a->last, sizeof a->last, "MOVE_LEVEL"); else { a->ground++; snprintf(a->last, sizeof a->last, (a->ground & 1) ? "MOVE_ODD" : "MOVE_EVEN"); } }
             a->x = nx; a->y = ny; a->z = nz; a->has = 1; }
-        else if (n >= 3 && !strcmp(x[0], "FACE")) { Act *a = act(x[1]); if (a) { int c = dir_code(x[2][0]); if (c >= 0) a->dir = c; snprintf(a->last, sizeof a->last, "FACE"); } }
+        else if (n >= 3 && !strcmp(x[0], "FACE")) { Act *a = act(x[1]); lastact = 0; if (a) { int c = dir_code(x[2][0]); if (c >= 0) a->dir = c; snprintf(a->last, sizeof a->last, "FACE"); } }
         else if (n >= 5 && !strcmp(x[0], "SPAWNPOINT")) { Act *a = act(x[1]); if (a) { a->sx = atoi(x[2]); a->sy = atoi(x[3]); a->sz = atoi(x[4]); } }
-        else if (n >= 3 && !strcmp(x[0], "RESET")) { Act *a = act(x[1]); if (a && a->has) { a->x = a->sx; a->y = a->sy; a->z = a->sz; snprintf(a->last, sizeof a->last, "RESET"); } }
-        else if (n >= 8 && !strcmp(x[0], "DAMAGE")) { Act *a = act(x[1]); if (a) snprintf(a->last, sizeof a->last, "DAMAGE"); }
-        else if (n >= 6 && !strcmp(x[0], "MINE")) { Act *a = act(x[1]); if (a) snprintf(a->last, sizeof a->last, "MINE"); edit_col(atoi(x[2]), atoi(x[4]), atoi(x[3]), 1, ""); }
-        else if (n >= 6 && !strcmp(x[0], "PLACE")) { Act *a = act(x[1]); if (a) snprintf(a->last, sizeof a->last, "PLACE"); edit_col(atoi(x[3]), atoi(x[5]), atoi(x[4]), 0, x[2]); } }
+        else if (n >= 3 && !strcmp(x[0], "RESET")) { Act *a = act(x[1]); lastact = 0; if (a && a->has) { a->x = a->sx; a->y = a->sy; a->z = a->sz; snprintf(a->last, sizeof a->last, "RESET"); } }
+        else if (n >= 8 && !strcmp(x[0], "DAMAGE")) { Act *a = act(x[1]); if (a) snprintf(a->last, sizeof a->last, "DAMAGE"); dm_set(atoi(x[3]), atoi(x[5]), atoi(x[7])); lastact = 0; }
+        else if (n >= 6 && !strcmp(x[0], "MINE")) { Act *a = act(x[1]); if (a) snprintf(a->last, sizeof a->last, "MINE"); dm_clear(atoi(x[2]), atoi(x[4])); lastact = 1; lastx = atoi(x[2]); lastz = atoi(x[4]); lastdrop[0] = 0; edit_col(atoi(x[2]), atoi(x[4]), atoi(x[3]), 1, ""); }
+        else if (n >= 6 && !strcmp(x[0], "PLACE")) { Act *a = act(x[1]); if (a) snprintf(a->last, sizeof a->last, "PLACE"); dm_clear(atoi(x[3]), atoi(x[5])); lastact = 0; edit_col(atoi(x[3]), atoi(x[5]), atoi(x[4]), 0, x[2]); } }
     fclose(f); return 0;
 }
 int main(int argc, char **argv) {
@@ -110,7 +122,7 @@ int main(int argc, char **argv) {
     size_t cap = (size_t)W * Hh * 20 + cells_head_len + 64; char *cb = malloc(cap), *mb = malloc((size_t)(W + 1) * Hh + 1); if (!cb || !mb) return 5; size_t cn = 0, mn = 0;
     memcpy(cb, cells_head, cells_head_len); cn = cells_head_len;
     for (int z = 0; z < Hh; z++) { for (int xx = 0; xx < W; xx++) { if (xx) cb[cn++] = ' '; size_t k = strlen(tok[z][xx]); memcpy(cb + cn, tok[z][xx], k); cn += k; mb[mn++] = glyph[z][xx]; } cb[cn++] = '\n'; mb[mn++] = '\n'; }
-    char *ev = malloc(strlen(seed_events) + 64 * MAXA + 64); size_t en = 0; int projected = 0, lastpat = -1;
+    char *ev = malloc(strlen(seed_events) + 64 * MAXA + 100 * 66 + 64); size_t en = 0; int projected = 0, lastpat = -1;
     for (char *s = seed_events; *s; ) { char *e = strchr(s, '\n'); size_t len = e ? (size_t)(e - s) : strlen(s); char ln[512]; if (len >= sizeof ln) len = sizeof ln - 1; memcpy(ln, s, len); ln[len] = 0; s += len + (e ? 1 : 0); if (!ln[0]) continue;
         int ex, ey, cr, cg, cb2, fl, dir, pat; char nm[NM] = "";
         if (sscanf(ln, "%d %d %d %d %d %31s %d %d %d", &ex, &ey, &cr, &cg, &cb2, nm, &fl, &dir, &pat) == 9 && !strncmp(nm, "rig:", 4)) {
@@ -119,6 +131,8 @@ int main(int argc, char **argv) {
             else if (idle) { int pt = pose_of("IDLE"); if (pt >= 0) pat = pt; }
             en += (size_t)snprintf(ev + en, 200, "%d %d %d %d %d %s %d %d %d\n", ex, ey, cr, cg, cb2, nm, fl, dir, pat); }
         else en += (size_t)snprintf(ev + en, 600, "%s\n", ln); }
+    for (int i = 0; i < ndm; i++) { int st = DM[i].prog < 1 ? 1 : DM[i].prog > 3 ? 3 : DM[i].prog; en += (size_t)snprintf(ev + en, 100, "%d %d 34 26 22 crack:%d 0 2 0\n", DM[i].x, DM[i].z, st); }
+    if (!idle && lastact == 1 && lastdrop[0] && lastx >= 0) { int sl = slot_by_name(lastdrop), cr = 130, cg = 100, cbb = 70; if (sl) tile_avg(seed, sl, &cr, &cg, &cbb); en += (size_t)snprintf(ev + en, 100, "%d %d %d %d %d item:%s 0 2 0\n", lastx, lastz, cr, cg, cbb, lastdrop); }
     snprintf(p, sizeof p, "%s/cells.txt", out); if (write_atomic(p, cb, cn)) return 5;
     snprintf(p, sizeof p, "%s/map.txt", out); if (write_atomic(p, mb, mn)) return 5;
     snprintf(p, sizeof p, "%s/events.txt", out); if (write_atomic(p, ev, en)) return 5;
