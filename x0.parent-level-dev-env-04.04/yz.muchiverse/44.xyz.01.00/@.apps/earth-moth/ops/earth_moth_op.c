@@ -1,4 +1,4 @@
-/* earth-moth: a small round Earth from ETOPO5, skinned with Mineclonia blocks.
+/* earth-moth: the round body is the molten core, Mineclonia lava, smaller than the page.
  * The desk is a projection. The ledger is the player and the animals.
  * Config (not a ledger): #.NNEST_ASSETS/rta-sources/earth-moth/ETOPO5.DAT
  * Page grid is a disc. Column height follows the sphere, so the body is round
@@ -14,22 +14,13 @@
 #include <sys/stat.h>
 
 #define N 72
-#define R 32.0
+#define R 12.0
 #define ETW 4320
 #define ETH 2160
 
-enum { T_EMPTY = 0, T_GRASS, T_WATER, T_SAND, T_SNOW, T_STONE, T_COAL, T_IRON, T_N };
+enum { T_EMPTY = 0, T_LAVA = 1 };
 
-static const char *tile_file[T_N] = {
-    NULL,
-    "ITEMS/mcl_core/textures/mcl_core_grass_block_top.png",
-    "ITEMS/mcl_core/textures/default_water_source_animated.png",
-    "ITEMS/mcl_core/textures/default_sand.png",
-    "ITEMS/mcl_core/textures/default_snow.png",
-    "ITEMS/mcl_core/textures/default_stone.png",
-    "ITEMS/mcl_core/textures/mcl_core_coal_ore.png",
-    "ITEMS/mcl_core/textures/mcl_core_iron_ore.png"
-};
+static const char *LAVA_PNG = "ITEMS/mcl_core/textures/default_lava_source_animated.png";
 
 static char hglyph(int h) {
     if (h < 1) h = 1;
@@ -130,26 +121,18 @@ static void blit16(FILE *o, const char *root, const char *rel) {
 static int cell_of(const int16_t *e, int x, int y, int *lat_m, int *lon_m, int *hh) {
     double cx = (N - 1) / 2.0, cy = (N - 1) / 2.0;
     double dx = (x - cx) / R, dy = (cy - y) / R, z, lat, lon;
-    int elev, tile, h;
+    int tile, h;
     if (dx * dx + dy * dy > 1.0) { *hh = 0; return T_EMPTY; }
     z = sqrt(1.0 - dx * dx - dy * dy);
     lat = asin(dy) * 180.0 / M_PI;
     lon = atan2(dx, z) * 180.0 / M_PI;
-    elev = elev_at(e, lat, lon);
+    (void)e;
     if (lat_m) *lat_m = (int)lround(lat);
     if (lon_m) *lon_m = (int)lround(lon);
-    h = 6 + (int)(z * 48.0);
-    if (elev > 800) h += elev / 1500;
+    /* A smooth molten ball, shorter than the old crust so the page can hold shells. */
+    h = 4 + (int)(z * 18.0);
     if (h > 60) h = 60;
-    if (elev < 0) tile = T_WATER;
-    else if (elev < 30) tile = T_SAND;
-    else if (elev > 2800) tile = T_SNOW;
-    else if (elev > 1400) tile = T_STONE;
-    else tile = T_GRASS;
-    if (tile == T_GRASS || tile == T_STONE) {
-        if (((x * 13 + y * 7) % 47) == 0) tile = T_COAL;
-        else if (((x * 11 + y * 5) % 53) == 0) tile = T_IRON;
-    }
+    tile = T_LAVA;
     *hh = h;
     return tile;
 }
@@ -171,7 +154,7 @@ static int spawn_of(const int16_t *e, int *sx, int *sy) {
     for (y = 0; y < N; y++) for (x = 0; x < N; x++) {
         int lat, lon, h, tile = cell_of(e, x, y, &lat, &lon, &h);
         int d;
-        if (tile == T_EMPTY || tile == T_WATER) continue;
+        if (tile == T_EMPTY) continue;
         d = abs(lat - 30) * 3 + abs(lon - 15);
         if (d < best) { best = d; *sx = x; *sy = y; }
     }
@@ -182,7 +165,7 @@ static int land_ok(const int16_t *e, int x, int y) {
     int h, tile;
     if (x < 0 || y < 0 || x >= N || y >= N) return 0;
     tile = cell_of(e, x, y, NULL, NULL, &h);
-    return tile != T_EMPTY && tile != T_WATER;
+    return tile != T_EMPTY;
 }
 
 static int desk(const char *etopo, const char *mine, const char *ledger, const char *dir) {
@@ -210,9 +193,10 @@ static int desk(const char *etopo, const char *mine, const char *ledger, const c
     snprintf(path, sizeof path, "%s/cells.rgba", dir);
     f = fopen(path, "w");
     if (!f) { free(e); return 5; }
-    /* Slot 0 is an empty cell (no column). The atlas still has a tile there so slot 1 is grass. */
+    /* Slot 0 is empty. Slot 1 is lava. Six unused slots keep the 8-tile atlas. */
     for (y = 0; y < 16 * 16; y++) { fputc(0, f); fputc(0, f); fputc(0, f); fputc(0, f); }
-    for (x = 1; x < T_N; x++) blit16(f, mine, tile_file[x]);
+    blit16(f, mine, LAVA_PNG);
+    for (x = 2; x < 8; x++) for (y = 0; y < 16 * 16; y++) { fputc(0, f); fputc(0, f); fputc(0, f); fputc(0, f); }
     fclose(f);
     snprintf(path, sizeof path, "%s/map.txt", dir);
     f = fopen(path, "w");
@@ -234,16 +218,16 @@ static int desk(const char *etopo, const char *mine, const char *ledger, const c
     snprintf(path, sizeof path, "%s/events.txt", dir);
     f = fopen(path, "w");
     if (!f) { free(e); return 5; }
-    fprintf(f, "%d %d 210 170 120 block 0 2 1\n", px, py);
+    if (land_ok(e, px, py)) fprintf(f, "%d %d 210 170 120 block 0 2 1\n", px, py);
     {
         FILE *lf = fopen(ledger, "r");
         char line[256];
         int a, b;
         if (lf) {
             while (fgets(line, sizeof line, lf)) {
-                if (sscanf(line, "CREEPER | %d | %d", &a, &b) == 2) fprintf(f, "%d %d 40 140 40 block 0 2 1\n", a, b);
-                else if (sscanf(line, "PIG | %d | %d", &a, &b) == 2) fprintf(f, "%d %d 220 150 160 block 0 2 1\n", a, b);
-                else if (sscanf(line, "COW | %d | %d", &a, &b) == 2) fprintf(f, "%d %d 90 60 40 block 0 2 1\n", a, b);
+                if (sscanf(line, "CREEPER | %d | %d", &a, &b) == 2 && land_ok(e, a, b)) fprintf(f, "%d %d 40 140 40 block 0 2 1\n", a, b);
+                else if (sscanf(line, "PIG | %d | %d", &a, &b) == 2 && land_ok(e, a, b)) fprintf(f, "%d %d 220 150 160 block 0 2 1\n", a, b);
+                else if (sscanf(line, "COW | %d | %d", &a, &b) == 2 && land_ok(e, a, b)) fprintf(f, "%d %d 90 60 40 block 0 2 1\n", a, b);
             }
             fclose(lf);
         }
@@ -251,7 +235,7 @@ static int desk(const char *etopo, const char *mine, const char *ledger, const c
     fclose(f);
     snprintf(path, sizeof path, "%s/view.pdl", dir);
     f = fopen(path, "w");
-    if (f) { fprintf(f, "start | %d %d\n", px, py); fclose(f); }
+    if (f) { fprintf(f, "start | %d %d\n", N / 2, N / 2); fclose(f); }
     snprintf(path, sizeof path, "%s/cells.marker", dir);
     {
         int restart = (stat(path, &ms) == 0 && ms.st_size >= 4096);
