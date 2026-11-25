@@ -9,3 +9,9 @@ FILE | EDIT state/games/tearit-map/roam.txt | PREFERENCE | tearit_map_op roam to
 FILE | EDIT state/game_ui.txt | PROJECTION | tearit_driver.c atomic write (tmp then rename, :69 to :73), feed path :205 | rewritten by the driver
 FILE | EDIT state/stamps_ui.txt | PROJECTION | tearit_driver.c stamps() via the same atomic write (:108) | rewritten by the driver
 FILE | EDIT state/flag_hb.txt | PREFERENCE | tearit_driver.c hotbar() fopen "w" (:168) | deleted any time (hotbar default)
+# 2026-11-25 Civ shape (D136): the turn loop, the seats and the verb pages.
+FILE | EDIT state/games/tearit-map/game/ledger.txt rows TURN, SEAT (and the agent's AGENT / FOUND rows) | LEDGER | tearit_civ_op endturn / seat / agentmove / aiturn append (tearit_civ_op.c append(), seat in main); status, food and city counts are FOLDS of these rows, never stored | - (the ledger is the authority)
+FILE | civ.pdl | CONFIG | nobody at run time (an input: city_food, citygap, the agent weights aiw_*); read by tearit_civ_op | - (hand-edited by the owner, harness case tearit_civ pins that the weights are data)
+FILE | EDIT state/games/tearit-map/action.txt | PROJECTION | tearit_ctl appends one command per button press; tearit_driver reads it by byte cursor and trims it at 64 KiB | deleted any time (the queue is empty)
+FILE | play/result.txt (beside this book) | PROJECTION | tearit_verb writes "ok" or "refused: <reason>" after each verb | deleted any time
+FILE | events/<verb>/ | CONFIG | verbgen gen from verbs.pdl (a page runs tearit_verb) | verbgen gen @.apps/tearit-map

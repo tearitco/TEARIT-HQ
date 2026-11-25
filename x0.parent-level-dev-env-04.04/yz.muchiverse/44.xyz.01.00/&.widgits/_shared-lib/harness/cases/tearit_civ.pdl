@@ -1,0 +1,291 @@
+# tearit_civ.pdl - the Civ shape of the tearit-map book (D136): the turn loop (tearit_civ_op), the seats, the basic agent, and the verb pages (tearit_verb). Scratch ledgers under $T only; the live editor state is never touched.
+RESULTS | ../results/tearit_civ.txt
+CASE | turn-loop-seats-and-agent
+SCRATCH
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/map_op.+x | $HOUSE/@.apps/tearit-map/ops/tearit_map_op.c | -lm | -lpng | -lz
+EXPECT_EXIT | 0 | map op compiles
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/civ_op.+x | $HOUSE/@.apps/tearit-map/ops/tearit_civ_op.c
+EXPECT_EXIT | 0 | civ op compiles
+COPY | @.apps/tearit-map/civ.pdl | civ.pdl
+ENV | TEARIT_CIV_RULES | $T/civ.pdl
+RUN | $T/map_op.+x | gen | 1 | 16 | 16 | $T/l.txt
+EXPECT_EXIT | 0 | seed 1 ledger
+RUN | $T/civ_op.+x | status | $T/l.txt
+EXPECT_OUT | turn=0 cities=0 food=0 ai_cities=0 ai_food=0 civ1=none civ2=none | a fresh ledger is turn 0 with no seats
+RUN | $T/civ_op.+x | endturn | $T/l.txt
+EXPECT_OUT | aiturn=none | with no seat row the agent plays nothing
+RUN | $T/civ_op.+x | seat | $T/l.txt | civ1 | human
+EXPECT_EXIT | 0 | civ1 is a human seat row
+RUN | $T/civ_op.+x | seat | $T/l.txt | civ2 | agent:basic
+EXPECT_EXIT | 0 | civ2 is an agent seat row
+RUN | cp | $T/l.txt | $T/seated.txt
+EXPECT_EXIT | 0 | ledger saved
+RUN | $T/civ_op.+x | seat | $T/l.txt | civ3 | human
+EXPECT_EXIT | 2 | NEGATIVE-a-third-civ-is-refused
+RUN | $T/civ_op.+x | seat | $T/l.txt | civ2 | robot
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-driver-is-refused
+RUN | cmp | -s | $T/l.txt | $T/seated.txt
+EXPECT_EXIT | 0 | NEGATIVE-refused-seats-write-nothing
+RUN | grep | -c | ^TURN | $T/l.txt
+EXPECT_OUT | 1 | exactly-one-TURN-row-so-far-from-the-seatless-endturn
+RUN | $T/civ_op.+x | endturn | $T/l.txt
+EXPECT_OUT | turn=2 | next-turn-is-turn-2
+RUN | grep | -c | ^TURN | $T/l.txt
+EXPECT_OUT | 2 | one-endturn-appends-exactly-one-TURN-row
+RUN | grep | -c | ^SEAT | $T/l.txt
+EXPECT_OUT | 2 | the-seat-rows-are-ledger-rows
+RUN | grep | -c | -E | ^(AGENT.*basic\pFOUND.*agent)$ | $T/l.txt
+EXPECT_OUT | 1 | the-agent-seat-moved-once-on-its-own-endturn
+RUN | $T/civ_op.+x | legal | $T/l.txt
+EXPECT_OUT | weight= | the-legal-list-carries-weights
+RUN | cp | $T/l.txt | $T/l_before_illegal.txt
+EXPECT_EXIT | 0 | ledger saved
+RUN | $T/civ_op.+x | agentmove | $T/l.txt | q
+EXPECT_EXIT | 4 | NEGATIVE-an-illegal-move-is-refused
+EXPECT_OUT | fail illegal | the-refusal-names-the-reason
+RUN | $T/civ_op.+x | agentmove | $T/l.txt | found
+EXPECT_EXIT | 4 | NEGATIVE-a-second-city-inside-the-gap-is-refused
+RUN | cmp | -s | $T/l.txt | $T/l_before_illegal.txt
+EXPECT_EXIT | 0 | NEGATIVE-refused-moves-write-nothing
+RUN | $T/civ_op.+x | agentmove | $T/l.txt | s
+EXPECT_EXIT | 0 | a-legal-step-is-accepted
+RUN | cmp | -s | $T/l.txt | $T/l_before_illegal.txt
+EXPECT_EXIT | 1 | the-legal-step-wrote-a-row-so-the-control-differs
+CLEAN |
+CASE | food-is-a-fold-and-replay-is-byte-identical
+SCRATCH
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/map_op.+x | $HOUSE/@.apps/tearit-map/ops/tearit_map_op.c | -lm | -lpng | -lz
+EXPECT_EXIT | 0 | map op compiles
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/civ_op.+x | $HOUSE/@.apps/tearit-map/ops/tearit_civ_op.c
+EXPECT_EXIT | 0 | civ op compiles
+COPY | @.apps/tearit-map/civ.pdl | civ.pdl
+ENV | TEARIT_CIV_RULES | $T/civ.pdl
+RUN | $T/map_op.+x | gen | 1 | 16 | 16 | $T/a.txt
+RUN | $T/map_op.+x | gen | 1 | 16 | 16 | $T/b.txt
+RUN | $T/civ_op.+x | seat | $T/a.txt | civ1 | human
+RUN | $T/civ_op.+x | seat | $T/a.txt | civ2 | agent:basic
+RUN | $T/map_op.+x | found | $T/a.txt | $T/a.txt
+EXPECT_EXIT | 0 | the-person-founds-a-city
+RUN | $T/civ_op.+x | status | $T/a.txt
+EXPECT_OUT | turn=0 cities=1 food=0 | no-time-has-passed-so-the-city-has-made-no-food
+RUN | $T/civ_op.+x | endturn | $T/a.txt
+RUN | $T/civ_op.+x | endturn | $T/a.txt
+RUN | $T/civ_op.+x | endturn | $T/a.txt
+RUN | $T/civ_op.+x | status | $T/a.txt
+EXPECT_OUT | turn=3 cities=1 food=3 | one-city-three-turns-three-food
+RUN | $T/civ_op.+x | seat | $T/b.txt | civ1 | human
+RUN | $T/civ_op.+x | seat | $T/b.txt | civ2 | agent:basic
+RUN | $T/map_op.+x | found | $T/b.txt | $T/b.txt
+RUN | $T/civ_op.+x | endturn | $T/b.txt
+RUN | $T/civ_op.+x | endturn | $T/b.txt
+RUN | $T/civ_op.+x | endturn | $T/b.txt
+RUN | cmp | -s | $T/a.txt | $T/b.txt
+EXPECT_EXIT | 0 | replaying-the-same-verbs-gives-the-same-ledger-byte-for-byte
+RUN | $T/civ_op.+x | status | $T/b.txt
+EXPECT_OUT | turn=3 cities=1 food=3 | and-the-same-fold
+RUN | $T/map_op.+x | desk | $T/a.txt | $T/d1
+RUN | $T/map_op.+x | desk | $T/b.txt | $T/d2
+RUN | cmp | -s | $T/d1/events.txt | $T/d2/events.txt
+EXPECT_EXIT | 0 | the-desk-pictures-of-two-replays-match
+RUN | grep | -c | -E | ^(AGENT.*basic\pFOUND.*agent)$ | $T/a.txt
+EXPECT_OUT | 3 | VACUITY-the-agent-really-moved-or-founded-on-each-turn-it-had
+RUN | $T/civ_op.+x | agentmove | $T/a.txt | zz
+EXPECT_EXIT | 4 | NEGATIVE-control-the-agent-validator-can-refuse
+CLEAN |
+CASE | a-hand-edited-ledger-is-refused
+SCRATCH
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/map_op.+x | $HOUSE/@.apps/tearit-map/ops/tearit_map_op.c | -lm | -lpng | -lz
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/civ_op.+x | $HOUSE/@.apps/tearit-map/ops/tearit_civ_op.c
+COPY | @.apps/tearit-map/civ.pdl | civ.pdl
+ENV | TEARIT_CIV_RULES | $T/civ.pdl
+RUN | $T/map_op.+x | gen | 1 | 16 | 16 | $T/h.txt
+RUN | $T/civ_op.+x | seat | $T/h.txt | civ1 | human
+RUN | $T/civ_op.+x | seat | $T/h.txt | civ2 | agent:basic
+RUN | $T/map_op.+x | found | $T/h.txt | $T/h.txt
+RUN | $T/civ_op.+x | endturn | $T/h.txt
+RUN | $T/civ_op.+x | endturn | $T/h.txt
+RUN | $T/map_op.+x | checkpoint | $T/h.txt
+EXPECT_EXIT | 0 | a-checkpoint-row-fixes-the-hash
+RUN | $T/civ_op.+x | endturn | $T/h.txt
+EXPECT_EXIT | 0 | a-true-ledger-passes-the-check-and-takes-a-turn
+RUN | cp | $T/h.txt | $T/clean.txt
+RUN | cp | $T/clean.txt | $T/bad.txt
+RUN | sed | -i | s/FOUND \p \([0-9]*\) \p \([0-9]*\) \p /FOUND \p \2 \p \1 \p /; | $T/bad.txt
+RUN | cmp | -s | $T/clean.txt | $T/bad.txt
+EXPECT_EXIT | 1 | VACUITY-the-hand-edit-really-changed-the-ledger
+RUN | $T/civ_op.+x | endturn | $T/bad.txt
+EXPECT_EXIT | 4 | NEGATIVE-a-hand-edited-ledger-is-refused-by-endturn
+EXPECT_OUT | fail check | the-reason-is-the-check-row
+RUN | grep | -c | ^TURN | $T/bad.txt
+EXPECT_OUT | 3 | and-no-turn-row-was-written
+RUN | cp | $T/clean.txt | $T/skip.txt
+RUN | sed | -i | s/^TURN \p 3$/TURN \p 5/ | $T/skip.txt
+RUN | $T/civ_op.+x | status | $T/skip.txt
+EXPECT_EXIT | 4 | NEGATIVE-a-TURN-row-out-of-order-is-refused-by-the-fold
+RUN | $T/civ_op.+x | endturn | $T/skip.txt
+EXPECT_EXIT | 4 | and-endturn-refuses-it-too
+CLEAN |
+CASE | the-agent-weights-are-data
+SCRATCH
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/map_op.+x | $HOUSE/@.apps/tearit-map/ops/tearit_map_op.c | -lm | -lpng | -lz
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/civ_op.+x | $HOUSE/@.apps/tearit-map/ops/tearit_civ_op.c
+COPY | @.apps/tearit-map/civ.pdl | civ.pdl
+COPY | @.apps/tearit-map/civ.pdl | civ_low.pdl
+RUN | sed | -i | s/aiw_found \p 10/aiw_found \p 0/ | $T/civ_low.pdl
+ENV | TEARIT_CIV_RULES | $T/civ.pdl
+RUN | $T/map_op.+x | gen | 1 | 16 | 16 | $T/w1.txt
+RUN | $T/map_op.+x | gen | 1 | 16 | 16 | $T/w2.txt
+RUN | $T/civ_op.+x | seat | $T/w1.txt | civ2 | agent:basic
+RUN | $T/civ_op.+x | seat | $T/w2.txt | civ2 | agent:basic
+RUN | $T/civ_op.+x | aiturn | $T/w1.txt
+EXPECT_OUT | agent=found | with-found-weighted-10-the-agent-founds-first
+ENV | TEARIT_CIV_RULES | $T/civ_low.pdl
+RUN | $T/civ_op.+x | aiturn | $T/w2.txt
+EXPECT_OUT | agent=walk | NEGATIVE-with-found-weighted-0-the-same-ledger-walks-instead-the-weights-are-data
+ENV | TEARIT_CIV_RULES | $T/nothing.pdl
+RUN | $T/civ_op.+x | aiturn | $T/w2.txt
+EXPECT_EXIT | 2 | NEGATIVE-missing-rules-are-refused-no-weights-live-in-the-C
+CLEAN |
+# ---- the verb pages are the path (D92, D136, EVENT-VERB-PAGES-DESIGN): a button plays events/<verb>/, the page runs tearit_verb, which calls ONE rule op ----
+CASE | verb-pages-are-the-path
+SCRATCH |
+ENV | BLUEPRINTZ_DEBUG_FILE | /nonexistent
+MKDIR | house/xyzfs
+MKDIR | house/@.apps/tearit-map/ops/+x
+MKDIR | house/@.apps/tearit-map/play/world
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/house/@.apps/tearit-map/ops/+x/tearit_map_op.+x | $HOUSE/@.apps/tearit-map/ops/tearit_map_op.c | -lm | -lpng | -lz
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/house/@.apps/tearit-map/ops/+x/tearit_civ_op.+x | $HOUSE/@.apps/tearit-map/ops/tearit_civ_op.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/house/@.apps/tearit-map/ops/+x/tearit_verb.+x | $HOUSE/@.apps/tearit-map/ops/tearit_verb.c
+EXPECT_EXIT | 0 | the-verb-engine-compiles-with-no-warning-flags-tripping
+COPY | @.apps/tearit-map/civ.pdl | house/@.apps/tearit-map/civ.pdl
+COPYDIR | @.apps/tearit-map/events | house/@.apps/tearit-map/events
+ENV | TEARIT_CIV_RULES |
+ENV | TEARIT_LEDGER | $T/led.txt
+RUN | $T/house/@.apps/tearit-map/ops/+x/tearit_map_op.+x | gen | 1 | 16 | 16 | $T/led.txt
+EXPECT_EXIT | 0 | seed-1-ledger
+EXPECT_HAS | house/@.apps/tearit-map/events/step/event_pkg/pages/page_1/event.ir.pdl | type=tearit_verb \p verb=step | the-step-page-names-the-registered-command
+EXPECT_HAS | house/@.apps/tearit-map/events/found/event_pkg/pages/page_1/event.ir.pdl | type=tearit_verb \p verb=found | the-found-page-names-the-registered-command
+EXPECT_HAS | house/@.apps/tearit-map/events/eat/event_pkg/pages/page_1/event.ir.pdl | type=tearit_verb \p verb=eat | the-eat-page-names-the-registered-command
+EXPECT_HAS | house/@.apps/tearit-map/events/sleep/event_pkg/pages/page_1/event.ir.pdl | type=tearit_verb \p verb=sleep | the-sleep-page-names-the-registered-command
+EXPECT_HAS | house/@.apps/tearit-map/events/dig/event_pkg/pages/page_1/event.ir.pdl | type=tearit_verb \p verb=dig | the-dig-page-names-the-registered-command
+EXPECT_HAS | house/@.apps/tearit-map/events/place/event_pkg/pages/page_1/event.ir.pdl | type=tearit_verb \p verb=place | the-place-page-names-the-registered-command
+EXPECT_HAS | house/@.apps/tearit-map/events/fog/event_pkg/pages/page_1/event.ir.pdl | type=tearit_verb \p verb=fog | the-fog-page-names-the-registered-command
+EXPECT_HAS | house/@.apps/tearit-map/events/hut/event_pkg/pages/page_1/event.ir.pdl | type=tearit_verb \p verb=hut | the-hut-page-names-the-registered-command
+EXPECT_HAS | house/@.apps/tearit-map/events/endturn/event_pkg/pages/page_1/event.ir.pdl | type=tearit_verb \p verb=endturn | the-endturn-page-names-the-registered-command
+EXPECT_HAS | house/@.apps/tearit-map/events/seat/event_pkg/pages/page_1/event.ir.pdl | type=tearit_verb \p verb=seat | the-seat-page-names-the-registered-command
+EXPECT_HAS | house/@.apps/tearit-map/events/endturn/event_pkg/pages/page_1/condition.pdl | COND \p trigger \p ui | a-verb-page-has-a-ui-trigger
+ENV | GAME_ARG | civ1 human
+ENV | MUCHI_TARGET_ENT | $T/house/@.apps/tearit-map/play/world
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/house/@.apps/tearit-map/events/seat | $T/house | ui
+EXPECT_EXIT | 0 | the-seat-page-was-played
+EXPECT_HAS | house/@.apps/tearit-map/play/result.txt | ok | the-page-engine-reports-ok
+EXPECT_HAS | led.txt | SEAT \p civ1 \p human | the-seat-is-a-ledger-row-written-through-the-page
+ENV | GAME_ARG | civ2 agent:basic
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/house/@.apps/tearit-map/events/seat | $T/house | ui
+ENV | GAME_ARG | s
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/house/@.apps/tearit-map/events/step | $T/house | ui
+EXPECT_HAS | led.txt | MOVE \p 4 \p 1 \p s | a-step-page-appended-one-MOVE-row
+ENV | GAME_ARG | e
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/house/@.apps/tearit-map/events/step | $T/house | ui
+EXPECT_HAS | house/@.apps/tearit-map/play/result.txt | refused: fail water | a-refused-step-puts-the-rules-reason-on-the-result-file
+RUN | grep | -c | ^MOVE | $T/led.txt
+EXPECT_OUT | 1 | NEGATIVE-the-refused-step-added-no-row
+ENV | GAME_ARG |
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/house/@.apps/tearit-map/events/found | $T/house | ui
+EXPECT_HAS | led.txt | FOUND \p 4 \p 1 | the-found-page-founded-a-city-where-the-person-stands
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/house/@.apps/tearit-map/events/found | $T/house | ui
+EXPECT_HAS | house/@.apps/tearit-map/play/result.txt | refused: fail found | a-second-city-on-that-cell-is-refused-by-the-op-and-reported
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/house/@.apps/tearit-map/events/endturn | $T/house | ui
+EXPECT_HAS | house/@.apps/tearit-map/play/result.txt | ok | the-endturn-page-ran
+RUN | grep | -c | ^TURN | $T/led.txt
+EXPECT_OUT | 1 | the-endturn-page-appended-exactly-one-TURN-row
+RUN | $T/house/@.apps/tearit-map/ops/+x/tearit_civ_op.+x | status | $T/led.txt
+EXPECT_OUT | turn=1 cities=1 food=1 | the-fold-shows-one-city-one-food
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/house/@.apps/tearit-map/events/eat | $T/house | ui
+EXPECT_HAS | led.txt | EAT \p 4 \p 1 | the-eat-page-spent-a-ration
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/house/@.apps/tearit-map/events/fog | $T/house | ui
+EXPECT_HAS | house/@.apps/tearit-map/play/result.txt | ok | the-fog-page-ran
+EXPECT_FILE | fog.txt | the-fog-preference-file-sits-beside-the-ledger
+RUN | $T/house/@.apps/tearit-map/ops/+x/tearit_verb.+x | bogus
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-verb-is-refused-by-the-engine
+ENV | GAME_ARG | x
+RUN | $T/house/@.apps/tearit-map/ops/+x/tearit_verb.+x | step
+EXPECT_EXIT | 2 | NEGATIVE-a-bad-direction-never-reaches-the-op
+ENV | GAME_ARG | e'x
+RUN | $T/house/@.apps/tearit-map/ops/+x/tearit_verb.+x | step
+EXPECT_EXIT | 2 | NEGATIVE-a-quote-in-an-argument-never-reaches-the-op
+ENV | GAME_ARG | civ1
+RUN | $T/house/@.apps/tearit-map/ops/+x/tearit_verb.+x | seat
+EXPECT_EXIT | 2 | NEGATIVE-a-seat-without-who-is-refused
+RUN | grep | -c | ^MOVE | $T/led.txt
+EXPECT_OUT | 1 | NEGATIVE-none-of-the-refusals-added-a-row
+CLEAN |
+CASE | the-manifest-covers-every-engine-verb
+SCRATCH |
+RUN | $HOUSE/&.widgits/events-hq/ops/+x/verbgen.+x | check | $HOUSE/@.apps/tearit-map
+EXPECT_EXIT | 0 | verbgen-check-passes-on-the-real-app
+EXPECT_OUT | missing-from-manifest 0, not-in-source 0, no-package 0 | ten-engine-verbs-ten-manifest-rows-ten-pages
+MKDIR | neg/ops
+COPY | @.apps/tearit-map/ops/tearit_verb.c | neg/ops/tearit_verb.c
+WRITE | neg/verbs.pdl | GAME \p tearit-map \p tearit_verb \p ops/+x/tearit_verb.+x \p ops/tearit_verb.c\nVERB \p step \p yes \p ui \p dir \p walk\n
+RUN | $HOUSE/&.widgits/events-hq/ops/+x/verbgen.+x | check | $T/neg
+EXPECT_EXIT | 1 | NEGATIVE-a-manifest-missing-engine-verbs-fails-the-check
+CLEAN |
+# ---- the REAL tearit_driver in a scratch house (fake owner = a sleeper, fake switches.txt): bar buttons -> queue -> verb engine -> ledger -> status line ----
+# NOTE: play_event.sh finds the house from its own location, so a scratch house cannot play a page: here the driver takes its VISIBLE FALLBACK (the same tearit_verb engine, the message says so). The page path itself is the case verb-pages-are-the-path.
+CASE | driver-bar-status-and-queue
+SCRATCH |
+ENV | BLUEPRINTZ_DEBUG_FILE | /nonexistent
+ENV | TEARIT_CIV_RULES |
+ENV | TEARIT_LEDGER |
+ENV | GAME_ARG |
+MKDIR | h/xyzfs
+MKDIR | h/@.apps/tearit-map/ops/+x
+MKDIR | h/@.apps/tearit-map/tearit-map-pchq/pieces/system/maps/tearit-map/board
+MKDIR | edit/state/world
+WRITE | edit/state/world/switches.txt | running=1\n
+COPY | @.apps/tearit-map/civ.pdl | h/@.apps/tearit-map/civ.pdl
+COPYDIR | @.apps/tearit-map/events | h/@.apps/tearit-map/events
+RUN | gcc | -std=gnu11 | -O2 | -o | $T/h/@.apps/tearit-map/ops/+x/tearit_map_op.+x | $HOUSE/@.apps/tearit-map/ops/tearit_map_op.c | -lm | -lpng | -lz
+RUN | gcc | -std=gnu11 | -O2 | -o | $T/h/@.apps/tearit-map/ops/+x/tearit_civ_op.+x | $HOUSE/@.apps/tearit-map/ops/tearit_civ_op.c
+RUN | gcc | -std=gnu11 | -O2 | -o | $T/h/@.apps/tearit-map/ops/+x/tearit_verb.+x | $HOUSE/@.apps/tearit-map/ops/tearit_verb.c
+RUN | gcc | -std=gnu11 | -O2 | -o | $T/h/@.apps/tearit-map/ops/+x/tearit_ctl.+x | $HOUSE/@.apps/tearit-map/ops/tearit_ctl.c
+RUN | gcc | -std=gnu11 | -O2 | -o | $T/h/@.apps/tearit-map/ops/+x/tearit_driver.+x | $HOUSE/@.apps/tearit-map/ops/tearit_driver.c
+EXPECT_EXIT | 0 | the-real-driver-compiles
+SPAWN | OWN | /usr/bin/sleep | 600
+ENV | GAME_OWNER_PID | $OWN
+SPAWN | DRV | $T/h/@.apps/tearit-map/ops/+x/tearit_driver.+x | $T/h | $T/h/@.apps/tearit-map | $T/edit
+WAIT_HAS | edit/state/game_ui.txt | turn 0 \p cities 0 \p food 0 | 8000 | the-bar-title-is-the-civ-status-line-a-fold-of-the-ledger
+EXPECT_ALIVE | $DRV | the-driver-stays-up-while-its-owner-lives
+EXPECT_HAS | edit/state/game_ui.txt | gmbar_0_label=Next turn | the-first-button-is-Next-turn
+EXPECT_HAS | edit/state/game_ui.txt | gmbar_5_label=Found city | the-bar-has-Found-city
+EXPECT_HAS | edit/state/game_ui.txt | gmbar_6_label=Eat | the-bar-has-Eat
+EXPECT_HAS | edit/state/game_ui.txt | gmbar_7_label=Sleep | the-bar-has-Sleep
+EXPECT_HAS | edit/state/game_ui.txt | gmbar_8_label=Fog | the-bar-has-Fog
+EXPECT_HAS | edit/state/game_ui.txt | gmbar_n=9 | nine-bar-buttons
+EXPECT_HAS | edit/state/games/tearit-map/game/ledger.txt | SEAT \p civ2 \p agent:basic | the-agent-seat-is-a-ledger-row-written-at-the-first-play
+RUN | grep | -c | ^TURN | $T/edit/state/games/tearit-map/game/ledger.txt
+EXPECT_OUT | 0 | no-turn-has-passed-before-a-button-is-pressed
+RUN | $T/h/@.apps/tearit-map/ops/+x/tearit_ctl.+x | endturn | $T/edit/state/games/tearit-map
+EXPECT_EXIT | 0 | the-Next-turn-button-queues-one-command
+WAIT_HAS | edit/state/game_ui.txt | turn 1 \p cities 0 \p food 0 | 8000 | the-status-line-moves-to-turn-1
+RUN | grep | -c | ^TURN | $T/edit/state/games/tearit-map/game/ledger.txt
+EXPECT_OUT | 1 | the-button-appended-exactly-one-TURN-row
+EXPECT_HAS | edit/state/game_ui.txt | direct: the endturn page did not run | the-fallback-is-visible-in-the-bar-message
+RUN | $T/h/@.apps/tearit-map/ops/+x/tearit_ctl.+x | found | $T/edit/state/games/tearit-map
+RUN | $T/h/@.apps/tearit-map/ops/+x/tearit_ctl.+x | endturn | $T/edit/state/games/tearit-map
+WAIT_HAS | edit/state/game_ui.txt | turn 2 \p cities 1 \p food 1 | 8000 | a-city-founded-then-one-turn-gives-one-food
+RUN | $T/h/@.apps/tearit-map/ops/+x/tearit_ctl.+x | found | $T/edit/state/games/tearit-map
+WAIT_HAS | edit/state/game_ui.txt | refused: fail found | 8000 | NEGATIVE-a-second-city-on-the-same-cell-is-refused-and-the-bar-says-why
+RUN | $T/h/@.apps/tearit-map/ops/+x/tearit_ctl.+x | Bogus | $T/edit/state/games/tearit-map
+EXPECT_EXIT | 2 | NEGATIVE-the-button-writer-refuses-a-name-outside-the-command-alphabet
+RUN | $T/h/@.apps/tearit-map/ops/+x/tearit_ctl.+x | bogus | $T/edit/state/games/tearit-map
+WAIT_HAS | edit/state/game_ui.txt | unknown | 8000 | NEGATIVE-an-unknown-queued-command-is-reported-unknown
+RUN | grep | -c | ^TURN | $T/edit/state/games/tearit-map/game/ledger.txt
+EXPECT_OUT | 2 | and-it-wrote-no-row
+RUN | /usr/bin/stat | -c | %Y | $T/edit/state/game_ui.txt
+CAPTURE | m1
+SLEEP | 1500
+RUN | /usr/bin/stat | -c | %Y | $T/edit/state/game_ui.txt
+EXPECT_OUT_IS | $m1 | the-feed-is-written-only-when-its-bytes-change
+CLEAN |

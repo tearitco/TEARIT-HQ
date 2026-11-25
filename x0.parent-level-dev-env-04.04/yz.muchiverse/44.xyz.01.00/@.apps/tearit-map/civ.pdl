@@ -1,0 +1,10 @@
+# civ.pdl - the numbers of the Civ turn loop of tearit-map (CONFIG: an input, never written by the game). Read by ops/tearit_civ_op.c; the harness may point TEARIT_CIV_RULES at a copy.
+# RULE | name | integer   (no floats; D93, TEARITIZATION-FORWARD-GUIDANCE section 4)
+# city_food: food a city adds to its civ's stock at every TURN row (a fold of the ledger, never a stored number).
+RULE | city_food | 1
+# citygap: a city may not be founded within this Manhattan distance of another city (the agent's legal-move rule; the human Found verb is the old op).
+RULE | citygap | 3
+# the basic agent policy (civ2): every legal move has a weight, the highest wins, ties go to the first in the list found, n, e, s, w.
+RULE | aiw_found | 10
+RULE | aiw_expand | 3
+RULE | aiw_walk | 1

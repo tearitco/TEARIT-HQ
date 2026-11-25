@@ -1981,3 +1981,12 @@ COMMAND tear_on_verb
   PARAMS verb,arg
   TEMPLATE exec "$D/@.apps/tear-on/ops/+x/tear_on_verb.+x" '{verb}'[ '{arg}']
 END
+
+# tearit_verb = the rule verbs of the tearit-map book (Civ shape in the rpg-edit board, D136). The engine reads GAME_ARG, calls ONE op (tearit_map_op or tearit_civ_op) on TEARIT_LEDGER and writes play/result.txt; verb pages are written by verbgen from @.apps/tearit-map/verbs.pdl.
+COMMAND tearit_verb
+  LABEL tearit-map: Run Verb
+  FIELD1 Verb:
+  FIELD2 Arg:
+  PARAMS verb,arg
+  TEMPLATE exec "$D/@.apps/tearit-map/ops/+x/tearit_verb.+x" '{verb}'[ '{arg}']
+END

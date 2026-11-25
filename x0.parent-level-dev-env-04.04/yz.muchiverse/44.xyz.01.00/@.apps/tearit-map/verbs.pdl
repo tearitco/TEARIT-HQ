@@ -1,0 +1,16 @@
+# verbs.pdl - the tearit-map manifest: which verbs are EVENT PAGES (BOOK 16.game/EVENT-VERB-PAGES-DESIGN.md; same grammar as @.apps/tear-on/verbs.pdl). Read by &.widgits/events-hq/ops/+x/verbgen.+x
+#   verbgen check @.apps/tearit-map   engine source <-> this file <-> events/ must agree
+#   verbgen gen   @.apps/tearit-map   write events/<verb>/ for every page=yes verb (never overwrites an edited package)
+# The rules are ops (tearit_map_op for the map rules, tearit_civ_op for the turn loop and the seats, decision D136); a page runs tearit_verb, which calls ONE op. The driver's bar buttons play the page; args travel in GAME_ARG.
+GAME | tearit-map | tearit_verb | ops/+x/tearit_verb.+x | ops/tearit_verb.c
+#   VERB | name | page | trigger | args | what it does
+VERB | step    | yes | ui | dir            | the person walks one land cell (water and the edge refuse)
+VERB | found   | yes | ui |                | found a city on the person's cell (one per cell)
+VERB | eat     | yes | ui |                | spend one ration (refused when the pack is empty)
+VERB | sleep   | yes | ui |                | give one ration back (refused at a full pack)
+VERB | dig     | yes | ui |                | dig the mineral on the person's cell
+VERB | place   | yes | ui |                | put a block on a dug cell
+VERB | fog     | yes | ui |                | toggle the fog preference and redraw the desk
+VERB | hut     | yes | ui |                | open the hut on the person's cell (once)
+VERB | endturn | yes | ui |                | Next turn: append TURN n+1, the only thing that advances time, then the basic agent plays one move
+VERB | seat    | yes | ui | civ who        | who plays a civ: civ1 or civ2, human or agent:basic (a row; the last row wins)
