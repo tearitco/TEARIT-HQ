@@ -11,3 +11,5 @@ Do not count `map.ppm` or `bv_gpu_desk_render` as this video. Do not open the li
 A board left on "Map Loading..." has not been given a book. The grok note `2026-10-29-direction-3d-editor-and-test-loop.md` section 8 and pitfall `HOUSE_CODE_PITFALLS` (the centroid relaunch): write `CONFIRM_START_MAP:<book>` alone into `pieces/system/widget_cmds/inbox.txt`, wait until `pieces/world_01/state.txt` says `map_id=<book>` (up to 40 s), wait 6 s, then write `CONFIRM_SET_DESK:<page>`. Do not put both lines in one write. On 2026-11-24 the scratch board stayed on loading because those lines were never sent. After they were sent, `map_id=tearit-map-board`, `desk_id=board`, and the engine log said `Desk 'board' loaded.`
 
 Where it will go when it exists: `XO/31.Nov/nov-24/grok-24/1.seed-map/`.
+
+Not warranted on 2026-11-24. `board-2d.png` (tiles at z=1) and `board-3d.png` are real window dumps. The title still says Robot Trap Auto. The mineral cell cannot be pointed at. Do not make the mp4 until the roadmap says so. Photo steps that worked are in `13.agent-coms/GROK/ONBOARD-GROK.md`.

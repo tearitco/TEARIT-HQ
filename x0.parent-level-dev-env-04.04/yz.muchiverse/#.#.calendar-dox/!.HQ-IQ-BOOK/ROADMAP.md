@@ -100,7 +100,9 @@ Sprint 1024 is only the stretch where that outside door is the proof. Sprint 512
 
 There is no date on the finish line. It arrives when that stranger session exists, whether that is after dozens of proofs or after hundreds. Counting sprints does not move it.
 
-**Leverage now (2026-11-24).** One seeded map op, 16×16, with water and a mineral column, a desk that is 2D and 3D, and a harness that fails when a byte changes. Walk, found-city, dig, fog, a second seat, a city stamp, and the web view all read those same rows later. A geology sim, a Minecraft import, or a new civ app does not create that reuse. The clip of that map is the thing worth showing. The next proof waits until this one is green.
+**Leverage now (2026-11-24).** One seeded map op, 16×16, with water and a mineral column, a desk that is 2D and 3D, and a harness that fails when a byte changes. Walk, found-city, dig, fog, a second seat, a city stamp, and the web view all read those same rows later. A geology sim, a Minecraft import, or a new civ app does not create that reuse.
+
+**Presentation not warranted yet (2026-11-24).** A 3D window dump and a 2D dump at z=1 exist (`XO/31.Nov/nov-24/grok-24/1.seed-map/board-3d.png`, `board-2d.png`). The mp4 waits until the window title is this map, a viewer can point at the mineral cell in the 2D frame, both dumps have been opened, and the voice line matches those frames. Until then keep building the rows (a city, a dig that changes the mineral cell). The photo steps are in `13.agent-coms/GROK/ONBOARD-GROK.md`.
 
 ## 4. The three views
 
