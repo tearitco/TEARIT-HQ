@@ -2,6 +2,14 @@
 
 Status: **DESIGN / PROPOSAL. Nothing in this document is built.** Written for the owner and for the next agent. Labels: **RAN** = I ran or saw it and say where; **READ** = I read it in a file, did not run it; **DESIGN** = written, not built; **PROPOSAL** = my recommendation, the owner decides; **NOT FOUND** = I looked and it is not there; **NOT PROVEN** = may be true, no evidence yet.
 
+## 0. Leave the Tearit map (owner, 2026-11-25)
+
+The seeded book `@.apps/tearit-map` stays the civ slice (walk, hut, found, the other seat, fog). It is not the Minecraft map. Owner, 2026-11-25: Minecraft play (a driven character, breaking, a generated block world) goes on a different map, and that map uses Mineclonia blocks. Do not add break stages, a hotbar, or a new world generator to `tearit_map_op.c`.
+
+Why it cannot be this book (READ the desk writer, RAN the live ledger the same day): the map is a 16×16 glyph grid (`~.T^Ms=c#`) with one extrusion height per glyph. The picture is RPG Maker `Outside_A5` tiles plus colored event cubes. `DIG` only removes the one mineral. There is no block id, no stone column, and no Mineclonia texture. Fog on that book was turned off by hand the same day (`rpg-edit-hq/state/games/tearit-map/fog.txt` is `0`; `desk` printed `draw=all`). Leave that preference. `mineclonia_sample` under piececraft-hq stays untouched.
+
+Where the block world already is (READ, not rebuilt here): `16.game/GAME-MECHANICS-SPRINT.md` section mcl-hq (seed, chunks, dig, place, Mineclonia art, no Luanti server). Textures: `44.xyz.01.00/shared/MINECLONIA-ASSET-SOURCE-LOCATION.pdl` points at `/home/no/Desktop/github/work/NNEST-12.00/#.NNEST_ASSETS/mineclonia/mods` (Pixel Perfection, not Mojang). Role names: `44.xyz.01.00/#.ref/menu/event-guides/mineclonia/mcl_core.pdl`. The app scaffold `@.apps/mcl-hq` still paints those textures onto six RPG rooms and has no height and no break. Owner copy of this leave: `XO/31.Nov/nov-25/0.leave-tearit-map-for-mineclonia.md`.
+
 ## 1. What TEARITIZATION means (owner, 2026-11-23)
 A "CIV-SNES" style clone (Sid Meier's Civilization as it was on the SNES), made with EVENTS, playable by MULTIPLE AGENTS plus a HUMAN, with WORLD GENERATION, working in BOTH 2D AND 3D. The name is TEARITIZATION: take a known game shape and rebuild it the house way (every rule an op, the ledger the only authority, pages visible in Blueprintz, a harness that can fail).
 
