@@ -469,6 +469,11 @@ static int desk(const char *in, const char *dir) {
         fputc('\n', f);
     }
     fclose(f);
+    snprintf(path, sizeof path, "%s/extrusion.pdl", dir);
+    f = fopen(path, "w");
+    if (!f) { free(g); return 5; }
+    fputs("EXTRUDE | ~ | 1\nEXTRUDE | . | 1\nEXTRUDE | T | 2\nEXTRUDE | ^ | 3\nEXTRUDE | M | 5\nEXTRUDE | s | 1\nEXTRUDE | = | 1\nEXTRUDE | c | 1\nEXTRUDE | # | 2\n", f);
+    fclose(f);
     snprintf(path, sizeof path, "%s/events.txt", dir);
     f = fopen(path, "w");
     if (!f) { free(g); return 5; }

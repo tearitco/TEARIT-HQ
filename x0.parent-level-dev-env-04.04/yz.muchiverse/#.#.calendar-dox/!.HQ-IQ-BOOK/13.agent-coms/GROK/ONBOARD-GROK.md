@@ -1,5 +1,13 @@
 # Grok onboarding (read this first)
 
+## This session is the seeded map, then a real board (2026-11-24)
+
+Read this block first. The city block below is still true and is not the current task.
+
+Built on `grok`, not pushed: `tearit_map_op` (`@.apps/tearit-map/ops/tearit_map_op.c`, harness case `tearit_map`, decision D124). `gen` writes a 16×16 file from an integer seed. `check` fails if the bridge cell is water. `desk` writes `cells.txt`, `cells.rgba`, `map.txt`, `events.txt`, `extrusion.pdl`, `map.ppm`, and grows `cells.marker`. `move land` appends one `MOVE` row onto a land neighbor. `move water` writes nothing and exits 4. Same seed matches. A different seed does not.
+
+The presentation is not done. The bar is the same as `16.game/presentations/RTA-BOARD-2D-3D-VIDEO-2026-11-22.md` and `MINECRAFT-BOARD-2D-3D-VIDEO-2026-11-22.md`: a real board window, photographed with `dump_frame_png_op`, 2D (key 0) and 3D, English Kokoro, Japanese subtitles, Actor1 face on the left of the words, volumedetect not silent. A flat ppm or the offline `bv_gpu_desk_render` does not meet that bar. The owner said on 2026-11-24 to launch a full board. One board at a time. Do not start the live `rpg-edit-hq` editor to do it. Do not change the camera. The spoken line, when the clip exists, is: "Same seed, same land. The water stays water. One mineral is already in the ground."
+
 ## Next session is the cities (2026-11-22)
 
 Read this block before the 2026-10-29 editor notes. The city work is on branch `grok`. Start at `16.game/RTA-BATTERY-CONVERSION-2026-11-21.md`, then `XO/31.Nov/nov-22/0.rta-cities-handoff.md` and `0.rta-agent-compendium.md`. Style for videos is `XO/31.Nov/nov-22/0.tsots-style-guide.md`.
