@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <ctype.h>
 #include <sys/stat.h>
+#include <math.h>
 #include <png.h>
 #include <setjmp.h>
 
@@ -469,12 +470,11 @@ static int ration_left(const char *map, const char *ledger, int *cap_out);
 static int where(const char *ledger, int sx, int sy, int *x, int *y);
 static void agent_at(const char *ledger, int sx, int sy, int *x, int *y);
 static int count_rows(const char *ledger, const char *prefix);
+/* The player and the ring around them stay clear. Fog is only land a step has not reached. */
 static void mark_seen(int *seen, int w, int h, int x, int y) {
-    const int dx[5] = { 0, 1, 0, -1, 0 };
-    const int dy[5] = { 0, 0, 1, 0, -1 };
-    int i;
-    for (i = 0; i < 5; i++) {
-        int xx = x + dx[i], yy = y + dy[i];
+    int dy, dx;
+    for (dy = -2; dy <= 2; dy++) for (dx = -2; dx <= 2; dx++) {
+        int xx = x + dx, yy = y + dy;
         if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
         seen[yy * w + xx] = 1;
     }
@@ -665,9 +665,14 @@ static int desk(const char *in, const char *dir, const char *ledger) {
     snprintf(path, sizeof path, "%s/cells.txt", dir);
     f = fopen(path, "w");
     if (!f) { free(g); return 5; }
-    fprintf(f, "width=%d\nheight=%d\ntile_px=4\natlas_cols=1\natlas_tiles=15\ncells\n", w, h);
+    fprintf(f, "width=%d\nheight=%d\ntile_px=16\natlas_cols=1\natlas_tiles=22\ncells\n", w, h);
     for (y = 0; y < h; y++) {
-        for (x = 0; x < w; x++) fprintf(f, "%s%d,0", x ? " " : "", g[y * w + x]);
+        for (x = 0; x < w; x++) {
+            int slot = g[y * w + x];
+            /* Eight smoke tiles so a fog field is not one stamped square. */
+            if (slot == 14) slot = 14 + ((x * 3 + y * 5) & 7);
+            fprintf(f, "%s%d,0", x ? " " : "", slot);
+        }
         fputc('\n', f);
     }
     fclose(f);
@@ -675,21 +680,32 @@ static int desk(const char *in, const char *dir, const char *ledger) {
     f = fopen(path, "w");
     if (!f) { free(g); return 5; }
     {
-        /* Outside_A5.png is 48px tiles, 8 across. One sample from each tile fills that atlas cell. Fog and the markers stay flat. */
+        /* Outside_A5.png is 48px tiles, 8 across. Ground kinds sample that tile. Slots 14..21 are smoke, shifted so the field is not one stamp. */
         static const int tile_at[9][2] = { {3,6},{0,2},{0,3},{4,3},{0,7},{1,2},{7,6},{5,8},{0,4} };
-        int aw = 0, ah = 0, used = 0;
+        int aw = 0, ah = 0, used = 0, ti;
         unsigned char *a5 = load_a5(&aw, &ah);
-        for (i = 0; i < 15; i++) {
-            int pxs, tx = 0, ty = 0;
-            unsigned char r = i < 9 ? rgb[i][0] : (i == 9 ? 180 : i == 10 ? 240 : i == 11 ? 90 : i == 12 ? 40 : i == 13 ? 230 : 20);
-            unsigned char gg = i < 9 ? rgb[i][1] : (i == 9 ? 40 : i == 10 ? 200 : i == 11 ? 40 : i == 12 ? 80 : i == 13 ? 230 : 24);
-            unsigned char b = i < 9 ? rgb[i][2] : (i == 9 ? 200 : i == 10 ? 40 : i == 11 ? 30 : i == 12 ? 220 : i == 13 ? 210 : 32);
-            if (a5 && i < 9) { tx = tile_at[i][0] * 48; ty = tile_at[i][1] * 48; used = 1; }
-            for (pxs = 0; pxs < 16; pxs++) {
-                if (a5 && i < 9 && tx + 47 < aw && ty + 47 < ah) {
-                    int sx = tx + (pxs % 4) * 12 + 6, sy = ty + (pxs / 4) * 12 + 6;
+        for (ti = 0; ti < 22; ti++) {
+            int py, px, tx = 0, ty = 0;
+            unsigned char r = ti < 9 ? rgb[ti][0] : (ti == 9 ? 180 : ti == 10 ? 240 : ti == 11 ? 90 : ti == 12 ? 40 : ti == 13 ? 230 : 20);
+            unsigned char gg = ti < 9 ? rgb[ti][1] : (ti == 9 ? 40 : ti == 10 ? 200 : ti == 11 ? 40 : ti == 12 ? 80 : ti == 13 ? 230 : 24);
+            unsigned char b = ti < 9 ? rgb[ti][2] : (ti == 9 ? 200 : ti == 10 ? 40 : ti == 11 ? 30 : ti == 12 ? 220 : ti == 13 ? 210 : 32);
+            if (a5 && ti < 9) { tx = tile_at[ti][0] * 48; ty = tile_at[ti][1] * 48; used = 1; }
+            for (py = 0; py < 16; py++) for (px = 0; px < 16; px++) {
+                if (a5 && ti < 9 && tx + 47 < aw && ty + 47 < ah) {
+                    int sx = tx + px * 3, sy = ty + py * 3;
                     unsigned char *s = a5 + ((size_t)sy * aw + sx) * 4;
                     fputc(s[0], f); fputc(s[1], f); fputc(s[2], f); fputc(255, f);
+                } else if (ti >= 14) {
+                    int shift = ti - 14, u = (px + shift * 3) & 15, v = (py + shift * 5) & 15;
+                    int n = (int)(22.0 * sin(u * 6.2832 / 16.0) + 16.0 * sin(v * 6.2832 / 8.0));
+                    int d2 = (u - 7) * (u - 7) + (v - 4) * (v - 4);
+                    int wisp = d2 < 10 ? 55 : d2 < 26 ? 28 : 0;
+                    int d3 = (u - 12) * (u - 12) + (v - 11) * (v - 11);
+                    wisp += d3 < 8 ? 36 : 0;
+                    int base = 176 + n + wisp;
+                    if (base < 150) base = 150;
+                    if (base > 242) base = 242;
+                    fputc(base, f); fputc(base + 2 > 255 ? 255 : base + 2, f); fputc(base + 12 > 255 ? 255 : base + 12, f); fputc(255, f);
                 } else { fputc(r, f); fputc(gg, f); fputc(b, f); fputc(255, f); }
             }
         }
