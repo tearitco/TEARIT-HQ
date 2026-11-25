@@ -1,0 +1,8 @@
+# Play uses the shared game_core. City rules are not wired yet.
+GAME   | name        | giza-plateau
+GAME   | title       | Giza
+GAME   | kind        | editor
+GAME   | ruleset     | default
+GAME   | driver      | {house}/&.widgits/_shared-lib/ops/+x/game_core.+x driver {house} {book} {editor}
+GAME   | clock       | pause
+GAME   | export      | {house}/&.widgits/_shared-lib/ops/+x/game_core.+x {book} {state} export {out}
