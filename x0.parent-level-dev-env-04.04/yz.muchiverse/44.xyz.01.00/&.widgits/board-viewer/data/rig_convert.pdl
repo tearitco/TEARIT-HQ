@@ -14,3 +14,13 @@ CONVERT | alpha_min | 128
 CONVERT | outline_max | 24
 CONVERT | same_colour_dist | 40
 CONVERT | quant_shift | 3
+# Profile mode (chibi sheets, 2026-11-25): the face is the first band of skin-hued pixels, the head ends under the chin, torso and legs split the rest of the body.
+# A skin pixel has red >= skin_r_min and green / red in [skin_g_lo, skin_g_hi], blue / red in [skin_b_lo, skin_b_hi]. Without profile_mode the fixed fractions above apply.
+CONVERT | profile_mode | 1
+CONVERT | skin_r_min | 150
+CONVERT | skin_g_lo | 0.62
+CONVERT | skin_g_hi | 0.92
+CONVERT | skin_b_lo | 0.45
+CONVERT | skin_b_hi | 0.85
+CONVERT | body_torso_frac | 0.5
+CONVERT | chin_min_px | 3

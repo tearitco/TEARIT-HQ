@@ -83,7 +83,8 @@ WRITE | old.pdl | RIG | head | 224 172 130\nRIG | torso | 60 90 200\nRIG | arm |
 RUN | $T/bv_rig_op | parsefile | $T/old.pdl
 EXPECT_OUT | rows 5 mask 0 | old-rig-file-has-no-extra-parts
 RUN | $T/bv_rig_op | parsefile | $T/single.pdl
-EXPECT_OUT | rows 7 mask 7 | converted-file-carries-hair-sleeve-and-shoe
+# 2026-11-25: profile mode also writes the iris colour (RIG | eyes), so the converted file is 8 rows and the mask has the face bit (8): 7 | 8 = 15. The count changed because of the NEW row, not because of the old fractions.
+EXPECT_OUT | rows 8 mask 15 | converted-file-carries-hair-sleeve-shoe-and-eyes
 RUN | $T/bv_rig_op | parts | 2 | 0 | 0 | 0
 EXPECT_OUT | parts 6 | no-extra-rows-give-6-boxes
 RUN | $T/bv_rig_op | parts | 2 | 0 | 0 | 7

@@ -20,10 +20,11 @@ static void bv_rig_facing(int direction, int *fx, int *fz) {
 }
 /* Extra parts, only when the RIG file has the row (mask bits: 1 hair, 2 sleeve, 4 shoe). Colour index per part (ci): 0 head 1 torso 2 arm 3 leg 4 face 5 hair 6 sleeve 7 shoe.
  * Order: 0..5 as above, then hair cap (top of the head) + hair back (slab behind the head), sleeves (upper half of each arm), shoes (bottom quarter of each leg). Total <= 12. */
-#define BV_RIG_MAX 12
+#define BV_RIG_MAX 20
 #define BV_RIG_HAIR 1
 #define BV_RIG_SLEEVE 2
 #define BV_RIG_SHOE 4
+#define BV_RIG_FACE 8      /* RIG row `eyes`: eyes, brows and mouth as thin boxes on the front of the head */
 static void bv_rig_put(int rx, int rz, int fx, int fz, float lat, float fwd, float hl, float hf, float ya, float yb, float *o) {
     float cx = (rx * lat + fx * fwd) * BV_RIG_SCALE, cz = (rz * lat + fz * fwd) * BV_RIG_SCALE;
     float ex = ((rx < 0 ? -rx : rx) * hl + (fx < 0 ? -fx : fx) * hf) * BV_RIG_SCALE, ez = ((rz < 0 ? -rz : rz) * hl + (fz < 0 ? -fz : fz) * hf) * BV_RIG_SCALE;
@@ -72,6 +73,18 @@ static int bv_rig_boxes_ex(int part_set, int mask, int direction, int pattern, i
     }
     if (mask & BV_RIG_SLEEVE) for (int i = 2; i < 4; i++) { bv_rig_put(rx, rz, fx, fz, lat[i], fwd[i], hl[i] + 0.3f, hf[i] + 0.3f, (y0[i] + y1[i]) / 2.f, y1[i] + 0.2f, out[n]); ci[n++] = 6; }
     if (mask & BV_RIG_SHOE) for (int i = 4; i < 6; i++) { bv_rig_put(rx, rz, fx, fz, lat[i], fwd[i], hl[i] + 0.3f, hf[i] + 0.3f, y0[i] - 0.1f, y0[i] + 3.f, out[n]); ci[n++] = 7; }
+    if (mask & BV_RIG_FACE) {                               /* face on the FRONT of the head (units 1/16): eyes = sclera outside + iris inside, brows in the hair colour, a darker mouth. Thin boxes, no texture. */
+        float fz0 = fwd[0] + hf[0] + 0.12f, hd = 0.15f, yb = y0[0];
+#ifdef BV_RIG_MUTANT_FACE_BEHIND      /* the harness mutant: the face is drawn on the BACK of the head (must turn the in_front check red) */
+        fz0 = fwd[0] - hf[0] - 0.12f;
+#endif
+        for (int s = -1; s <= 1; s += 2) {
+            bv_rig_put(rx, rz, fx, fz, lat[0] + s * 2.5f, fz0, 0.5f, hd, yb + 3.0f, yb + 4.0f, out[n]); ci[n++] = 9;
+            bv_rig_put(rx, rz, fx, fz, lat[0] + s * 1.5f, fz0 + 0.05f, 0.5f, hd, yb + 3.0f, yb + 4.0f, out[n]); ci[n++] = 8;
+            bv_rig_put(rx, rz, fx, fz, lat[0] + s * 2.2f, fz0, 1.3f, hd, yb + 4.5f, yb + 5.1f, out[n]); ci[n++] = 5;
+        }
+        bv_rig_put(rx, rz, fx, fz, lat[0], fz0, 1.5f, hd, yb + 1.0f, yb + 1.8f, out[n]); ci[n++] = 10;
+    }
     return n;
 }
 /* the original 6-box call (old files, the bv_rig harness) */
@@ -83,27 +96,28 @@ static int __attribute__((unused)) bv_rig_boxes(int part_set, int direction, int
 }
 /* RIG file rig_<name>.pdl beside the desk: `RIG | head|torso|arm|leg|face|hair|sleeve|shoe | r g b`. col[0..7] in that order; *mask gets bits 1 hair, 2 sleeve, 4 shoe for the rows present;
  * a missing part keeps the caller's fallback. Returns rows read. */
-static int __attribute__((unused)) bv_rig_parse(const char *path, unsigned char col[8][3], int *mask) {
-    static const char *nm[8] = { "head", "torso", "arm", "leg", "face", "hair", "sleeve", "shoe" };
+static int __attribute__((unused)) bv_rig_parse(const char *path, unsigned char col[12][3], int *mask) {
+    static const char *nm[9] = { "head", "torso", "arm", "leg", "face", "hair", "sleeve", "shoe", "eyes" };
     if (mask) *mask = 0;
     FILE *f = fopen(path, "r"); if (!f) return 0;
     char line[256]; int n = 0;
     while (fgets(line, sizeof line, f)) {
         char a[16], b[16]; int r, g, bl;
         if (sscanf(line, " %15[^| ] | %15[^| ] | %d %d %d", a, b, &r, &g, &bl) != 5 || strcmp(a, "RIG")) continue;
-        for (int i = 0; i < 8; i++) if (!strcmp(b, nm[i])) { col[i][0] = (unsigned char)(r & 255); col[i][1] = (unsigned char)(g & 255); col[i][2] = (unsigned char)(bl & 255); n++; if (mask && i >= 5) *mask |= 1 << (i - 5); }
+        for (int i = 0; i < 9; i++) if (!strcmp(b, nm[i])) { col[i][0] = (unsigned char)(r & 255); col[i][1] = (unsigned char)(g & 255); col[i][2] = (unsigned char)(bl & 255); n++; if (mask && i >= 5) *mask |= 1 << (i - 5); }
     }
     fclose(f); return n;
 }
 /* Cached per (dir, name), refreshed once a second: a frame is a few ms, a file open is not. fallback = the event row's r g b. */
-static void __attribute__((unused)) bv_rig_colors(const char *dir, const char *charset, const int fb[3], unsigned char col[8][3], int *mask) {
-    static struct { char key[4600]; time_t t; unsigned char col[8][3]; int mask; } c[8]; static int next = 0;
+static void __attribute__((unused)) bv_rig_colors(const char *dir, const char *charset, const int fb[3], unsigned char col[12][3], int *mask) {
+    static struct { char key[4600]; time_t t; unsigned char col[12][3]; int mask; } c[8]; static int next = 0;
     char key[4600]; snprintf(key, sizeof key, "%s/%s", dir, charset); time_t now = time(NULL); int s = -1;
     for (int i = 0; i < 8; i++) if (!strcmp(c[i].key, key)) s = i;
     if (s < 0 || c[s].t != now) {
         if (s < 0) { s = next; next = (next + 1) & 7; snprintf(c[s].key, sizeof c[s].key, "%s", key); }
-        for (int i = 0; i < 8; i++) { c[s].col[i][0] = (unsigned char)fb[0]; c[s].col[i][1] = (unsigned char)fb[1]; c[s].col[i][2] = (unsigned char)fb[2]; }
+        for (int i = 0; i < 12; i++) { c[s].col[i][0] = (unsigned char)fb[0]; c[s].col[i][1] = (unsigned char)fb[1]; c[s].col[i][2] = (unsigned char)fb[2]; }
         char p[4700]; snprintf(p, sizeof p, "%s/rig_%s.pdl", dir, charset + 4); bv_rig_parse(p, c[s].col, &c[s].mask); c[s].t = now;
+        for (int k = 0; k < 3; k++) { c[s].col[9][k] = 240; c[s].col[10][k] = (unsigned char)(c[s].col[0][k] * 60 / 100); }      /* sclera white, mouth = skin darkened */
     }
     memcpy(col, c[s].col, sizeof c[s].col); if (mask) *mask = c[s].mask;
 }

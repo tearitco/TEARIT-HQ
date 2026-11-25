@@ -111,3 +111,34 @@ EXPECT_OUT | pos | NEGATIVE-mutant-legs-in-phase-reads-pos-so-the-opposite-swing
 RUN | $T/bv_rig_mut | probe | legsign | 2 | 1 | 0
 EXPECT_OUT_LACKS | neg | NEGATIVE-mutant-does-not-pass-the-opposite-swing-check
 CLEAN |
+
+# The face (2026-11-25): eyes (sclera + iris), brows and a mouth are thin boxes on the FRONT of the head, drawn only when the RIG file has an `eyes` row.
+CASE | face
+SCRATCH |
+COPY | &.widgits/board-viewer/ops/bv_rig.h | bv_rig.h
+COPY | &.widgits/board-viewer/ops/bv_rig_op.c | bv_rig_op.c
+RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -o | $T/bv_rig_op | $T/bv_rig_op.c
+EXPECT_EXIT | 0 | face-op-compiles
+RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -DBV_RIG_MUTANT_FACE_BEHIND | -o | $T/bv_rig_mut | $T/bv_rig_op.c
+EXPECT_EXIT | 0 | face-mutant-compiles
+RUN | $T/bv_rig_op | facecheck | 2
+EXPECT_OUT | parts 19 face 5 in_front 5 | south-face-parts-are-in-front-of-the-head
+RUN | $T/bv_rig_op | facecheck | 4
+EXPECT_OUT | parts 19 face 5 in_front 5 | west-face-in-front
+RUN | $T/bv_rig_op | facecheck | 6
+EXPECT_OUT | parts 19 face 5 in_front 5 | east-face-in-front
+RUN | $T/bv_rig_op | facecheck | 8
+EXPECT_OUT | parts 19 face 5 in_front 5 | north-face-in-front
+# no `eyes` row (mask without the face bit): no face boxes, at most 12 parts, and the old 6-box call is unchanged
+RUN | $T/bv_rig_op | parts | 2 | 0 | 0 | 7
+EXPECT_OUT | parts 12 | mask-7-has-hair-sleeves-shoes-and-no-face
+RUN | $T/bv_rig_op | parts | 2 | 0 | 0 | 0
+EXPECT_OUT | parts 6 | mask-0-is-the-old-6-boxes
+RUN | $T/bv_rig_op | parts | 2 | 0 | 0 | 15
+EXPECT_OUT | parts 19 | mask-15-is-19-parts-within-the-max-of-20
+# NEGATIVE: the mutant puts the face on the back of the head
+RUN | $T/bv_rig_mut | facecheck | 2
+EXPECT_OUT | in_front 0 | NEGATIVE-mutant-face-behind-the-head-reads-in_front-0
+RUN | $T/bv_rig_mut | facecheck | 6
+EXPECT_OUT_LACKS | in_front 5 | NEGATIVE-mutant-does-not-pass-the-east-check
+CLEAN |

@@ -14,8 +14,13 @@ static float along(const float *b, int fx, int fz, int hi) {      /* box extent 
 static float cen(const float *b, int fx, int fz) { return (along(b, fx, fz, 0) + along(b, fx, fz, 1)) / 2.f; }
 int main(int argc, char **argv) {
     float o[BV_RIG_MAX][6]; int ci[BV_RIG_MAX];
-    if (argc == 3 && !strcmp(argv[1], "parsefile")) { unsigned char col[8][3] = {{0}}; int mask = 0; int n = bv_rig_parse(argv[2], col, &mask); printf("rows %d mask %d\n", n, mask); return 0; }
+    if (argc == 3 && !strcmp(argv[1], "parsefile")) { unsigned char col[12][3] = {{0}}; int mask = 0; int n = bv_rig_parse(argv[2], col, &mask); printf("rows %d mask %d\n", n, mask); return 0; }
     if (argc >= 6 && !strcmp(argv[1], "parts")) { printf("parts %d\n", bv_rig_boxes_ex(1, atoi(argv[5]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), o, ci)); return 0; }
+    if (argc == 3 && !strcmp(argv[1], "facecheck")) {      /* the face parts (colour index 8 iris, 9 sclera, 10 mouth) must all lie in FRONT of the head box along the facing axis, and there must be 7 of them */
+        int d = atoi(argv[2]); int ci2[BV_RIG_MAX]; float b[BV_RIG_MAX][6]; int n = bv_rig_boxes_ex(1, 15, d, 0, 0, b, ci2); int fx, fz; bv_rig_facing(d, &fx, &fz);
+        float hf = fx ? (fx > 0 ? b[0][3] : -b[0][0]) : (fz > 0 ? b[0][5] : -b[0][2]); int fp = 0, front = 0;
+        for (int i = 6; i < n; i++) if (ci2[i] == 8 || ci2[i] == 9 || ci2[i] == 10) { fp++; float c = fx ? (b[i][0] + b[i][3]) / 2 * fx : (b[i][2] + b[i][5]) / 2 * fz; if (c > hf) front++; }
+        printf("dir %d parts %d face %d in_front %d\n", d, n, fp, front); return 0; }
     if (argc >= 5 && !strcmp(argv[1], "boxes")) {
         int n = bv_rig_boxes_ex(bv_rig_is(argc > 5 ? argv[5] : "rig:asa"), argc > 6 ? atoi(argv[6]) : 0, atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), o, ci);
         printf("boxes %d\n", n);

@@ -1,9 +1,10 @@
-# rig colours from asa.png (char 0, frame 48x48, figure rows 2..45) by rig_from_charset_op; no texture, boxes only
-RIG | head | 138 90 58
-RIG | hair | 192 57 43
-RIG | torso | 21 22 26
-RIG | sleeve | 21 22 26
-RIG | arm | 21 22 26
-RIG | leg | 14 16 20
-RIG | shoe | 14 16 21
-RIG | face | 20 20 30
+# rig colours from Actor1.png (char 0, frame 48x48, figure rows 3..47) by rig_from_charset_op; no texture, boxes only
+RIG | head | 249 193 157
+RIG | hair | 235 133 95
+RIG | torso | 91 26 40
+RIG | sleeve | 64 72 67
+RIG | arm | 64 72 67
+RIG | leg | 90 90 90
+RIG | shoe | 63 37 16
+RIG | face | 137 33 33
+RIG | eyes | 15 208 249

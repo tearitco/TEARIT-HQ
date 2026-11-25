@@ -29,6 +29,22 @@
 typedef struct { double head_end, torso_end, hair_top, hair_side, skin_lo, skin_hi, eye_lo, eye_hi, sleeve_side, shoe, same_dist; int alpha_min, outline_max, shift; int got; } Cfg;
 #define CFG_KEYS 14
 
+/* Profile mode (2026-11-25, chibi sheets): OPTIONAL keys of the same data file. profile_mode 1 finds the face as the first band of skin-hued pixels and anchors the
+ * head on the chin instead of a fixed fraction; a file without these keys keeps the old fixed-fraction behaviour (the harness mutants and the first 51 checks rely on it). */
+typedef struct { int profile; double skin_r_min, skin_g_lo, skin_g_hi, skin_b_lo, skin_b_hi, body_torso, chin_min_px; } Prof;
+static Prof PR;
+static void load_prof(const char *path) {
+    FILE *f = fopen(path, "r"); if (!f) return; char line[256]; memset(&PR, 0, sizeof PR);
+    while (fgets(line, sizeof line, f)) {
+        char a[16], key[64]; double v; if (sscanf(line, " %15[^| ] | %63[^| ] | %lf", a, key, &v) != 3 || strcmp(a, "CONVERT")) continue;
+        if (!strcmp(key, "profile_mode")) PR.profile = (int)v; else if (!strcmp(key, "skin_r_min")) PR.skin_r_min = v; else if (!strcmp(key, "skin_g_lo")) PR.skin_g_lo = v;
+        else if (!strcmp(key, "skin_g_hi")) PR.skin_g_hi = v; else if (!strcmp(key, "skin_b_lo")) PR.skin_b_lo = v; else if (!strcmp(key, "skin_b_hi")) PR.skin_b_hi = v;
+        else if (!strcmp(key, "body_torso_frac")) PR.body_torso = v; else if (!strcmp(key, "chin_min_px")) PR.chin_min_px = v;
+    }
+    fclose(f);
+    if (PR.profile && (PR.skin_r_min <= 0 || PR.skin_g_hi <= PR.skin_g_lo || PR.skin_b_hi <= PR.skin_b_lo || PR.body_torso <= 0 || PR.body_torso >= 1 || PR.chin_min_px < 1)) PR.profile = 0;
+}
+
 static unsigned char *load_png(const char *path, int *w, int *h) {
     FILE *fp = fopen(path, "rb"); if (!fp) return NULL;
     png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
@@ -97,11 +113,13 @@ static int opaque(const unsigned char *p) { return p[3] >= C.alpha_min; }
 static int outline(const unsigned char *p) { return p[0] <= C.outline_max && p[1] <= C.outline_max && p[2] <= C.outline_max; }
 
 /* mode over rows [ya,yb) and columns [xa,xb) that are opaque and not outline; if skip != NULL pixels within same_dist of skip[0] / skip[1] (when non-NULL) are left out */
+static int g_skipskin;      /* profile mode: skin-hued pixels never count as clothing (torso, sleeves, legs) */
+static int skinlike(const unsigned char *p);
 static int region(int ya, int yb, int xa, int xb, const int *skip0, const int *skip1, int out[3]) {
     for (int pass = 0; pass < 2; pass++) {              /* pass 1 lets outline-dark pixels count: a black suit is a colour when nothing else is there */
     acc_reset();
     for (int y = ya; y < yb; y++) for (int x = xa; x < xb; x++) {
-        const unsigned char *p = P(x, y); if (!opaque(p) || (!pass && outline(p))) continue;
+        const unsigned char *p = P(x, y); if (!opaque(p) || (!pass && outline(p))) continue; if (g_skipskin && skinlike(p)) continue;
         int c[3] = { p[0], p[1], p[2] };
         if (skip0 && dist(c, skip0) < C.same_dist) continue;
         if (skip1 && dist(c, skip1) < C.same_dist) continue;
@@ -118,6 +136,27 @@ static void extent(int ya, int yb, int fw, int *x0, int *x1) {   /* opaque colum
     if (*x1 < 0) { *x0 = 0; *x1 = fw - 1; }
 }
 
+/* skin-hued: red dominant and the green / blue ratios to red inside the skin ranges of the data file (hair that is redder or yellower fails the ratios) */
+static int skinlike(const unsigned char *p) {
+    if (!opaque(p) || p[0] < PR.skin_r_min) return 0;
+    double g = (double)p[1] / p[0], b = (double)p[2] / p[0];
+    return g >= PR.skin_g_lo && g <= PR.skin_g_hi && b >= PR.skin_b_lo && b <= PR.skin_b_hi;
+}
+/* the chin: the last row of the band of rows (a gap of one row is allowed) that holds at least chin_min_px skin-hued pixels and has the MOST skin pixels in all, searched in the top 75%
+ * of the figure. The first band is wrong on sprites whose hair highlights are skin-hued (Harold): the face is the biggest band. g_face_top = the first row of that band.
+ * Returns -1 when there is no such band (a sheet without a visible face: the fixed fractions are used). */
+static int g_face_top;
+static int find_chin(int fw, int miny, int maxy) {
+    int limit = miny + (int)((maxy - miny + 1) * 0.75), start = -1, last = -1, gap = 0, sum = 0, best_sum = 0, best_last = -1, best_start = -1;
+    for (int y = miny; y <= limit + 1; y++) {
+        int n = 0; if (y <= limit) for (int x = 0; x < fw; x++) if (skinlike(P(x, y))) n++;
+        if (y <= limit && n >= (int)PR.chin_min_px) { if (start < 0) start = y; last = y; gap = 0; sum += n; continue; }
+        if (start >= 0 && ++gap > 1) { if (sum > best_sum) { best_sum = sum; best_last = last; best_start = start; } start = -1; sum = 0; gap = 0; }
+        else if (start >= 0 && y > limit) { if (sum > best_sum) { best_sum = sum; best_last = last; best_start = start; } start = -1; }
+    }
+    g_face_top = best_start; return best_last;
+}
+
 int main(int argc, char **argv) {
     if (argc < 4 || argc > 5) { fprintf(stderr, "usage: rig_from_charset_op <charset.png> <char_index 0..7> <out_rig.pdl> [convert.pdl]\n"); return 2; }
     char *end; long idx = strtol(argv[2], &end, 10);
@@ -126,6 +165,7 @@ int main(int argc, char **argv) {
     if (argc == 5) snprintf(cfgp, sizeof cfgp, "%s", argv[4]);
     else { char self[4096]; ssize_t n = readlink("/proc/self/exe", self, sizeof self - 1); if (n <= 0) return 5; self[n] = 0; snprintf(cfgp, sizeof cfgp, "%s/../../data/rig_convert.pdl", dirname(self)); }
     if (load_cfg(cfgp, &C)) { fprintf(stderr, "settings missing or incomplete: %s\n", cfgp); return 5; }
+    load_prof(cfgp);
     g_shift = C.shift;
     int w = 0, h = 0; unsigned char *img = load_png(argv[1], &w, &h);
     if (!img) { fprintf(stderr, "cannot read PNG %s\n", argv[1]); return 4; }
@@ -140,6 +180,11 @@ int main(int argc, char **argv) {
     if (maxy < 0) { fprintf(stderr, "no opaque pixel in the chosen block\n"); free(img); return 3; }
     int H = maxy - miny + 1;
     int hy1 = miny + (int)floor(C.head_end * H + 0.5), ty1 = miny + (int)floor(C.torso_end * H + 0.5);
+    int chin = PR.profile ? find_chin(fw, miny, maxy) : -1;
+    if (chin >= 0) {                                     /* profile mode: the head ends under the chin, the rest of the body is torso then legs by body_torso_frac */
+        hy1 = chin + 1;
+        ty1 = hy1 + (int)floor(PR.body_torso * (maxy + 1 - hy1) + 0.5);
+    }
     if (hy1 <= miny) hy1 = miny + 1;
     if (ty1 <= hy1) ty1 = hy1 + 1;
     if (ty1 > maxy) ty1 = maxy;
@@ -149,7 +194,9 @@ int main(int argc, char **argv) {
     int skin[3], hair[3], torso[3], side[3], sleeve[3], arm[3], leg[3], shoe[3], eye[3];
     int hx0, hx1; extent(miny, hy1, fw, &hx0, &hx1); int hw = hx1 - hx0 + 1;
     int sa = miny + (int)floor(C.skin_lo * hh), sb = miny + (int)ceil(C.skin_hi * hh); if (sb <= sa) sb = sa + 1;
-    if (!region(sa, sb, hx0, hx1 + 1, NULL, NULL, skin) && !region(miny, hy1, hx0, hx1 + 1, NULL, NULL, skin)) memcpy(skin, all, sizeof skin);
+    int prof_skin = 0;
+    if (chin >= 0) { acc_reset(); for (int y = g_face_top; y <= chin; y++) for (int x = hx0; x <= hx1; x++) { const unsigned char *p = P(x, y); if (skinlike(p)) acc_add(p[0], p[1], p[2]); } prof_skin = acc_get(skin); }
+    if (!prof_skin && !region(sa, sb, hx0, hx1 + 1, NULL, NULL, skin) && !region(miny, hy1, hx0, hx1 + 1, NULL, NULL, skin)) memcpy(skin, all, sizeof skin);
     /* hair: head top rows and the outer side columns, not skin-like */
     acc_reset();
     int hair_rows = (int)ceil(C.hair_top * hh), side_cols = (int)ceil(C.hair_side * hw);
@@ -160,7 +207,8 @@ int main(int argc, char **argv) {
     }
     int has_hair = acc_get(hair);
     int tx0, tx1; extent(hy1, ty1, fw, &tx0, &tx1); int tw = tx1 - tx0 + 1;
-    if (!region(hy1, ty1, tx0 + tw / 4, tx1 - tw / 4 + 1, NULL, NULL, torso)) memcpy(torso, all, sizeof torso);
+    g_skipskin = prof_skin;
+    if (!region(hy1, ty1, tx0 + tw / 4, tx1 - tw / 4 + 1, prof_skin ? skin : NULL, NULL, torso)) memcpy(torso, prof_skin ? skin : all, sizeof torso);   /* profile mode: a skin-coloured torso only for a bare chest */
     int sc = (int)ceil(C.sleeve_side * tw); if (sc < 1) sc = 1;
     acc_reset();
     for (int y = hy1; y < ty1; y++) for (int x = tx0; x <= tx1; x++) {
@@ -172,9 +220,14 @@ int main(int argc, char **argv) {
     else { memcpy(arm, side, sizeof arm); memcpy(sleeve, side, sizeof sleeve); }
     int lh = maxy + 1 - ty1, sh = (int)ceil(C.shoe * lh); if (sh < 1) sh = 1; if (sh >= lh) sh = lh > 1 ? lh - 1 : 0;
     int lx0, lx1; extent(ty1, maxy + 1, fw, &lx0, &lx1);
-    if (!region(ty1, maxy + 1 - sh, lx0, lx1 + 1, NULL, NULL, leg)) { if (!region(ty1, maxy + 1, lx0, lx1 + 1, NULL, NULL, leg)) memcpy(leg, all, sizeof leg); }
+    if (!region(ty1, maxy + 1 - sh, lx0, lx1 + 1, prof_skin ? skin : NULL, NULL, leg)) { if (!region(ty1, maxy + 1, lx0, lx1 + 1, prof_skin ? skin : NULL, NULL, leg)) memcpy(leg, all, sizeof leg); }
     if (!sh || !region(maxy + 1 - sh, maxy + 1, lx0, lx1 + 1, NULL, NULL, shoe)) memcpy(shoe, leg, sizeof shoe);
     int has_eye = region(miny + (int)floor(C.eye_lo * hh), miny + (int)ceil(C.eye_hi * hh), hx0, hx1 + 1, skin, has_hair ? hair : NULL, eye);
+    int iris[3] = { 40, 30, 30 }, has_iris = 0;               /* profile mode: the iris = the bluest / greenest pixel of the face band (above the chin), else the darkest non-skin one */
+    if (chin >= 0) { int best = 20, dk = 1000; for (int y = (chin - 9 > miny ? chin - 9 : miny); y < chin; y++) for (int x = hx0; x <= hx1; x++) {
+            const unsigned char *p = P(x, y); if (!opaque(p) || skinlike(p) || outline(p)) continue;
+            int sc = (p[2] - p[0] > p[1] - p[0]) ? p[2] - p[0] : p[1] - p[0], lum = p[0] + p[1] + p[2];
+            if (sc > best) { best = sc; iris[0] = p[0]; iris[1] = p[1]; iris[2] = p[2]; has_iris = 1; } else if (!has_iris && lum < dk) { dk = lum; iris[0] = p[0]; iris[1] = p[1]; iris[2] = p[2]; } } }
 
     char tmp[4200]; snprintf(tmp, sizeof tmp, "%s.tmp", argv[3]);
     FILE *o = fopen(tmp, "w"); if (!o) { free(img); return 6; }
@@ -184,6 +237,7 @@ int main(int argc, char **argv) {
     fprintf(o, "RIG | torso | %d %d %d\nRIG | sleeve | %d %d %d\nRIG | arm | %d %d %d\nRIG | leg | %d %d %d\nRIG | shoe | %d %d %d\n",
             torso[0], torso[1], torso[2], sleeve[0], sleeve[1], sleeve[2], arm[0], arm[1], arm[2], leg[0], leg[1], leg[2], shoe[0], shoe[1], shoe[2]);
     if (has_eye) fprintf(o, "RIG | face | %d %d %d\n", eye[0], eye[1], eye[2]);
+    if (chin >= 0) fprintf(o, "RIG | eyes | %d %d %d\n", iris[0], iris[1], iris[2]);
     if (fclose(o) || rename(tmp, argv[3])) { remove(tmp); free(img); return 6; }
     free(img);
     printf("wrote %s\n", argv[3]);

@@ -1,9 +1,10 @@
 # rig colours from Actor2.png (char 1, frame 48x48, figure rows 3..47) by rig_from_charset_op; no texture, boxes only
-RIG | head | 132 136 208
-RIG | hair | 89 81 162
-RIG | torso | 249 193 157
+RIG | head | 249 193 157
+RIG | hair | 132 136 208
+RIG | torso | 146 10 122
 RIG | sleeve | 60 60 60
 RIG | arm | 60 60 60
 RIG | leg | 208 152 2
 RIG | shoe | 55 55 55
 RIG | face | 61 31 122
+RIG | eyes | 60 202 202
