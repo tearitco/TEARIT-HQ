@@ -1379,8 +1379,12 @@ static int p2d_atlas_main(unsigned char *px, int W, int H, const char *style, in
     snprintf(path, sizeof(path), "%s/cells.txt", dd);
     struct stat sb; if (stat(path, &sb) != 0) return 0;
     static unsigned short *slot, *wallv; static unsigned char *dep, *gly; static int fw, fh, tpx, acols, rock, ea, eb, ec;
-    static unsigned char *atlas; static int aw, ah; static time_t mt; static off_t sz;
-    if (!slot || mt != sb.st_mtime || sz != sb.st_size) {
+    static unsigned char *atlas; static int aw, ah; static time_t mt; static off_t sz, mk_sz;
+    /* House marker (owner 2026-10-25): reload when cells.marker size grows. cells.txt mtime and size stay as the fallback for a desk that has no marker yet. A same-second rewrite of the same length used to leave the old tiles up. */
+    char mkp[PATH_BUF]; struct stat msb; off_t mksz = -1;
+    snprintf(mkp, sizeof(mkp), "%s/cells.marker", dd);
+    if (stat(mkp, &msb) == 0) mksz = msb.st_size;
+    if (!slot || mt != sb.st_mtime || sz != sb.st_size || mk_sz != mksz) {
         FILE *f = host_fopen(path, "r"); if (!f) return 0;
         char *line = malloc(256 * 1024); if (!line) { fclose(f); return 0; }
         int w = 0, h = 0, pxn = 24, cols = 16, rslot = 36, in = 0, row = 0; unsigned short *ns = NULL, *nw = NULL; unsigned char *nd = NULL;
@@ -1435,7 +1439,7 @@ static int p2d_atlas_main(unsigned char *px, int W, int H, const char *style, in
         }
         free(slot); free(wallv); free(dep); free(gly); free(atlas);
         slot = ns; wallv = nw; dep = nd; gly = ng; atlas = na; rock = rslot; ea = na_; eb = nb_; ec = nc_;
-        fw = w; fh = h; tpx = pxn; acols = cols; aw = aaw; ah = (int)(asz / (aaw * 4)); mt = sb.st_mtime; sz = sb.st_size;
+        fw = w; fh = h; tpx = pxn; acols = cols; aw = aaw; ah = (int)(asz / (aaw * 4)); mt = sb.st_mtime; sz = sb.st_size; mk_sz = mksz;
     }
     if (!slot || !atlas) return 0;
     /* A page that fits at the atlas size is shown whole. A page wider than the window keeps the tiles at tile_px (the size rpg-space and Teropoly draw), and scrolls. Zoom -1 fits the page. Zoom 0 is that default. */
