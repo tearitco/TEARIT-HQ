@@ -46,6 +46,26 @@ Surface shape: a heightfield is enough. Hills are a few blocks taller. Under the
 
 The ledger is the only authority for a broken or placed block. A desk file is the projection. Follow `02-architecture/NO-GHOST-DATA-THE-LEDGER-IS-THE-AUTHORITY-2026-11-07.md`. A rule is an op called from an event page, not a new branch in `game_core.c`. `vox_op` under the Minecraft-events work already has place, mine, drops, daylight, and sleep (`16.game/MINECRAFT-EVENTS-HANDOFF-FARMING-WATER-MOBS-DAYNIGHT-2026-11-22.md`, case `vox`). Call that, or a thinner sibling, from this book's event pages. Do not invent a second mine.
 
+## POV keys (read 2026-11-25 from bv_menu_input.c)
+
+The numbers are keys, and they are the only way to change the point of view. Do not invent a pitch. Do not press `f`, `r`, or `t` to "get back" to a picture. `f` resets the current mode. `r` and `t` change pitch inside a mode.
+
+| Key | What it writes | What you see |
+|---|---|---|
+| `1` | `camera_mode=1`, `render_mode=1`, pitch 6, pan offsets cleared | First person. The eye is at the anchor, nudged forward so it is not inside the block. |
+| `2` | `camera_mode=2`, same pitch 6, pan cleared | Third person. The eye sits behind and above the anchor. An extra downward tilt (`tp_look_down_deg`) is added so the look is at the body, not over its head. This is the angle of `/home/no/Videos/rmc.mp4`. |
+| `3` | `camera_mode=3`, yaw 180, pitch -90, `cam_pan_y` = `current_z` | Free roam. Here `cam_pan_y` is a height, not a row. Named presets in `board-viewer/tools/camera_presets.pdl` are this mode: `iso-low` is pitch -30, `lowside` is pitch -12, `topdown` is pitch -89. `board_ctl camera <app dir> <preset>` writes one of those. |
+| `4` | `camera_mode=4`, pitch -90, pan set to the selector cell | Bird's eye. Here `cam_pan_x` and `cam_pan_y` are map column and row, not a height. The open board was left in this mode from Earth, which is why page `rmmc-0000` first showed sky. |
+| `0` | flips `render_mode` between 1 and 0 | `0` is the flat RPG Maker tile picture. Entering it forces `view_2d_style=tiles`. It does not pick a 3D angle. |
+
+`7` turns on `maker_view` (RPG Maker tiles drawn in 3D) and does not change the angle. Tab is the side-scroll picture (`render_mode=2`), not one of 1–4.
+
+The video is key `2`. A mode-3 preset can show the field from the side, and it is not the chase camera behind the charset.
+
+On 2026-11-25 the live window was set to the preset `iso-low` with `board_ctl camera` (mode 3, yaw 180, pitch -30, pan 16, 8, 36, z level 0). That was a field check. The reproduction of the video still wants key `2` once the charset body is the anchor.
+
+Reference frames from the video, and the house dump that is not one of them, are in `XO/31.Nov/nov-25/3.rmc-expected/`.
+
 ## The body
 
 Use an RPG Maker charset the house already has (the Actor sheets under the RMMV tileset cache, `#.NNEST_ASSETS`, the same family as `World_A2.png`). The character on the video is the standard blue-tunic walker: three frames of a walk cycle, four directions.
