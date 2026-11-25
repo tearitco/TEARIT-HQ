@@ -1,0 +1,113 @@
+# Box-limb rig (BOOK 16.game/BOX-LIMB-RIG-FOR-WALKING-CHARACTERS-2026-11-25.md). Pure header bv_rig.h + op bv_rig_op; no window, no engine.
+RESULTS | ../results/bv_rig.txt
+ENV | LC_ALL | C
+CASE | rig
+SCRATCH |
+COPY | &.widgits/board-viewer/ops/bv_rig.h | bv_rig.h
+COPY | &.widgits/board-viewer/ops/bv_rig_op.c | bv_rig_op.c
+RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -o | $T/bv_rig_op | $T/bv_rig_op.c
+EXPECT_EXIT | 0 | the-rig-compiles-alone
+RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -DBV_RIG_MUTANT_LEGS_IN_PHASE | -o | $T/bv_rig_mut | $T/bv_rig_op.c
+EXPECT_EXIT | 0 | the-mutant-with-legs-in-phase-compiles
+# six boxes always
+RUN | $T/bv_rig_op | boxes | 2 | 0 | 0
+EXPECT_OUT | boxes 6 | idle-gives-6-boxes
+RUN | $T/bv_rig_op | boxes | 6 | 1 | 1
+EXPECT_OUT | boxes 6 | walk-gives-6-boxes
+RUN | $T/bv_rig_op | boxes | 8 | 3 | 0
+EXPECT_OUT | boxes 6 | jump-gives-6-boxes
+RUN | $T/bv_rig_op | boxes | 4 | 4 | 1
+EXPECT_OUT | boxes 6 | mine-gives-6-boxes
+RUN | $T/bv_rig_op | boxes | 2 | 5 | 0
+EXPECT_OUT | boxes 6 | place-gives-6-boxes
+# height 1.8 +- 0.1
+RUN | $T/bv_rig_op | probe | height | 2 | 0 | 0
+CAPTURE | h
+EXPECT_GE | $h | 1.7 | idle-figure-is-at-least-1.7-tall
+EXPECT_LE | $h | 1.9 | idle-figure-is-at-most-1.9-tall
+# walk: legs move by opposite signs between frame 0 and frame 1, and the two legs are on opposite sides
+RUN | $T/bv_rig_op | probe | legfwd | 2 | 1 | 0
+CAPTURE | f0
+RUN | $T/bv_rig_op | probe | legfwd | 2 | 1 | 1
+CAPTURE | f1
+EXPECT_NE | $f0 | $f1 | walk-frames-0-and-1-differ
+CALC | prod | $f0 | * | $f1
+EXPECT_LE | $prod | -0.001 | walk-leg-offsets-of-frame-0-and-1-have-opposite-signs
+RUN | $T/bv_rig_op | probe | legsign | 2 | 1 | 0
+EXPECT_OUT | neg | the-two-legs-swing-opposite-ways
+# periodic: frame n == frame n+2 (and a different frame is not the same)
+RUN | $T/bv_rig_op | boxes | 2 | 1 | 0
+CAPTURE | a0
+RUN | $T/bv_rig_op | boxes | 2 | 1 | 2
+CAPTURE | a2
+EXPECT_EQ | $a0 | $a2 | walk-is-periodic-frame-0-equals-frame-2
+RUN | $T/bv_rig_op | boxes | 2 | 1 | 1
+CAPTURE | a1
+RUN | $T/bv_rig_op | boxes | 2 | 1 | 3
+CAPTURE | a3
+EXPECT_EQ | $a1 | $a3 | walk-is-periodic-frame-1-equals-frame-3
+EXPECT_NE | $a0 | $a1 | NEGATIVE-frame-0-and-frame-1-are-not-the-same-pose
+# jump lifts the torso
+RUN | $T/bv_rig_op | probe | torsomin | 2 | 0 | 0
+CAPTURE | t0
+RUN | $T/bv_rig_op | probe | torsomin | 2 | 3 | 0
+CAPTURE | t3
+CALC | lift | $t3 | - | $t0
+EXPECT_GE | $lift | 0.1 | jump-raises-the-torso-bottom-by-at-least-0.1-block
+RUN | $T/bv_rig_op | probe | armtop | 2 | 3 | 0
+CAPTURE | at3
+RUN | $T/bv_rig_op | probe | height | 2 | 0 | 0
+CAPTURE | h0
+EXPECT_GE | $at3 | $h0 | jump-arms-are-up-above-the-head-top-of-idle
+# mine: the right arm is forward of the torso (both poses), idle is not
+RUN | $T/bv_rig_op | probe | armfwd | 2 | 4 | 0
+CAPTURE | m0
+EXPECT_GE | $m0 | 0.01 | mine-pose-0-right-arm-is-forward-of-the-torso
+RUN | $T/bv_rig_op | probe | armfwd | 2 | 4 | 1
+CAPTURE | m1
+EXPECT_GE | $m1 | 0.01 | mine-pose-1-right-arm-is-forward-of-the-torso
+RUN | $T/bv_rig_op | probe | armfwd | 2 | 0 | 0
+CAPTURE | m_idle
+EXPECT_LE | $m_idle | 0 | NEGATIVE-idle-right-arm-is-not-forward-of-the-torso
+RUN | $T/bv_rig_op | probe | armfwd | 2 | 5 | 0
+CAPTURE | p0
+EXPECT_GE | $p0 | 0.01 | place-arms-are-forward
+# facing: the lateral axis of the legs is x facing south/north, z facing east/west
+RUN | $T/bv_rig_op | probe | axis | 2 | 0 | 0
+EXPECT_OUT | x | facing-south-the-legs-split-on-x
+RUN | $T/bv_rig_op | probe | axis | 8 | 0 | 0
+EXPECT_OUT | x | facing-north-the-legs-split-on-x
+RUN | $T/bv_rig_op | probe | axis | 6 | 0 | 0
+EXPECT_OUT | z | facing-east-the-legs-split-on-z
+RUN | $T/bv_rig_op | probe | axis | 4 | 0 | 0
+EXPECT_OUT | z | facing-west-the-legs-split-on-z
+RUN | $T/bv_rig_op | boxes | 8 | 4 | 0
+CAPTURE | north
+RUN | $T/bv_rig_op | boxes | 6 | 4 | 0
+CAPTURE | east
+EXPECT_NE | $north | $east | facing-north-and-east-give-different-boxes
+RUN | $T/bv_rig_op | probe | armfwd | 6 | 4 | 0
+CAPTURE | me
+EXPECT_GE | $me | 0.01 | facing-east-the-mine-arm-is-forward-along-x
+RUN | $T/bv_rig_op | probe | armfwd | 8 | 4 | 0
+CAPTURE | mn
+EXPECT_GE | $mn | 0.01 | facing-north-the-mine-arm-is-forward-along-minus-z
+# a non-rig charset draws nothing
+RUN | $T/bv_rig_op | boxes | 2 | 0 | 0 | hero
+EXPECT_OUT | boxes 0 | a-plain-charset-gives-0-boxes
+RUN | $T/bv_rig_op | boxes | 2 | 1 | 0 | rig:
+EXPECT_OUT | boxes 0 | a-bare-rig-prefix-gives-0-boxes
+RUN | $T/bv_rig_op | boxes | 2 | 0 | 0 | rig:asa
+EXPECT_OUT | boxes 6 | POSITIVE-rig-asa-gives-6-boxes
+# the renderer wiring (grep on the big file, EXPECT_HAS reads only 16 KB)
+COPY | &.widgits/board-viewer/ops/bv_render_3d.c | bv_render_3d.c
+RUN | /usr/bin/grep | -q | -F | bv_rig_boxes | bv_render_3d.c
+EXPECT_EXIT | 0 | the-renderer-calls-the-rig
+RUN | /usr/bin/grep | -q | -F | #include "bv_rig.h" | bv_render_3d.c
+EXPECT_EXIT | 0 | the-renderer-includes-the-rig-header
+# NEGATIVE controls: a mutant header with the legs in phase must give the opposite answer, so the checks above can fail
+RUN | $T/bv_rig_mut | probe | legsign | 2 | 1 | 0
+EXPECT_OUT | pos | NEGATIVE-mutant-legs-in-phase-reads-pos-so-the-opposite-swing-check-would-go-red
+RUN | $T/bv_rig_mut | probe | legsign | 2 | 1 | 0
+EXPECT_OUT_LACKS | neg | NEGATIVE-mutant-does-not-pass-the-opposite-swing-check
+CLEAN |

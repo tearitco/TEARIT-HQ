@@ -1,0 +1,4 @@
+# bv_rig.pal — the box-limb rig: six boxes, a walk that swings, a jump that lifts, and a non-rig that draws nothing
+exec ./ops/+x/harness_case_op.+x cases/bv_rig.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/bv_rig.pdl
+halt

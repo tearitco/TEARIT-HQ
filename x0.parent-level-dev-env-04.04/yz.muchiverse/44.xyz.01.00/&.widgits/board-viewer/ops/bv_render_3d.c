@@ -2503,6 +2503,7 @@ static int g_mm_click = 0;      /* 1 while the click being handled landed on the
 static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int text_right_anchor, int text_block_h);
 /* The corner map is sized by the PAINTED page (g_mk.w x g_mk.h) when there is one, not by the 3D glyph board (<= 256). The full frame AND the click's HUD-only repaint (bv_repaint_hud_only)
  * must both call this: the repaint used the glyph-board size, so after any click the map turned square, cropped to the page's top-left and pinned the eye to the right edge
+#include "bv_rig.h"      /* box-limb rig: an event whose charset starts with rig: is six boxes (BOOK 16.game/BOX-LIMB-RIG-FOR-WALKING-CHARACTERS-2026-11-25.md) */
  * (owner 2026-11-16: "scale / crop is weird again"; reproduced with a scratch session, before/after in CENTROID-TEST-AND-LIVE). Pass the flag of the last full frame. */
 static void bv_mm_page_dims(int maker_ground) {
     g_mm_maker = 0;
@@ -4627,6 +4628,13 @@ static int render_one_frame(void) {
         if (g_hero_present && camera_mode != 1) {
             int hm = -1;
             if (hero_phymoji_count > 0)
+                if (bv_rig_is(g_mk.ev[i].name)) {      /* box-limb rig: 6 boxes, colours from rig_<name>.pdl beside the desk, pose from dir / pat and a 140 ms step of the wall clock */
+                    float rb[6][6]; unsigned char rc[5][3]; int rfb[3] = { g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b }; struct timespec rt; clock_gettime(CLOCK_MONOTONIC, &rt);
+                    bv_rig_colors(g_mk.key, g_mk.ev[i].name, rfb, rc);
+                    bv_rig_boxes(1, g_mk.ev[i].dir, g_mk.ev[i].pat, (int)(((long long)rt.tv_sec * 1000 + rt.tv_nsec / 1000000) / 140), rb);
+                    for (int rp = 0; rp < 6; rp++) { const unsigned char *k = rc[rp == 0 ? 0 : rp == 1 ? 1 : rp < 4 ? 2 : 3];
+                        ADDBOX(g_mk.ev[i].x + 0.5f + rb[rp][0], 1.0f + lift + rb[rp][1], g_mk.ev[i].y + 0.5f + rb[rp][2], g_mk.ev[i].x + 0.5f + rb[rp][3], 1.0f + lift + rb[rp][4], g_mk.ev[i].y + 0.5f + rb[rp][5], k[0], k[1], k[2], 0); }
+                } else
                 hm = GPU_ADD_MODEL(g_hero_phymoji, hero_phymoji_count,
                                    hero_phymoji_max_lx, hero_phymoji_max_ly, hero_phymoji_max_lz);
             double hs = 0.9;
