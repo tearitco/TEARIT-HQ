@@ -23,6 +23,14 @@ static int run(char *const av[], char *out, size_t osz) {
     close(p[1]); size_t n = 0; ssize_t k; while (n < osz - 1 && (k = read(p[0], out + n, osz - 1 - n)) > 0) n += (size_t)k; out[n] = 0; close(p[0]);
     int st = 0; waitpid(c, &st, 0); char *e = strchr(out, '\n'); if (e) *e = 0; return WIFEXITED(st) ? WEXITSTATUS(st) : 99; }
 static void result(const char *rp, int code, const char *out) { FILE *f = fopen(rp, "w"); if (f) { if (code == 0) fputs("ok\n", f); else fprintf(f, "refused: %s [exit %d]\n", out[0] ? out : "no reason given", code); fclose(f); } }
+/* facing from the LEDGER, by the rule the projection draws with (rmmc_project_op: the last horizontal MOVE delta or the last FACE row, whichever is later; a jump moves only in y and keeps it): so what she visibly faces is the column mine and place act on */
+static char facing_of(const char *ledger, const char *actor) {
+    FILE *f = fopen(ledger, "r"); if (!f) return 0; char l[256], dir = 0; int px = 0, pz = 0, have = 0;
+    while (fgets(l, sizeof l, f)) { char k[16], a[64], b[32], c[32], d[32];
+        if (sscanf(l, "%15s | %63s | %31s | %31s | %31s", k, a, b, c, d) >= 3 && !strcmp(a, actor)) {
+            if (!strcmp(k, "FACE") && strlen(b) == 1 && strchr("nesw", b[0])) dir = b[0];
+            else if (!strcmp(k, "MOVE")) { int x = atoi(b), z = atoi(d); if (have) { if (x > px) dir = 'e'; else if (x < px) dir = 'w'; else if (z > pz) dir = 's'; else if (z < pz) dir = 'n'; } px = x; pz = z; have = 1; } } }
+    fclose(f); return dir; }
 int main(int argc, char **argv) {
     if (argc < 2 || (!known(argv[1]))) { fprintf(stderr, "rmmc_verb: unknown verb\n"); return 2; }
     const char *v = argv[1], *arg = getenv("GAME_ARG"); if (!arg) arg = "";
@@ -58,7 +66,7 @@ int main(int argc, char **argv) {
     else if (!strcmp(v, "mine") || !strcmp(v, "place")) {   /* the column IN FRONT of her: where (her cell + facing) -> that column's top -> MINE it / PLACE on top of it (one ledger row each, vox_op) */
         char o2[200]; char *wa[] = { vop, "where", data, led, (char *)actor, NULL }; int ax = 0, ay = 0, az = 0; char fc = '-';
         if (run(wa, o2, sizeof o2) != 0 || sscanf(o2, "at=%d,%d,%d", &ax, &ay, &az) != 3) { snprintf(out, sizeof out, "no such actor"); code = 10; }
-        else { char *fp = strstr(o2, "face="); if (fp) fc = fp[5]; if (!strchr("nesw", fc)) fc = 's';
+        else { char *fp = strstr(o2, "face="); if (fp) fc = fp[5]; if (!strchr("nesw", fc)) fc = facing_of(led, actor); if (!strchr("nesw", fc)) fc = 's';
             int fx = ax + (fc == 'e') - (fc == 'w'), fz = az + (fc == 's') - (fc == 'n'); char gx[32], gz[32], o3[200]; snprintf(gx, sizeof gx, "%d", fx); snprintf(gz, sizeof gz, "%d", fz);
             char *g[] = { vop, "ground", data, led, gx, gz, NULL }; int c2 = run(g, o3, sizeof o3); int top = -1; if (c2 == 0) sscanf(o3, "top=%d", &top);
             if (c2 != 0 || top < 0) { snprintf(out, sizeof out, "no ground in front at %d,%d", fx, fz); code = 11; }

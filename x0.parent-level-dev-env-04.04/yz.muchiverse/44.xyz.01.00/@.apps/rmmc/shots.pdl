@@ -1,0 +1,12 @@
+# shots.pdl - the director's shot list for the rmmc video (rmmc_director.+x <house> <this> <outdir>): ONE sequence, run twice: who=harness (an rmmc_verb call, seat harness) and who=human (a key into the window relay, read by rmmc_driver)
+# SHOT | name | who | act | look | frames | gap_ms | caption          (act: verb:<verb> <arg> | key:<decimal> | none; look: asa <dist> <yaw> <pitch> | x y z dist yaw pitch | keep)
+SETUP | spawn 140 100
+SEAT | harness
+SHOT | s01-wide    | harness | none         | asa 11 200 -28 | 3 | 400 | Asa stands on the floating island
+SHOT | s02-walk1   | harness | verb:walk e  | asa 4 215 -16  | 3 | 250 | Walk east: one cell
+SHOT | s03-walk2   | harness | verb:walk e  | asa 4 215 -16  | 3 | 250 | Walk east: another cell
+SHOT | s04-jump    | harness | verb:jump    | asa 4 150 -8   | 4 | 200 | Jump (Space)
+SHOT | s05-front   | harness | none         | asa 3 90 -6    | 2 | 300 | Asa faces east: the block in front is the target
+SHOT | s06-mine    | harness | verb:mine    | asa 5 180 -8   | 4 | 250 | Mine the top block (B)
+SHOT | s07-place   | harness | verb:place   | asa 5 180 -8   | 4 | 250 | Place the hotbar block (G)
+SHOT | s08-wide    | harness | none         | asa 11 200 -28 | 2 | 400 | Back out: the island is still floating

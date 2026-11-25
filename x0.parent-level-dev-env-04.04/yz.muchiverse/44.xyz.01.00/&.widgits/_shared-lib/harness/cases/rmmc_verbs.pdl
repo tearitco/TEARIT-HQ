@@ -49,6 +49,25 @@ EXPECT_OUT | replayed identical | replay of the page-written ledger
 RUN | cmp | $T/led.txt | $T/replay.txt
 EXPECT_EXIT | 0 | and cmp agrees
 CLEAN |
+CASE | mine-and-place-act-on-the-column-she-faces
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+MKDIR | h/@.apps/rmmc/play/world
+ENV | MUCHI_TARGET_ENT | $T/h/@.apps/rmmc/play/world
+ENV | GAME_ARG | 140 100
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/spawn | $T/h | ui
+ENV | GAME_ARG | e
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/walk | $T/h | ui
+ENV | GAME_ARG |
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/place | $T/h | ui
+EXPECT_HAS | led.txt | PLACE \p asa \p dirt \p 142 \p | after walking east the block goes on the column EAST of her (x 142), the way the projection draws her facing (no FACE row was needed)
+EXPECT_LACKS | led.txt | PLACE \p asa \p dirt \p 141 \p | and not on her own column
+ENV | GAME_ARG | n
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/face | $T/h | ui
+ENV | GAME_ARG |
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/place | $T/h | ui
+EXPECT_HAS | led.txt | PLACE \p asa \p dirt \p 141 \p | a FACE row wins over the last step: after FACE n the next block goes on her own x (141), the row north of her, not east
+CLEAN |
 CASE | refusals-write-nothing
 SCRATCH
 INCLUDE | ../fixtures/rmmc_house.pdl
