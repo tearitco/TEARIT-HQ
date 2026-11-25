@@ -62,7 +62,11 @@ The numbers are keys, and they are the only way to change the point of view. Do 
 
 The video is key `2`. A mode-3 preset can show the field from the side, and it is not the chase camera behind the charset.
 
-On 2026-11-25 the live window was set to the preset `iso-low` with `board_ctl camera` (mode 3, yaw 180, pitch -30, pan 16, 8, 36, z level 0). That was a field check. The reproduction of the video still wants key `2` once the charset body is the anchor.
+On 2026-11-25 the live window was set to the preset `iso-low` with `board_ctl camera` (mode 3, yaw 180, pitch -30, pan 16, 8, 36, z level 0, and `current_z=25`). That preset is written for a tall rpg-space desk. On this field the ground is about height 2, so 25 is the sky.
+
+Key `2` was then sent with `board_ctl engine-key`. It did what the key does: `camera_mode=2`, pitch 6, yaw 180, pan offsets 0, z level 0. It did not clear `current_z`, which stayed 25, and the dump was a blue sky (`/tmp/rmmc-pov2.png`). `current_z` was then set to 4 with `board_ctl camset`, mode left at 2. The next dump (`/tmp/rmmc-pov2b.png`, also `XO/31.Nov/nov-25/3.rmc-expected/8-pov2-still-sky.png`) is still sky. The HUD reads `rmmc:rmmc-0000`, pos 8,8,3, `pick voxel`, `ray miss`. The minimap shows the green and tan field. The third-person ray does not hit a column.
+
+So key `2` is on, and the picture is not ready to present as the video. Still missing, in this order: the eye has to stand on a cell the ray can hit, the top face has to be a grass tile and the side a dirt tile (the video's cube, not one tile on every face), the body has to be the RPG Maker charset in front of that camera, and break / place are not verbs yet. Do not record a presentation of the sky frame.
 
 Reference frames from the video, and the house dump that is not one of them, are in `XO/31.Nov/nov-25/3.rmc-expected/`.
 
