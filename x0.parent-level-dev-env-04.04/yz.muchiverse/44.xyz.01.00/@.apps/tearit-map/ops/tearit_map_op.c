@@ -10,7 +10,7 @@
 #include <ctype.h>
 #include <sys/stat.h>
 
-enum { SEA = 40, MOIST = 30, HILL = 70, MOUNT = 85, VER = 1, MAXN = 64 };
+enum { SEA = 40, MOIST = 30, HILL = 70, MOUNT = 85, VER = 1, MAXN = 64, RATION_CAP = 3 };
 
 enum Kind { WATER, GRASS, FOREST, HILLK, MOUNTK, DESERT, RIVER, COAST, BRIDGE };
 
@@ -253,7 +253,7 @@ hut:
 }
 
 static uint32_t rules_hash(void) {
-    return (uint32_t)(VER * 1000000 + SEA * 1000 + MOIST * 100 + HILL * 10 + MOUNT);
+    return (uint32_t)(VER * 1000000 + SEA * 1000 + MOIST * 100 + HILL * 10 + MOUNT + RATION_CAP * 10000000);
 }
 
 static int write_map(const char *path, uint32_t seed, int w, int h) {
@@ -271,6 +271,7 @@ static int write_map(const char *path, uint32_t seed, int w, int h) {
     fprintf(f, "RULE | moist | %d\n", MOIST);
     fprintf(f, "RULE | hill | %d\n", HILL);
     fprintf(f, "RULE | mount | %d\n", MOUNT);
+    fprintf(f, "RULE | ration | %d\n", RATION_CAP);
     fprintf(f, "RULESHASH | %u\n", rules_hash());
     fprintf(f, "NOTE | north | y=0\n");
     fprintf(f, "NOTE | neighbors | 4\n");
@@ -446,6 +447,8 @@ static int ledger_has_dig(const char *ledger, int x, int y) {
 }
 
 static int ledger_has_found(const char *ledger, int x, int y);
+static int ration_left(const char *map, const char *ledger, int *cap_out);
+static int where(const char *ledger, int sx, int sy, int *x, int *y);
 static int desk(const char *in, const char *dir, const char *ledger) {
     FILE *f = fopen(in, "r");
     char line[256], kind[32], path[512];
@@ -476,11 +479,15 @@ static int desk(const char *in, const char *dir, const char *ledger) {
         for (y = 0; y < h; y++) for (x = 0; x < w; x++)
             if (ledger_has_found(ledger, x, y)) g[y * w + x] = 10;
     }
+    int px = sx, py = sy, cap = RATION_CAP, rat = RATION_CAP;
+    if (ledger) where(ledger, sx, sy, &px, &py);
+    rat = ration_left(in, ledger, &cap);
+    if (ledger && rat < cap && g[py * w + px] != 10) g[py * w + px] = 11;
     if (mkdir(dir, 0755) != 0 && errno != EEXIST) { free(g); return 5; }
     snprintf(path, sizeof path, "%s/cells.txt", dir);
     f = fopen(path, "w");
     if (!f) { free(g); return 5; }
-    fprintf(f, "width=%d\nheight=%d\ntile_px=4\natlas_cols=1\natlas_tiles=11\ncells\n", w, h);
+    fprintf(f, "width=%d\nheight=%d\ntile_px=4\natlas_cols=1\natlas_tiles=12\ncells\n", w, h);
     for (y = 0; y < h; y++) {
         for (x = 0; x < w; x++) fprintf(f, "%s%d,0", x ? " " : "", g[y * w + x]);
         fputc('\n', f);
@@ -489,11 +496,11 @@ static int desk(const char *in, const char *dir, const char *ledger) {
     snprintf(path, sizeof path, "%s/cells.rgba", dir);
     f = fopen(path, "w");
     if (!f) { free(g); return 5; }
-    for (i = 0; i < 11; i++) {
+    for (i = 0; i < 12; i++) {
         int pxs;
-        unsigned char r = i < 9 ? rgb[i][0] : (i == 9 ? 180 : 240);
-        unsigned char gg = i < 9 ? rgb[i][1] : (i == 9 ? 40 : 200);
-        unsigned char b = i < 9 ? rgb[i][2] : (i == 9 ? 200 : 40);
+        unsigned char r = i < 9 ? rgb[i][0] : (i == 9 ? 180 : i == 10 ? 240 : 90);
+        unsigned char gg = i < 9 ? rgb[i][1] : (i == 9 ? 40 : i == 10 ? 200 : 40);
+        unsigned char b = i < 9 ? rgb[i][2] : (i == 9 ? 200 : i == 10 ? 40 : 30);
         for (pxs = 0; pxs < 16; pxs++) {
             fputc(r, f); fputc(gg, f); fputc(b, f); fputc(255, f);
         }
@@ -505,7 +512,7 @@ static int desk(const char *in, const char *dir, const char *ledger) {
     for (y = 0; y < h; y++) {
         for (x = 0; x < w; x++) {
             int k = g[y * w + x];
-            fputc(k == 9 ? '*' : k == 10 ? 'C' : glyph[k], f);
+            fputc(k == 9 ? '*' : k == 10 ? 'C' : k == 11 ? '@' : glyph[k], f);
         }
         fputc('\n', f);
     }
@@ -518,7 +525,13 @@ static int desk(const char *in, const char *dir, const char *ledger) {
     snprintf(path, sizeof path, "%s/events.txt", dir);
     f = fopen(path, "w");
     if (!f) { free(g); return 5; }
-    fprintf(f, "%d %d 240 220 80 block 0 2 1\n", sx, sy);
+    {
+        int rr, gg, bb;
+        rr = 70 + (170 * rat) / (cap > 0 ? cap : 1);
+        gg = 70 + (150 * rat) / (cap > 0 ? cap : 1);
+        bb = 40 + (40 * rat) / (cap > 0 ? cap : 1);
+        fprintf(f, "%d %d %d %d %d block 0 2 1\n", px, py, rr, gg, bb);
+    }
     fprintf(f, "%d %d 180 80 200 block 0 2 1\n", mx, my);
     fclose(f);
     snprintf(path, sizeof path, "%s/map.ppm", dir);
@@ -687,6 +700,57 @@ static int found_op(const char *map, const char *ledger) {
     return 0;
 }
 
+static int ration_cap_of(const char *map) {
+    FILE *f = fopen(map, "r");
+    char line[256];
+    int n = RATION_CAP, v;
+    if (!f) return n;
+    while (fgets(line, sizeof line, f)) {
+        if (sscanf(line, "RULE | ration | %d", &v) == 1 && v > 0 && v < 100) n = v;
+    }
+    fclose(f);
+    return n;
+}
+
+static int ration_left(const char *map, const char *ledger, int *cap_out) {
+    FILE *f;
+    char line[256];
+    int cap = ration_cap_of(map), eat = 0, sleep = 0, n;
+    if (cap_out) *cap_out = cap;
+    if (!ledger) return cap;
+    f = fopen(ledger, "r");
+    if (!f) return cap;
+    while (fgets(line, sizeof line, f)) {
+        if (!strncmp(line, "EAT |", 5)) eat++;
+        else if (!strncmp(line, "SLEEP |", 7)) sleep++;
+    }
+    fclose(f);
+    n = cap - eat + sleep;
+    if (n < 0) n = 0;
+    if (n > cap) n = cap;
+    return n;
+}
+
+static int body_op(const char *map, const char *ledger, int eat) {
+    int *g, w, h, sx, sy, x, y, rc, left, cap = 0;
+    FILE *f;
+    rc = load_map(map, &g, &w, &h, &sx, &sy);
+    if (rc) return rc;
+    where(ledger, sx, sy, &x, &y);
+    if (!land(g[y * w + x])) { free(g); printf("fail water\n"); return 4; }
+    left = ration_left(map, ledger, &cap);
+    if (eat && left <= 0) { free(g); printf("fail ration\n"); return 4; }
+    if (!eat && left >= cap) { free(g); printf("fail rested\n"); return 4; }
+    f = fopen(ledger, "a");
+    if (!f) { free(g); return 5; }
+    fprintf(f, "%s | %d | %d\n", eat ? "EAT" : "SLEEP", x, y);
+    fclose(f);
+    left = ration_left(map, ledger, &cap);
+    printf("%s=%d,%d ration=%d cap=%d\n", eat ? "ate" : "slept", x, y, left, cap);
+    free(g);
+    return 0;
+}
+
 static int dig_op(const char *map, const char *ledger) {
     int *g, w, h, sx, sy, x, y, mx, my, rc;
     FILE *f;
@@ -729,5 +793,7 @@ int main(int argc, char **argv) {
     if (!strcmp(argv[1], "approach") && argc == 4) return approach_mineral(argv[2], argv[3]);
     if (!strcmp(argv[1], "dig") && argc == 4) return dig_op(argv[2], argv[3]);
     if (!strcmp(argv[1], "found") && argc == 4) return found_op(argv[2], argv[3]);
+    if (!strcmp(argv[1], "eat") && argc == 4) return body_op(argv[2], argv[3], 1);
+    if (!strcmp(argv[1], "sleep") && argc == 4) return body_op(argv[2], argv[3], 0);
     return 2;
 }

@@ -86,3 +86,34 @@ RUN | $T/tearit_map_op.+x | found | $T/a.txt | $T/city2.txt
 EXPECT_EXIT | 0 | replay the city
 RUN | cmp | -s | $T/city.txt | $T/city2.txt
 EXPECT_EXIT | 0 | same city row
+RUN | $T/tearit_map_op.+x | sleep | $T/a.txt | $T/body.txt
+EXPECT_EXIT | 4 | sleep at a full ration writes nothing
+RUN | $T/tearit_map_op.+x | eat | $T/a.txt | $T/body.txt
+EXPECT_EXIT | 0 | one meal
+EXPECT_OUT | ration=2 | one ration was spent
+RUN | cp | $T/body.txt | $T/body.keep
+EXPECT_EXIT | 0 | ledger saved
+RUN | $T/tearit_map_op.+x | eat | $T/a.txt | $T/body.txt
+EXPECT_EXIT | 0 | second meal
+RUN | $T/tearit_map_op.+x | eat | $T/a.txt | $T/body.txt
+EXPECT_EXIT | 0 | third meal
+EXPECT_OUT | ration=0 | the pack is empty
+RUN | cp | $T/body.txt | $T/body.empty
+EXPECT_EXIT | 0 | empty ledger saved
+RUN | $T/tearit_map_op.+x | eat | $T/a.txt | $T/body.txt
+EXPECT_EXIT | 4 | a fourth meal is refused
+RUN | cmp | -s | $T/body.txt | $T/body.empty
+EXPECT_EXIT | 0 | a refused meal writes nothing
+RUN | $T/tearit_map_op.+x | sleep | $T/a.txt | $T/body.txt
+EXPECT_EXIT | 0 | sleep restores one
+EXPECT_OUT | ration=1 | one ration came back
+RUN | $T/tearit_map_op.+x | desk | $T/a.txt | $T/body-desk | $T/body.txt
+EXPECT_EXIT | 0 | desk shows the body
+RUN | $T/tearit_map_op.+x | desk | $T/a.txt | $T/body-full
+EXPECT_EXIT | 0 | desk at a full ration
+RUN | cmp | -s | $T/body-desk/events.txt | $T/body-full/events.txt
+EXPECT_EXIT | 1 | a spent ration changes the pawn
+RUN | $T/tearit_map_op.+x | gen | 1 | 32 | 32 | $T/wide.txt
+EXPECT_EXIT | 0 | a 32 map writes
+RUN | $T/tearit_map_op.+x | check | $T/wide.txt
+EXPECT_EXIT | 0 | the 32 map passes check
