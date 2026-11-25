@@ -45,3 +45,12 @@ RULE | fall_max | 3
 RULE | water_max_depth | 1
 RULE | jump_height | 1
 RULE | step_up_wade | 2
+# crafting (2026-11-25): a station block must be within craft_reach; each craft is one turn
+RULE | craft_reach | 2
+RULE | turns_craft | 1
+# RECIPE | name | out item | out n | in1 | n1 | in2 | n2 | station (- = none)      the out item of a recipe is what the hotbar slot picks: pick the item you want, press C
+RECIPE | planks | planks | 4 | wood_side | 1 | - | 0 | -
+RECIPE | table | craft_table | 1 | planks | 4 | - | 0 | -
+RECIPE | pickaxe | pick | 1 | planks | 3 | - | 0 | craft_table
+RECIPE | axe | axe | 1 | planks | 3 | - | 0 | craft_table
+RECIPE | shovel | shovel | 1 | planks | 2 | - | 0 | craft_table

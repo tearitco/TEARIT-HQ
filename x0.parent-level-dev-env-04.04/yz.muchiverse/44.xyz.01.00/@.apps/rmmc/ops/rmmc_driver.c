@@ -57,7 +57,7 @@ static int chrome_feed(char *fb, size_t cap, const char *book, const char *actor
     snprintf(p, sizeof p, "%.4000s/play/pick.txt", book); { FILE *f = fopen(p, "r"); if (f) { if (fgets(pick, sizeof pick, f)) pick[strcspn(pick, "\r\n")] = 0; fclose(f); } }
     n += (size_t)snprintf(fb + n, cap - n, "gm_on=1\ngm_title=rmmc\ngmt_0_text=%s: %s\ngmt_1_text=seat %s | %s\ngm_nt=2\ngm_nb=0\ngm_ne=0\ngm_nl=0\n", actor, where, seatn, msg);
     n += (size_t)snprintf(fb + n, cap - n, "side_pal=\nside_left=1\nparty_0_label=> %s\nparty_0_id=rmmc_%s\nparty_0_cls=active\nn_party=1\ncoins=0\nnick_line=%s the builder\nstat_line=%s\nstat_line2=seat %s\n", actor, actor, actor, where, seatn);
-    int k = 0; char slots[2400] = ""; size_t sn = 0;
+    int k = 0; char slots[12000] = ""; size_t sn = 0;
     snprintf(p, sizeof p, "%.4000s/hotbar.pdl", book); FILE *f = fopen(p, "r");
     while (f && fgets(line, sizeof line, f)) {
         char a[16], item[64], label[64], spr[128] = ""; int nf = sscanf(line, " %15[^| ] | %63[^| ] | %63[^|\n] | %127[^|\n]", a, item, label, spr); if (nf < 3 || strcmp(a, "SLOT")) continue;
@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
                 int rc = rmmc_play_verb(house, book, KV[kv].verb, KV[kv].arg, "human", msg, sizeof msg); if (rc && !first_refusal) first_refusal = rc; last_key = now_ms(); idle_pending = 1; }
             fclose(f); }
         if (last_key > last_feed || now_ms() - last_feed >= 2000) { last_feed = now_ms(); char o2[300]; char *av[] = { vop, "where", data, led, (char *)actor, NULL }; run_out(av, o2, sizeof o2); snprintf(where, sizeof where, "%s", o2[0] ? o2 : "not spawned"); char o3[100]; char *a3[] = { vop, "seat", data, led, (char *)actor, NULL }; run_out(a3, o3, sizeof o3); snprintf(seatn, sizeof seatn, "%s", strncmp(o3, "seat=", 5) ? "harness" : o3 + 5);
-        if (feed) { char fb[4096]; int n = chrome_feed(fb, sizeof fb, book, actor, where, seatn, msg); put_if_changed(feed, fb, (size_t)n); } }
+        if (feed) { char fb[16384]; int n = chrome_feed(fb, sizeof fb, book, actor, where, seatn, msg); put_if_changed(feed, fb, (size_t)n); } }
         if (once) return first_refusal;
         if (idle_pending && now_ms() - last_key >= idle_ms) { char o2[200]; char *av[] = { pop, "project", seed, desk, led, pose, hm, "--idle", "--no-marker", NULL }; run_out(av, o2, sizeof o2); idle_pending = 0; }
         if (stop_ || (owner > 0 && owner_gone(owner))) return 0;

@@ -87,6 +87,38 @@ EXPECT_HAS | h/@.apps/rmmc/play/result.txt | ok | with the pickaxe picked the sa
 EXPECT_HAS | led.txt | DAMAGE \p asa \p pick \p 100 | the swing is a pick swing on the stone column west of her
 EXPECT_HAS | led.txt | GIVE \p asa \p pick \p 1 \p hotbar | the creative hotbar gave the tool first, as a row
 CLEAN |
+CASE | craft-needs-the-inputs-and-a-table-within-reach
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+MKDIR | h/@.apps/rmmc/play/world
+ENV | MUCHI_TARGET_ENT | $T/h/@.apps/rmmc/play/world
+ENV | GAME_ARG | 140 100
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/spawn | $T/h | ui
+ENV | GAME_ARG | e
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/walk | $T/h | ui
+ENV | GAME_ARG |
+WRITE | h/@.apps/rmmc/play/pick.txt | planks\n
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/craft | $T/h | ui
+EXPECT_HAS | h/@.apps/rmmc/play/result.txt | refused | with no log in the bag the planks cannot be crafted
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | wood_side | 1 | harness_log
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/craft | $T/h | ui
+EXPECT_HAS | h/@.apps/rmmc/play/result.txt | ok | one log crafts planks (no station needed)
+EXPECT_HAS | led.txt | CRAFT \p asa \p planks \p planks \p 4 | the CRAFT row names the recipe and its output
+WRITE | h/@.apps/rmmc/play/pick.txt | pick\n
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/craft | $T/h | ui
+EXPECT_HAS | h/@.apps/rmmc/play/result.txt | refused | the pickaxe needs a crafting table within reach
+EXPECT_LACKS | led.txt | CRAFT \p asa \p pickaxe | and nothing is written
+WRITE | h/@.apps/rmmc/play/pick.txt | craft_table\n
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/place | $T/h | ui
+EXPECT_HAS | h/@.apps/rmmc/play/result.txt | ok | the place page accepts the table
+EXPECT_HAS | led.txt | PLACE \p asa \p craft_table | the table is placed in front of her
+WRITE | h/@.apps/rmmc/play/pick.txt | pick\n
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/craft | $T/h | ui
+EXPECT_HAS | h/@.apps/rmmc/play/result.txt | ok | with the table beside her the pickaxe is crafted
+EXPECT_HAS | led.txt | CRAFT \p asa \p pickaxe \p pick \p 1 | the row names the recipe and the tool
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | verify | $T/h/@.apps/rmmc/vox | $T/led.txt
+EXPECT_OUT | verified | the ledger with CRAFT rows replays byte for byte
+CLEAN |
 CASE | refusals-write-nothing
 SCRATCH
 INCLUDE | ../fixtures/rmmc_house.pdl

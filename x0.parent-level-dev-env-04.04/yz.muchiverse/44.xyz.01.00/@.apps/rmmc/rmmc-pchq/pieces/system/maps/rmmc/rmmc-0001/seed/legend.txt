@@ -43,4 +43,7 @@ SLOT | 10 | wood_side | ITEMS/mcl_core/textures/default_tree.png
 SLOT | 11 | wood_top | ITEMS/mcl_core/textures/default_tree_top.png
 SLOT | 12 | leaves | ITEMS/mcl_core/textures/default_leaves.png
 SLOT | 13 | gravel | ITEMS/mcl_core/textures/default_gravel.png
+SLOT | 14 | sandstone | ITEMS/mcl_core/textures/mcl_core_sandstone_normal.png
+SLOT | 15 | planks | ITEMS/mcl_core/textures/default_wood.png
+SLOT | 16 | craft_table | ITEMS/mcl_crafting_table/textures/crafting_workbench_top.png
 SLOT | rock_slot | stone | blocks hung under the island

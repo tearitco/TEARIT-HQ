@@ -28,7 +28,7 @@ EXPECT_EXIT | 0 | the-biome-op-paints-desk-A
 EXPECT_OUT | land=17460 | the-painted-island-keeps-17460-land-cells
 RUN | $T/biome.+x | $T/house/@.apps/rmmc/biomes.pdl | $T/b/rmmc/desk
 EXPECT_EXIT | 0 | the-biome-op-paints-desk-B
-EXPECT_OUT | from png 13 | all-13-tiles-come-from-the-mineclonia-textures-none-is-a-flat-fallback
+EXPECT_OUT | from png 16 | all-16-tiles-come-from-the-mineclonia-textures-none-is-a-flat-fallback
 SUMTREE | hA | a
 SUMTREE | hB | b
 EXPECT_EQ | $hA | $hB | same-input-twice-gives-identical-bytes
@@ -39,7 +39,7 @@ EXPECT_OUT_IS | 0 | events-txt-is-empty
 RUN | /usr/bin/grep | -c | tile_px=16 | $T/a/rmmc/desk/cells.txt
 EXPECT_OUT_IS | 1 | the-atlas-is-16px-blocks
 RUN | /usr/bin/grep | -c | ^SLOT | $T/a/rmmc/desk/legend.txt
-EXPECT_OUT_IS | 14 | the-legend-lists-13-slots-and-the-rock-slot
+EXPECT_OUT_IS | 17 | the-legend-lists-16-slots-and-the-rock-slot
 
 CASE | checks-on-the-painted-desk
 RUN | $T/biome.+x | check | $T/house/@.apps/rmmc/biomes.pdl | $T/a/rmmc/desk | $T/src | outline_diff

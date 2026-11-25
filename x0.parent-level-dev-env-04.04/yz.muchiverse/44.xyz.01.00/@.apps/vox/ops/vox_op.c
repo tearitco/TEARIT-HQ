@@ -9,6 +9,7 @@
  *   place <actor> <item> <x> <y> <z>     PLACE row (removes one item from the bag) + TURN
  *   wait <n>                             TURN row (a manual turn, n turns)         sleep <actor>   SLEEP + SPAWNPOINT + TURN skipping to the wake minute
  *   eat <actor> <item>                   EAT row (removes one food item from the bag, lowers hunger by RULE food_<item>) + TURN; refused: not food/none in bag (16), hunger 0 (23)
+ *   craft <actor> <recipe>               CRAFT row: RECIPE rows of rules.pdl (name out outn in1 n1 in2 n2 station): inputs leave the bag, the output enters it, a station block (craft_table) must be within RULE craft_reach; refused 10 unknown actor, 16 no such recipe or inputs missing, 20 no station near; needs RULE turns_craft and craft_reach
  *   walk <actor> <n|e|s|w>               MOVE one column on, resolving the target height from the terrain (highest solid + 1): refused 11 off the map or over no ground, 18 for a step up above RULE step_up, a fall above fall_max, water deeper than water_max_depth (D137)
  *   face <actor> <n|e|s|w>               FACE row (a turn on the spot; no cell change, no turn counted)      jump <actor>   two MOVE rows (up RULE jump_height, back down) in ONE write; 15 no ground under the feet, 18 no room
  *   seat <actor> <human|harness>         SEAT row: who drives the actor (a row, never a file); `seat <actor>` prints seat=human|harness (no row = harness)
@@ -50,6 +51,7 @@ typedef struct { Actor a[MAXA]; int na; Cell c[MAXC]; int nc; Dmg d[MAXC]; int n
 
 static FILE *OUT; /* stdout, or /dev/null while verify and replay re-run verbs */
 static Blk BL[MAXB]; static int nb; static Rule RU[MAXR]; static int nr; static Rule TL[MAXT]; static int nt;
+typedef struct { char k[NM], out[NM], i1[NM], i2[NM], st[NM]; int on, n1, n2; } Rcp; static Rcp RC[16]; static int nrc;   /* RECIPE rows of rules.pdl: name out outn in1 n1 in2 n2 station (- = none) */
 static Rule DL[MAXD]; static int ndl; static Box BX[MAXX]; static int nx;
 typedef struct { char kind[NM]; int slot, r, g, b; } Pic; static Pic PC[MAXB]; static int npc; static int PL[3] = { 255, 255, 0 };
 static int SH_PIT[3], SH_RAISE[3], has_pit, has_raise;   /* SHADE rows of blocks.pdl (2D depth cue of map.png only); absent row = no cue */
@@ -97,6 +99,7 @@ static int load_data(const char *dir) {
     while (fgets(l, sizeof l, fp)) { int n = split(l, f, 16);
         if (n >= 3 && !strcmp(f[0], "RULE") && nr < MAXR) { snprintf(RU[nr].k, NM, "%s", f[1]); RU[nr++].v = atoi(f[2]); }
         else if (n >= 3 && !strcmp(f[0], "TOOL") && nt < MAXT) { snprintf(TL[nt].k, NM, "%s", f[1]); TL[nt++].v = atoi(f[2]); }
+        else if (n >= 9 && !strcmp(f[0], "RECIPE") && nrc < 16) { Rcp *c = &RC[nrc++]; snprintf(c->k, NM, "%s", f[1]); snprintf(c->out, NM, "%s", f[2]); c->on = atoi(f[3]); snprintf(c->i1, NM, "%s", f[4]); c->n1 = atoi(f[5]); snprintf(c->i2, NM, "%s", f[6]); c->n2 = atoi(f[7]); snprintf(c->st, NM, "%s", f[8]); }
         else if (n >= 3 && !strcmp(f[0], "DAYLIGHT") && ndl < MAXD) { snprintf(DL[ndl].k, NM, "%s", f[1]); DL[ndl++].v = atoi(f[2]); } }
     fclose(fp);
     snprintf(p, sizeof p, "%s/blocks.pdl", dir);
@@ -121,6 +124,7 @@ static int load_data(const char *dir) {
 }
 static int R(const char *k) { for (int i = 0; i < nr; i++) if (!strcmp(RU[i].k, k)) return RU[i].v; fprintf(stderr, "missing rule %s\n", k); exit(9); }
 static Blk *blk(const char *kind) { for (int i = 0; i < nb; i++) if (!strcmp(BL[i].kind, kind)) return &BL[i]; return NULL; }
+static Rcp *rcp(const char *k) { for (int i = 0; i < nrc; i++) if (!strcmp(RC[i].k, k)) return &RC[i]; return NULL; }
 static int tool_power(const char *t) { for (int i = 0; i < nt; i++) if (!strcmp(TL[i].k, t)) return TL[i].v; fprintf(stderr, "missing tool %s\n", t); exit(9); }
 
 static Actor *actor(W *w, const char *n, int make) {
@@ -166,6 +170,7 @@ static void fold(W *w, FILE *L) {
         else if (n >= 4 && !strcmp(f[0], "DROP")) { Actor *a = actor(w, f[1], 1); int *c = a ? bag(a, f[2], 1) : NULL; if (c) *c += atoi(f[3]); }
         else if (n >= 6 && !strcmp(f[0], "PLACE")) { Actor *a = actor(w, f[1], 1); int *c = a ? bag(a, f[2], 0) : NULL; if (c) *c -= 1;
             set_cell(w, atoi(f[3]), atoi(f[4]), atoi(f[5]), f[2]); int *p = dmg_at(w, atoi(f[3]), atoi(f[4]), atoi(f[5]), 0); if (p) *p = 0; }
+        else if (n >= 5 && !strcmp(f[0], "CRAFT")) { Actor *a = actor(w, f[1], 1); Rcp *r = rcp(f[2]); if (a && r) { int *c = bag(a, r->i1, 0); if (c) *c -= r->n1; if (strcmp(r->i2, "-")) { c = bag(a, r->i2, 0); if (c) *c -= r->n2; } c = bag(a, r->out, 1); if (c) *c += r->on; } }
         else if (n >= 4 && !strcmp(f[0], "EAT")) { Actor *a = actor(w, f[1], 1); int *c = a ? bag(a, f[2], 0) : NULL; if (c) *c -= 1;
             if (a) { a->hunger -= atoi(f[3]); if (a->hunger < 0) a->hunger = 0; } }
         else if (n >= 3 && !strcmp(f[0], "TURN")) { int t = atoi(f[1]), hpt = R("hunger_per_turn"), hmax = R("hunger_max");
@@ -313,6 +318,19 @@ static int v_reset(W *w, FILE *L, const char *an) {
     char o[512]; snprintf(o, sizeof o, "RESET | %s | spawn\n", an); adv(o, w->turn, tm, "move"); commit(L, o); fprintf(OUT, "at=%d,%d,%d\n", a->sx, a->sy, a->sz); return 0;
 }
 /* intent dispatch shared by replay and verify: derived rows (MINE DROP DAY SPAWNPOINT, TURN other than wait) are regenerated, never replayed */
+/* craft: one RECIPE of rules.pdl (inputs from the bag, output into the bag, a station block such as craft_table within RULE craft_reach); the row is CRAFT|actor|recipe|out|n, the fold looks the inputs up again */
+static int v_craft(W *w, FILE *L, const char *an, const char *rc) {
+    int tm = R("turns_craft"), reach = R("craft_reach"); if (!word_ok(an) || !word_ok(rc)) return 2;
+    Actor *a = actor(w, an, 0); if (!a || !a->has) { fprintf(stderr, "refused: unknown actor\n"); return 10; }
+    Rcp *r = rcp(rc); if (!r) { fprintf(stderr, "refused: no such recipe\n"); return 16; }
+    if (strcmp(r->st, "-")) { int found = 0;
+        for (int dx = -reach; dx <= reach && !found; dx++) for (int dy = -reach; dy <= reach && !found; dy++) for (int dz = -reach; dz <= reach && !found; dz++) {
+            int x = a->x + dx, y = a->y + dy, z = a->z + dz; if (inb(x, y, z) && !strcmp(kind_at(w, x, y, z), r->st) && in_reach(a, x, y, z, reach)) found = 1; }
+        if (!found) { fprintf(stderr, "refused: no %s near\n", r->st); return 20; } }
+    int *c1 = bag(a, r->i1, 0); if (!c1 || *c1 < r->n1) { fprintf(stderr, "refused: need %d %s\n", r->n1, r->i1); return 16; }
+    if (strcmp(r->i2, "-")) { int *c2 = bag(a, r->i2, 0); if (!c2 || *c2 < r->n2) { fprintf(stderr, "refused: need %d %s\n", r->n2, r->i2); return 16; } }
+    char o[512]; snprintf(o, sizeof o, "CRAFT | %s | %s | %s | %d\n", an, rc, r->out, r->on); adv(o, w->turn, tm, "craft"); commit(L, o); fprintf(OUT, "crafted=%s n=%d\n", r->out, r->on); return 0;
+}
 static int intent(FILE *dst, const char *line) {
     char l[512], *f[10]; snprintf(l, sizeof l, "%s", line); int n = split(l, f, 10); W w; fold(&w, dst); int r = 0;
     if (n >= 5 && !strcmp(f[0], "GIVE")) r = v_give(&w, dst, f[1], f[2], atoi(f[3]), f[4]);
@@ -325,11 +343,12 @@ static int intent(FILE *dst, const char *line) {
     else if (n >= 3 && !strcmp(f[0], "TURN") && !strcmp(f[2], "wait")) { int k = atoi(f[1]) - w.turn; r = v_wait(&w, dst, k); }
     else if (n >= 6 && !strcmp(f[0], "SLEEP")) r = v_sleep(&w, dst, f[1]);
     else if (n >= 4 && !strcmp(f[0], "EAT")) r = v_eat(&w, dst, f[1], f[2]);
+    else if (n >= 5 && !strcmp(f[0], "CRAFT")) r = v_craft(&w, dst, f[1], f[2]);
     return r;
 }
 static int is_intent(const char *s) {
     char l[512], *f[10]; snprintf(l, sizeof l, "%s", s); int n = split(l, f, 10);
-    return n >= 3 && (!strcmp(f[0], "GIVE") || !strcmp(f[0], "MOVE") || !strcmp(f[0], "FACE") || !strcmp(f[0], "RESET") || !strcmp(f[0], "SEAT") || !strcmp(f[0], "DAMAGE") || !strcmp(f[0], "PLACE") || !strcmp(f[0], "SLEEP") || !strcmp(f[0], "EAT") || (!strcmp(f[0], "TURN") && !strcmp(f[2], "wait")));
+    return n >= 3 && (!strcmp(f[0], "GIVE") || !strcmp(f[0], "MOVE") || !strcmp(f[0], "FACE") || !strcmp(f[0], "RESET") || !strcmp(f[0], "SEAT") || !strcmp(f[0], "DAMAGE") || !strcmp(f[0], "PLACE") || !strcmp(f[0], "SLEEP") || !strcmp(f[0], "EAT") || !strcmp(f[0], "CRAFT") || (!strcmp(f[0], "TURN") && !strcmp(f[2], "wait")));
 }
 static int is_derived(const char *s) {
     char l[512], *f[10]; snprintf(l, sizeof l, "%s", s); int n = split(l, f, 10);
@@ -493,7 +512,7 @@ int main(int argc, char **argv) {
             if (!strncmp(o, "desk=", 5)) op.desk = o + 5; else if (!strncmp(o, "feed=", 5)) op.feed = o + 5; else if (!strncmp(o, "png=", 4)) op.png = o[4] ? o + 4 : NULL; else if (!strncmp(o, "self=", 5)) op.self = o + 5; else av[k++] = o; }
         ac = k > 2 ? 2 : k; }
     else while (ac > 0 && strchr(av[ac - 1], (int)'=')) { char *o = av[ac - 1]; if (!strncmp(o, "desk=", 5)) op.desk = o + 5; else if (!strncmp(o, "feed=", 5)) op.feed = o + 5; else if (!strncmp(o, "png=", 4)) op.png = o[4] ? o + 4 : NULL; else if (!strncmp(o, "self=", 5)) op.self = o + 5; else break; ac--; }
-    int mut = !strcmp(v, "give") || !strcmp(v, "move") || !strcmp(v, "mine") || !strcmp(v, "place") || !strcmp(v, "wait") || !strcmp(v, "sleep") || !strcmp(v, "eat") || !strcmp(v, "act") || !strcmp(v, "walk") || !strcmp(v, "face") || !strcmp(v, "jump") || !strcmp(v, "reset") || (!strcmp(v, "seat") && argc == 6);
+    int mut = !strcmp(v, "give") || !strcmp(v, "move") || !strcmp(v, "mine") || !strcmp(v, "place") || !strcmp(v, "wait") || !strcmp(v, "sleep") || !strcmp(v, "craft") || !strcmp(v, "eat") || !strcmp(v, "act") || !strcmp(v, "walk") || !strcmp(v, "face") || !strcmp(v, "jump") || !strcmp(v, "reset") || (!strcmp(v, "seat") && argc == 6);
     if (mut && (r = verify(L))) { fclose(L); return r; }
     char cx[3][32]; char *av5[5];   /* a page passes the cell as one word x,y,z (the registry allows 4 params) */
     if ((!strcmp(v, "mine") || !strcmp(v, "place")) && ac == 3 && sscanf(av[2], "%31[-0-9],%31[-0-9],%31[-0-9]", cx[0], cx[1], cx[2]) == 3) {
@@ -507,6 +526,7 @@ int main(int argc, char **argv) {
     else if (!strcmp(v, "wait") && ac == 1) r = v_wait(&w, L, atoi(av[0]));
     else if (!strcmp(v, "sleep") && ac == 1) r = v_sleep(&w, L, av[0]);
     else if (!strcmp(v, "eat") && ac == 2) r = v_eat(&w, L, av[0], av[1]);
+    else if (!strcmp(v, "craft") && ac == 2) r = v_craft(&w, L, av[0], av[1]);
     else if (!strcmp(v, "walk") && ac == 2) r = v_walk(&w, L, av[0], av[1]);
     else if (!strcmp(v, "face") && ac == 2) r = v_face(&w, L, av[0], av[1]);
     else if (!strcmp(v, "jump") && ac == 1) r = v_jump(&w, L, av[0]);
@@ -531,6 +551,6 @@ int main(int argc, char **argv) {
     else if (!strcmp(v, "verify") && ac == 0) { r = verify(L); if (!r) fprintf(OUT, "verified\n"); }
     else if (!strcmp(v, "replay") && ac == 1) {
         FILE *d = fopen(av[0], "w+x"); if (!d) { fprintf(stderr, "refused: destination exists or cannot be created\n"); r = 2; } else { FILE *keep = OUT; OUT = fopen("/dev/null", "w"); r = replay_into(L, d); fclose(OUT); OUT = keep; if (!r && !same(L, d)) r = 14; fclose(d); if (!r) fprintf(OUT, "replayed identical\n"); } }
-    if (!r && (!strcmp(v, "mine") || !strcmp(v, "place") || !strcmp(v, "eat") || !strcmp(v, "wait") || !strcmp(v, "sleep") || !strcmp(v, "move") || !strcmp(v, "give") || !strcmp(v, "walk") || !strcmp(v, "jump") || !strcmp(v, "reset") || !strcmp(v, "face"))) board_hook(&w, L, argv[3], argv[2], argv[0]);
+    if (!r && (!strcmp(v, "mine") || !strcmp(v, "place") || !strcmp(v, "craft") || !strcmp(v, "eat") || !strcmp(v, "wait") || !strcmp(v, "sleep") || !strcmp(v, "move") || !strcmp(v, "give") || !strcmp(v, "walk") || !strcmp(v, "jump") || !strcmp(v, "reset") || !strcmp(v, "face"))) board_hook(&w, L, argv[3], argv[2], argv[0]);
     fclose(L); return r;
 }

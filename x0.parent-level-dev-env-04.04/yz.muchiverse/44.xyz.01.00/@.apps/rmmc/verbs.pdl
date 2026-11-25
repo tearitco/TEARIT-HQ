@@ -15,3 +15,4 @@ VERB | seat  | yes | ui | who | who drives Asa: human or harness (a SEAT row; th
 # Only the top block of a column can be mined or built on (overhangs and tunnels are not representable, plan 7).
 VERB | mine  | yes | ui |     | dig the top block of the column in front (a MINE row; the column drops one level; refused 13 with nothing to dig, 11 off the island)
 VERB | place | yes | ui |     | put the picked block on top of the column in front (a PLACE row; the column rises one level; refused 11 off the island)
+VERB | craft | yes | ui |     | craft the picked hotbar item from the bag (a CRAFT row of a RECIPE in vox/rules.pdl; refused 16 with the inputs missing, 20 with no craft_table within reach)

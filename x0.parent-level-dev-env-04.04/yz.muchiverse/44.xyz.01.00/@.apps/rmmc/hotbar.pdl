@@ -14,3 +14,7 @@ SLOT | pick | Pickaxe | hotbar/pick-bgr.png
 SLOT | axe | Axe | hotbar/axe-bgr.png
 SLOT | shovel | Shovel | hotbar/shovel-bgr.png
 SLOT | shears | Shears | hotbar/shears-bgr.png
+# Blocks added with the biome tiles 14-16 (sprites cut from the atlas as above); craft_table is the crafting table: place it, stand next to it, press the craft key (C).
+SLOT | sandstone | Sandstone | hotbar/sandstone-bgr.png
+SLOT | planks | Planks | hotbar/planks-bgr.png
+SLOT | craft_table | Table | hotbar/craft_table-bgr.png

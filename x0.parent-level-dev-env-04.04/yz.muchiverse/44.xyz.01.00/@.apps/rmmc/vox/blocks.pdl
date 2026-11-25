@@ -12,3 +12,7 @@ BLOCK | wood_top   | 4 | axe    | 0 | wood_side | 1 | 1 | 1 | 0 | 0 | 1
 BLOCK | leaves     | 1 | shears | 0 | leaves  | 1 | 1 | 0 | 0 | 0 | 1
 BLOCK | gravel     | 2 | shovel | 0 | gravel  | 1 | 1 | 1 | 0 | 1 | 0
 BLOCK | water      | 0 | -      | 0 | -       | 0 | 0 | 0 | 0 | 0 | 0
+# new blocks (2026-11-25): sandstone is the side of the sand terraces (a distinct tile), planks are the hotbar/crafted wood, craft_table is the crafting table (single tile, all faces)
+BLOCK | sandstone   | 3 | pick   | 0 | sandstone | 1 | 1 | 1 | 0 | 0 | 0
+BLOCK | planks      | 3 | axe    | 0 | planks  | 1 | 1 | 1 | 0 | 0 | 1
+BLOCK | craft_table | 3 | axe    | 0 | craft_table | 1 | 1 | 1 | 0 | 0 | 1

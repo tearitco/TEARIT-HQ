@@ -95,12 +95,12 @@ RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rm
 EXPECT_HAS | out/events.txt | rig:asa 0 2 4 | a mine is pattern 4
 RUN | awk | NR==101{print substr($0,141,1) substr($0,142,1)} | $T/out/map.txt
 EXPECT_OUT_IS | 23 | the mined column (x 140, row 100) is level 2 now, its neighbour still 3
-RUN | awk | NR==109{split($0,a," "); print a[141]} | $T/out/cells.txt
+RUN | awk | NR==110{split($0,a," "); print a[141]} | $T/out/cells.txt
 EXPECT_OUT_IS | 2,2,3 | its floor is the side tile (the dirt below)
 RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | place | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | sand | 140 | 5 | 100
 EXPECT_EXIT | 0 | put sand back where the top block was
 RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
 EXPECT_HAS | out/events.txt | rig:asa 0 2 5 | a place is pattern 5
-RUN | awk | NR==109{split($0,a," "); print a[141]} | $T/out/cells.txt
+RUN | awk | NR==110{split($0,a," "); print a[141]} | $T/out/cells.txt
 EXPECT_OUT_IS | 5,5,3 | the column shows the placed sand tile (slot 5) on top again
 CLEAN |

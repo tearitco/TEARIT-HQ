@@ -1,5 +1,4 @@
-if (n >= 9 && !strcmp(f[8], "window")) WINCAP = 1; else WINCAP = 0;
-        if (n < 8 || strcmp(f[0], "SHOT"))/* rmmc_director - the second camera of the rmmc video: a shot list in, a folder of PNG frames and a manifest out (owner 2026-11-25: "make a second camera entity ... that can dump pngs ... think like director";
+/* rmmc_director - the second camera of the rmmc video: a shot list in, a folder of PNG frames and a manifest out (owner 2026-11-25: "make a second camera entity ... that can dump pngs ... think like director";
  * "presentation proof of driven as well as autonomous behavior doing the same things").
  *   rmmc_director.+x <house> <shots.pdl> <outdir> [--only <name>] [--window-pid <pid>]
  * It never draws anything itself. It composes tools that already exist: bv_look (the engine's debug camera, cam_look.txt: absolute or orbiting the selector, which follows Asa once she is possessed),
@@ -98,6 +97,7 @@ int main(int argc, char **argv) {
         if (n >= 2 && !strcmp(f[0], "SETUP")) { char v[40], a[120] = ""; if (sscanf(f[1], "%39s %119[^\n]", v, a) >= 1) { NOCALLER = 1; do_verb(v, a); NOCALLER = 0; } continue; }
         if (n >= 2 && !strcmp(f[0], "SEAT")) { int r = do_verb("seat", f[1]); fprintf(mf, "- | 0 | seat %s: %s\n", f[1], r == 0 ? "ok" : "refused"); continue; }
         if (n < 8 || strcmp(f[0], "SHOT")) { fprintf(LOG, "skip row: %s\n", f[0]); continue; }
+        WINCAP = (n >= 9 && !strcmp(f[8], "window"));
         const char *name = f[1], *who = f[2], *act = f[3], *look = f[4]; int frames = atoi(f[5]), gap = atoi(f[6]); const char *cap = f[7];
         if (only && strcmp(only, name)) continue;
         if (frames < 1) frames = 1;

@@ -16,7 +16,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 static int known(const char *v) {
-    return !strcmp(v, "spawn") || !strcmp(v, "walk") || !strcmp(v, "face") || !strcmp(v, "jump") || !strcmp(v, "reset") || !strcmp(v, "seat") || !strcmp(v, "mine") || !strcmp(v, "place"); }
+    return !strcmp(v, "spawn") || !strcmp(v, "walk") || !strcmp(v, "face") || !strcmp(v, "jump") || !strcmp(v, "reset") || !strcmp(v, "seat") || !strcmp(v, "mine") || !strcmp(v, "place") || !strcmp(v, "craft"); }
 static int run(char *const av[], char *out, size_t osz) {
     int p[2]; if (pipe(p)) return 2; pid_t c = fork(); if (c < 0) return 2;
     if (c == 0) { alarm(20); dup2(p[1], 1); dup2(p[1], 2); close(p[0]); close(p[1]); execv(av[0], av); _exit(127); }
@@ -83,6 +83,15 @@ int main(int argc, char **argv) {
             else { char item[64] = "dirt", pp[PATH_MAX + 96]; snprintf(pp, sizeof pp, "%s/play/pick.txt", book); FILE *pf = fopen(pp, "r"); if (pf) { if (fgets(item, sizeof item, pf)) item[strcspn(item, "\r\n'| ")] = 0; fclose(pf); } if (!item[0]) snprintf(item, sizeof item, "dirt");
                 char cell[96], one[8] = "1"; snprintf(cell, sizeof cell, "%d,%d,%d", fx, top + 1, fz); char *gv[] = { vop, "give", data, led, (char *)actor, item, one, "hotbar", NULL }; char og[200]; run(gv, og, sizeof og);   /* creative hotbar: the picked block is given first, as a GIVE row */
                 char *av[] = { vop, "place", data, led, (char *)actor, item, cell, NULL }; code = run(av, out, sizeof out); } } }
+    else if (!strcmp(v, "craft")) {   /* the picked hotbar item names what to craft: the RECIPE row of vox/rules.pdl whose OUT item it is (data decides; a recipe name in GAME_ARG wins) */
+        char item[64] = "", rec[64] = "", pp[PATH_MAX + 96], rp[PATH_MAX + 96], l[300]; snprintf(pp, sizeof pp, "%s/play/pick.txt", book); FILE *pf = fopen(pp, "r");
+        if (pf) { if (fgets(item, sizeof item, pf)) item[strcspn(item, "\r\n'| ")] = 0; fclose(pf); }
+        if (a1[0]) snprintf(rec, sizeof rec, "%s", a1);
+        else { snprintf(rp, sizeof rp, "%s/rules.pdl", data); FILE *rf = fopen(rp, "r");
+            while (rf && fgets(l, sizeof l, rf)) { char k[16], nm[64], o[64]; if (sscanf(l, " %15[^| ] | %63[^| ] | %63[^| ]", k, nm, o) == 3 && !strcmp(k, "RECIPE") && !strcmp(o, item)) { snprintf(rec, sizeof rec, "%s", nm); break; } }
+            if (rf) fclose(rf); }
+        if (!rec[0]) { snprintf(out, sizeof out, "no recipe makes %s: pick the item to craft in the hotbar", item[0] ? item : "nothing"); code = 16; }
+        else { char *av[] = { vop, "craft", data, led, (char *)actor, rec, NULL }; code = run(av, out, sizeof out); } }
     else { char *av[] = { vop, "seat", data, led, (char *)actor, a1, NULL }; code = run(av, out, sizeof out); }
     if (code == 0 && access(pop, X_OK) == 0) { char o2[300]; char *av[] = { pop, "project", seed, desk, led, pose, hm, NULL }; if (run(av, o2, sizeof o2)) { snprintf(out, sizeof out, "projection failed: %s", o2); code = 5; } }
     result(rp, code, out); if (code) fprintf(stderr, "%s\n", out);
