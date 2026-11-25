@@ -853,11 +853,17 @@ static int start_n(const char *map, int which, int *x, int *y) {
     return 4;
 }
 
-static int agent_op(const char *map, const char *ledger) {
+static int agent_op(const char *map, const char *ledger, const char *mood) {
     int *g, w, h, sx, sy, hx, hy, ax, ay, s2x, s2y, i, rc, nx = 0, ny = 0, found = 0;
-    const int dx[4] = { 1, 0, -1, 0 };
-    const int dy[4] = { 0, 1, 0, -1 };
+    const int near_dx[4] = { 1, 0, -1, 0 };
+    const int near_dy[4] = { 0, 1, 0, -1 };
+    const int far_dx[4] = { 0, -1, 0, 1 };
+    const int far_dy[4] = { -1, 0, 1, 0 };
+    const int *dx, *dy;
     FILE *f;
+    if (!strcmp(mood, "near")) { dx = near_dx; dy = near_dy; }
+    else if (!strcmp(mood, "far")) { dx = far_dx; dy = far_dy; }
+    else { printf("fail mood\n"); return 2; }
     rc = load_map(map, &g, &w, &h, &sx, &sy);
     if (rc) return rc;
     if (start_n(map, 1, &s2x, &s2y)) { free(g); printf("fail start\n"); return 4; }
@@ -873,9 +879,9 @@ static int agent_op(const char *map, const char *ledger) {
     if (!found) { free(g); printf("fail no-step\n"); return 4; }
     f = fopen(ledger, "a");
     if (!f) { free(g); return 5; }
-    fprintf(f, "AGENT | %d | %d | step\n", nx, ny);
+    fprintf(f, "AGENT | %d | %d | %s\n", nx, ny, mood);
     fclose(f);
-    printf("agent=%d,%d\n", nx, ny);
+    printf("agent=%d,%d %s\n", nx, ny, mood);
     free(g);
     return 0;
 }
@@ -944,6 +950,7 @@ int main(int argc, char **argv) {
     if (!strcmp(argv[1], "found") && argc == 4) return found_op(argv[2], argv[3]);
     if (!strcmp(argv[1], "eat") && argc == 4) return body_op(argv[2], argv[3], 1);
     if (!strcmp(argv[1], "sleep") && argc == 4) return body_op(argv[2], argv[3], 0);
-    if (!strcmp(argv[1], "agent") && argc == 4) return agent_op(argv[2], argv[3]);
+    if (!strcmp(argv[1], "agent") && argc == 4) return agent_op(argv[2], argv[3], "near");
+    if (!strcmp(argv[1], "agent") && argc == 5) return agent_op(argv[2], argv[3], argv[4]);
     return 2;
 }

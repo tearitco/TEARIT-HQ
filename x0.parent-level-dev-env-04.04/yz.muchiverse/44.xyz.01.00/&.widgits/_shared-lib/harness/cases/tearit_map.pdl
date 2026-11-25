@@ -164,6 +164,18 @@ RUN | $T/tearit_map_op.+x | gen | 1 | 64 | 64 | $T/wide64.txt
 EXPECT_EXIT | 0 | a 64 map writes
 RUN | $T/tearit_map_op.+x | check | $T/wide64.txt
 EXPECT_EXIT | 0 | the 64 map passes check
+RUN | rm | -f | $T/near.txt | $T/far.txt
+EXPECT_EXIT | 0 | mood ledgers cleared
+RUN | $T/tearit_map_op.+x | agent | $T/a.txt | $T/near.txt | near
+EXPECT_EXIT | 0 | the near mood steps
+EXPECT_OUT | agent=15,8 | near goes south
+RUN | $T/tearit_map_op.+x | agent | $T/a.txt | $T/far.txt | far
+EXPECT_EXIT | 0 | the far mood steps
+EXPECT_OUT | agent=14,7 | far goes west
+RUN | cmp | -s | $T/near.txt | $T/far.txt
+EXPECT_EXIT | 1 | the two moods disagree
+RUN | $T/tearit_map_op.+x | agent | $T/a.txt | $T/badmood.txt | fly
+EXPECT_EXIT | 2 | an unknown mood is refused
 RUN | rm | -f | $T/pl.txt
 EXPECT_EXIT | 0 | place ledger cleared
 RUN | $T/tearit_map_op.+x | place | $T/a.txt | $T/pl.txt
