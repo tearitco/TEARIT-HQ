@@ -6,10 +6,12 @@ GAME         | label              | RM sandbox
 GAME         | n_chunks           | 1
 GAME         | chunk_0_x          | 0
 GAME         | chunk_0_y          | 0
-GAME         | n_desks            | 3
+GAME         | n_desks            | 4
 GAME         | desk_1_id          | rmmc-0000
 GAME         | desk_1_label       | rmmc-0000
 GAME         | desk_2_id          | rmmc-0001
 GAME         | desk_2_label       | rmmc-0001
 GAME         | desk_3_id          | page_2
 GAME         | desk_3_label       | rmmc-0001-backup-v1
+GAME         | desk_4_id          | rmmc-alpha
+GAME         | desk_4_label       | rmmc-alpha-iterate

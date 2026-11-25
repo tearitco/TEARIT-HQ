@@ -1,0 +1,9 @@
+# rig colours from asa.png (char 0, frame 48x48, figure rows 2..45) by rig_from_charset_op; no texture, boxes only
+RIG | head | 138 90 58
+RIG | hair | 192 57 43
+RIG | torso | 21 22 26
+RIG | sleeve | 21 22 26
+RIG | arm | 21 22 26
+RIG | leg | 14 16 20
+RIG | shoe | 14 16 21
+RIG | face | 20 20 30
