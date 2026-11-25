@@ -98,6 +98,10 @@ A Civ-SNES shape on events, a human plus agents, a seeded map, 2D and 3D from on
 
 Sprint 1024 is only the stretch where that outside door is the proof. Sprint 512 can be a finished game on your machine and still be offline. The arena page on tearit-web is the small version of this door, and it stays unpublished until you decide.
 
+There is no date on the finish line. It arrives when that stranger session exists, whether that is after dozens of proofs or after hundreds. Counting sprints does not move it.
+
+**Leverage now (2026-11-24).** One seeded map op, 16×16, with water and a mineral column, a desk that is 2D and 3D, and a harness that fails when a byte changes. Walk, found-city, dig, fog, a second seat, a city stamp, and the web view all read those same rows later. A geology sim, a Minecraft import, or a new civ app does not create that reuse. The clip of that map is the thing worth showing. The next proof waits until this one is green.
+
 ## 4. The three views
 
 ### Customers: what you can do, and what is coming
