@@ -102,7 +102,7 @@ There is no date on the finish line. It arrives when that stranger session exist
 
 **Leverage now (2026-11-24).** One seeded map op, 16×16, with water and a mineral column, a desk that is 2D and 3D, and a harness that fails when a byte changes. Walk, found-city, dig, fog, a second seat, a city stamp, and the web view all read those same rows later. A geology sim, a Minecraft import, or a new civ app does not create that reuse.
 
-**Presentation not warranted yet (2026-11-25).** The mineral cell is visible: `XO/31.Nov/nov-24/grok-24/1.seed-map/board-2d-ore.png` is a window dump at z=1 with one magenta cell (seed 1, cell 2,1). Dig of that cell is a ledger row (`a0331f33a`). The mp4 still waits on the window title, which still says Robot Trap Auto because the template was copied from that board. Voice waits until the title matches the map. Photo steps: `13.agent-coms/GROK/ONBOARD-GROK.md`.
+**First clip exists (2026-11-25), not a public post.** `XO/31.Nov/nov-24/grok-24/1.seed-map/seed-map.mp4` is 6 seconds. The window title is Tearit map. The 2D dump at z=1 shows the magenta mineral. The 3D dump is the same desk. English Kokoro, mean volume -22.8 dB, max -6.9 dB. Japanese line on the frame. Seed 1 written twice matched. It is two held window dumps, not a walked turn. Actor1 and Kokoro are not cleared for a public post. Photo steps: `13.agent-coms/GROK/ONBOARD-GROK.md`.
 
 ## 4. The three views
 
