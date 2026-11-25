@@ -52,18 +52,21 @@ static void blit(const Img *src, int sx, int sy, Img *dst, int dx, int dy) {
     }
 }
 
-/* slot, glyph, height. Grass 1, sand 5, water 6, snow uses beach-light
- * slot 5 is sand; snow is slot 2 (second grass sample, taller). Stone 7. Tree 8. */
-/* floor is the top face, wall is the side. Grass over dirt is the video's cube. */
+/* Glyphs are the ones rpg-edit's terrain_legend.txt already colors.
+ * `.` is dirt (110,70,40), which is why a field of `.` photographed black-brown.
+ * `,` is grass, `:` sand, `~` water, `s` stone, `T` wood.
+ * There is no snow row in that legend. The raised corner stays `N`
+ * so it is a different column, and its color is whatever the legend
+ * default is. Floor is the top face, wall is the side. */
 static char cell_of(int x, int y, int *floor, int *wall, int *h) {
-    char g = '.';
+    char g = ',';
     *floor = 1; *wall = 3; *h = 2;
-    if (x >= 40 && y >= 40) { g = 'S'; *floor = 5; *wall = 5; *h = 2; }
-    if (x < 14 && y >= 50) { g = 'W'; *floor = 6; *wall = 6; *h = 1; }
+    if (x >= 40 && y >= 40) { g = ':'; *floor = 5; *wall = 5; *h = 2; }
+    if (x < 14 && y >= 50) { g = '~'; *floor = 6; *wall = 6; *h = 1; }
     if (x >= 48 && y < 16) { g = 'N'; *floor = 2; *wall = 2; *h = 3; }
-    if (x >= 30 && x <= 34 && y >= 18 && y <= 40) { g = 'D'; *floor = 3; *wall = 3; *h = 1; }
-    if (x == 20 && y == 16) { g = 'i'; *floor = 7; *wall = 7; *h = 5; }
-    if (x == 44 && y == 22) { g = 'B'; *floor = 8; *wall = 7; *h = 4; }
+    if (x >= 30 && x <= 34 && y >= 18 && y <= 40) { g = '.'; *floor = 3; *wall = 3; *h = 1; }
+    if (x == 20 && y == 16) { g = 's'; *floor = 7; *wall = 7; *h = 5; }
+    if (x == 44 && y == 22) { g = 'T'; *floor = 8; *wall = 7; *h = 4; }
     return g;
 }
 
@@ -107,9 +110,9 @@ int main(int argc, char **argv) {
             char g = cell_of(x, y, &floor, &wall, &h);
             fprintf(cf, "%s%d,%d", x ? " " : "", floor, wall);
             fputc(g, mf);
-            if (g == 'D') trench++;
-            else if (g == 'S') sand++;
-            else if (g == 'W') water++;
+            if (g == '.') trench++;
+            else if (g == ':') sand++;
+            else if (g == '~') water++;
             else if (g == 'N') snow++;
         }
         fputc('\n', cf);
@@ -121,8 +124,8 @@ int main(int argc, char **argv) {
     snprintf(path, sizeof path, "%s/extrusion.pdl", argv[2]);
     FILE *ef = fopen(path, "w");
     if (!ef) return 6;
-    fprintf(ef, "EXTRUDE | . | 2\nEXTRUDE | S | 2\nEXTRUDE | W | 1\nEXTRUDE | N | 3\n"
-                "EXTRUDE | D | 1\nEXTRUDE | i | 5\nEXTRUDE | B | 4\n");
+    fprintf(ef, "EXTRUDE | , | 2\nEXTRUDE | : | 2\nEXTRUDE | ~ | 1\nEXTRUDE | N | 3\n"
+                "EXTRUDE | . | 1\nEXTRUDE | s | 5\nEXTRUDE | T | 4\n");
     fclose(ef);
     snprintf(path, sizeof path, "%s/events.txt", argv[2]);
     FILE *ev = fopen(path, "w"); if (ev) fclose(ev);

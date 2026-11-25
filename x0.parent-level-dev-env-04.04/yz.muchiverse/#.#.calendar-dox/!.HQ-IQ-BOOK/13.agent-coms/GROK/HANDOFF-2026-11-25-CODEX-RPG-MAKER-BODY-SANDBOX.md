@@ -1,6 +1,26 @@
 # Codex: a small voxel sandbox with an RPG Maker body
 
-2026-11-25. For a new agent who has not seen this house. The owner watched today's Minecraft / RPG Maker result and called it disappointing. The picture he wanted is `/home/no/Videos/rmc.mp4` (93 seconds, 648x512, watched as frames every 6 seconds). Do the job in a **new rpg-edit book**. Leave the Earth moth book alone.
+2026-11-25. For a new agent who has not seen this house. The owner watched today's Minecraft / RPG Maker result and called it disappointing. The picture he wanted is `/home/no/Videos/rmc.mp4` (93 seconds, 648x512, watched as frames every 6 seconds). The book is already open. Do not start a second one.
+
+## Start here
+
+The live window is rpg-edit `0x1c00003`. World state is book `rmmc`, page `rmmc-0000`. Camera mode is `2`. The proof that the ray hits the field is `XO/31.Nov/nov-25/3.rmc-expected/9-pov2-field.png` (HUD `pos 32,32,19`). That frame is the handoff picture. It is not the video.
+
+Do these, in this order, and dump after each one. Stop when a dump shows the thing. Do not rebuild the book, do not load Earth, do not press `f`, `r`, or `t`.
+
+1. **The body is under the floor the camera stands on.** Events are drawn at `Y = 1 + lift`, and lift is the glyph's extrusion minus one (`bv_render_3d.c`, the `ADDBOX` after `g_mk.evlift`). Grass extrusion is 2, so the Actor1 box sits near Y 2. The chase camera's anchor is voxel layer 18 (`pos_z=35`, then `pos_z - floor_z - 1` with `floor_z=16`). The cyan rectangle in the proof is the xelector outline at that anchor, not the charset. `Actor1_0_2_1.rgba` is 1536 bytes at `#.NNEST_ASSETS/tsots-characters/frames/`, and the session binary contains the `#.NNEST_ASSETS/tsots-characters/frames/%s.rgba` lookup. Move the event box onto the same Y as the anchor, then dump. If the lookup works, the box becomes the blue tunic. If it stays a flat color, the walk from `g_mk.key` did not open the file. Say which.
+
+2. **The broad floor is a dark slab.** `cells.txt` is `1,3` (grass top, dirt side) on the grass cells. The GPU frame does not show that on the field. The green strip is the trench and the raised block is the corner, both atlas extrusions. `maker_view=1` (key `7`) did not change the pixels. `rpg-edit-hq-pchq/pieces/system/terrain_legend.txt` colors `.` as dirt `110,70,40` and `,` as grass `90,170,60`. The desk glyphs were switched to those letters (grass `,`, trench `.`, sand `:`, water `~`, pillar `s`, tree `T`) and `pc_generate_chunk` rewrote `board_full`. The next dump was the same dark slab. Find which mesh that slab is before painting more slots. There is no snow color in the legend. The raised corner glyph is still `N`.
+
+3. **`pc_generate_chunk` puts the xelector back at 8,8,19.** That cell looks off the near edge (HUD `pos 32,32,3` was a lie in one dump; the reset that was read from disk was `8,8,19`) and the picture becomes sky with a grass horizon. After every chunk rebuild, set `xelector_01/state.txt` to `pos_x=32`, `pos_y=32`, `pos_z=35` and `selector_x/y` to 32. Yaw 180 looks toward decreasing row, so the body has to sit with ground in front of it.
+
+4. **The 3D daemon is a separate process.** It had died once, and dumps after that were the frozen sky. The one running now started fresh, so `cam_home.txt` is `0 0 0 0` and a file pan of 0 is a zero offset. An older daemon still had the Earth home `107 68 0 89` and subtracted it, which threw the eye off the map. Read `cam_home.txt` before you change pan. The session binary is `board-viewer/pieces/sessions/1795602987-684836/ops/+x/bv_render_3d.+x`. Editing the house source does nothing until that copy is rebuilt. Do not relaunch the window to do it.
+
+5. **Break and place are not built.** Call `vox_op` from an event page onto the ledger. Do not add a branch in `game_core.c`. A desk edit is a projection, regenerated from the ledger. Do not hand-edit `board_full` to fake a hole.
+
+6. **Done is still the four dumps in "What done is".** Do not narrate `9-pov2-field.png` as that. The bottom bar still says `Earth moth`. That label is the stamp set, not the book. The book label on the top bar says `RM sandbox`.
+
+Leave the Earth moth book, Teario, and Draw Battle alone. Commit on your own branch, pathspec only. Do not push unless the owner asks.
 
 ## What the video is
 
@@ -105,10 +125,12 @@ The dump is `dump_frame_png_op` of the rpg-edit window, then the PNG opened. A l
 
 ## Order of work
 
-1. Read `02-architecture/NO-GHOST-DATA-THE-LEDGER-IS-THE-AUTHORITY-2026-11-07.md`, `02-architecture/STANDARD-RULES-AS-OPS-FOUNDATION-DESIGN-2026-11-18.md`, and the Minecraft events handoff named above. Then read `game_new_op`'s header and make the book in a scratch house first.
-2. Write the flat field with the four biomes and the dirt column. Prove it with a dump before you touch the character.
-3. Put the charset frame on the player cell. Prove the pose changes.
-4. Wire break and place through the existing voxel op onto the ledger. Prove the hole and the plank.
+The book, the page, and a mode-2 dump of the field already exist. Follow "Start here". The old order below is how this book was going to be born. Do not repeat step 1.
+
+1. Read `02-architecture/NO-GHOST-DATA-THE-LEDGER-IS-THE-AUTHORITY-2026-11-07.md`, `02-architecture/STANDARD-RULES-AS-OPS-FOUNDATION-DESIGN-2026-11-18.md`, and the Minecraft events handoff named above. The book was made with `rmmc_field_op`, not `game_new_op`. Page id is `rmmc-0000`, not `field`.
+2. The flat field is on disk. The dump of it is `9-pov2-field.png`. The grass legend glyph did not change that slab.
+3. Put the charset on the camera's Y. Prove the pose.
+4. Wire break and place through `vox_op` onto the ledger. Prove the hole and the plank.
 5. One harness case that fails if the pose does not change, and fails if a mined cell is still solid after replay.
 
 ## External references
