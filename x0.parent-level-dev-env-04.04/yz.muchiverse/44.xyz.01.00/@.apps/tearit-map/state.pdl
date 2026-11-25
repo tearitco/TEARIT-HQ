@@ -1,0 +1,11 @@
+# state.pdl - every file tearit-map may leave, and what kind of fact it is (no ghost data, owner 2026-11-07).
+# Paths marked EDIT are under the editor instance folder (the rpg-edit state tree), the rest are beside this book.
+# Each row names the line I saw it written at (2026-11-25 review, plan section 5 item 1).
+# FILE | name | kind | writer | regenerate_with
+FILE | EDIT state/games/tearit-map/game/ledger.txt | LEDGER | tearit_map_op verbs append rows (fopen "a", tearit_map_op.c:907 and onward); the path is set at tearit_driver.c:206 | - (the ledger is the authority; never delete)
+FILE | tearit-map-pchq/pieces/system/maps/tearit-map/board/ | PROJECTION | tearit_map_op desk writes cells.txt (tearit_map_op.c:733), map.txt (:784), extrusion.pdl (:795), events.txt (:800), cells.marker (:820), entities.pdl (:832), tiles.pdl (:842); dir from tearit_driver.c:207 | tearit_map_op desk <ledger> <dir>
+FILE | EDIT state/games/tearit-map/fog.txt | PREFERENCE | tearit_map_op fog_op writes "0" or "1" (tearit_map_op.c:1380, path fog_path :634); read by tearit_driver.c:50 | deleted any time (fog off)
+FILE | EDIT state/games/tearit-map/roam.txt | PREFERENCE | tearit_map_op roam toggle writes "0" or "1" (tearit_map_op.c:1426 to :1432); read by tearit_driver.c:39 | deleted any time (life off)
+FILE | EDIT state/game_ui.txt | PROJECTION | tearit_driver.c atomic write (tmp then rename, :69 to :73), feed path :205 | rewritten by the driver
+FILE | EDIT state/stamps_ui.txt | PROJECTION | tearit_driver.c stamps() via the same atomic write (:108) | rewritten by the driver
+FILE | EDIT state/flag_hb.txt | PREFERENCE | tearit_driver.c hotbar() fopen "w" (:168) | deleted any time (hotbar default)

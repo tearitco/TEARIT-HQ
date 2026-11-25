@@ -7,6 +7,7 @@
  * Page backup is the older ringed dome and is not written here.
  */
 #include <errno.h>
+#include <limits.h>
 #include <math.h>
 #include <png.h>
 #include <stdint.h>
@@ -14,9 +15,55 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
+
+/* Radii come from @.apps/earth-moth/bodies.pdl (BODY | name | radius), read in
+ * main() before any command. Found from $HOUSE, else by walking up from argv[0]. */
+#define BODIES_REL "@.apps/earth-moth/bodies.pdl"
+static double R_BALL, R_MOON, R_MARS;
+
+static int locate_bodies(const char *argv0, char *out, size_t n) {
+    const char *house = getenv("HOUSE");
+    char real[PATH_MAX], *cut;
+    if (house && *house) {
+        snprintf(out, n, "%s/%s", house, BODIES_REL);
+        if (access(out, R_OK) == 0) return 0;
+    }
+    if (!argv0 || !realpath(argv0, real)) return -1;
+    for (;;) {
+        cut = strrchr(real, '/');
+        if (!cut) return -1;
+        *cut = '\0';
+        if (strlen(real) + sizeof BODIES_REL + 1 > n) return -1;
+        snprintf(out, n, "%s/%s", real, BODIES_REL);
+        if (access(out, R_OK) == 0) return 0;
+        if (real[0] == '\0') return -1;
+    }
+}
+
+/* Sets R_BALL (earth), R_MOON, R_MARS from BODY rows. Returns 0 only if all three exist. */
+static int load_bodies(const char *argv0) {
+    char path[PATH_MAX], line[256], name[32];
+    FILE *f;
+    int radius, got = 0;
+    if (locate_bodies(argv0, path, sizeof path) != 0) return -1;
+    f = fopen(path, "r");
+    if (!f) return -1;
+    while (fgets(line, sizeof line, f)) {
+        char *p;
+        if (line[0] == '#' || line[0] == '\n') continue;
+        if (sscanf(line, " BODY | %31[^|] | %d", name, &radius) != 2) continue;
+        p = name + strlen(name);
+        while (p > name && (p[-1] == ' ' || p[-1] == '\t')) *--p = '\0';
+        if (!strcmp(name, "earth")) { R_BALL = radius; got |= 1; }
+        else if (!strcmp(name, "moon")) { R_MOON = radius; got |= 2; }
+        else if (!strcmp(name, "mars")) { R_MARS = radius; got |= 4; }
+    }
+    fclose(f);
+    return got == 7 ? 0 : -1;
+}
 
 #define N 200
-#define R_BALL 92.0
 #define ETW 4320
 #define ETH 2160
 
@@ -449,10 +496,9 @@ static int animals_op(const char *etopo, const char *ledger) {
     return 0;
 }
 
-/* Radii match planet_ball_op. Moon and Mars have no height grid on disk,
- * so their relief is the chord. Earth on the solar page still reads ETOPO. */
-#define R_MOON 25.0
-#define R_MARS 49.0
+/* Radii come from bodies.pdl (same file as planet_ball_op). Moon and Mars have
+ * no height grid on disk, so their relief is the chord. Earth on the solar page
+ * still reads ETOPO. */
 #define SOLAR_N 256
 
 static int chord_tile(const int16_t *e, int x, int y, double cx, double cy, double R, int kind, int *hh, int *dep) {
@@ -600,8 +646,8 @@ static int formula_op(void) {
     double z = sqrt(1.0 - 0.0);
     int up = (int)lround(z * R_BALL);
     int surface = up;
-    printf("FORMULA chord R=92 center up=%d dn=%d\n", up, up);
-    printf("FORMULA outside dist>92 empty\n");
+    printf("FORMULA chord R=%d center up=%d dn=%d\n", (int)R_BALL, up, up);
+    printf("FORMULA outside dist>%d empty\n", (int)R_BALL);
     printf("FORMULA ocean elev<=0 water dip=5\n");
     printf("FORMULA mc z==surface tile z>=surface-3 dirt else stone\n");
     printf("FORMULA example surface=%d dirt=%d,%d,%d stone=%d\n",
@@ -614,6 +660,10 @@ static int formula_op(void) {
 
 int main(int argc, char **argv) {
     const char *cmd = argc > 1 ? argv[1] : "";
+    if (load_bodies(argc > 0 ? argv[0] : 0) != 0) {
+        fprintf(stderr, "fail bodies\n");
+        return 3;
+    }
     if (!strcmp(cmd, "formula")) {
         if (argc != 2) { fprintf(stderr, "fail formula\n"); return 2; }
         return formula_op();

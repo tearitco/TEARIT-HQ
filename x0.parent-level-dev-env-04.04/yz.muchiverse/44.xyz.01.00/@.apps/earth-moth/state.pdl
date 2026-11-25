@@ -1,0 +1,10 @@
+# state.pdl - every file earth-moth may leave, and what kind of fact it is (no ghost data, owner 2026-11-07).
+# Paths marked EDIT are under the editor instance folder, the rest are beside this book.
+# Each row names the line I saw it written at (2026-11-25 review, plan section 5 item 1).
+# The bodies table bodies.pdl is config, not state, and is not listed here.
+# FILE | name | kind | writer | regenerate_with
+FILE | state/ledger.txt | LEDGER | earth_moth_op appends player and animal rows (fopen "a", earth_moth_op.c:322, :334, :459, :485); created by ensure_ledger (:433) | - (the ledger is the authority). NOTE: the file on disk starts with a MAP row for etopo5 72 by 72, stale against page earth 200 wide; a decision for the owner, not deleted here
+FILE | earth-moth-pchq/pieces/system/maps/earth-moth/<earth|moon|mars|solar|backup>/ | PROJECTION | earth_moth_op pages and desk write cells.txt (earth_moth_op.c:339, :539), map.txt (:370, :579), extrusion.pdl (:383, :600), events.txt (:389, :607), view.pdl (:403, :612), cells.marker (:406, :615) | earth_moth_op pages <etopo> <mods> <maps-dir> (or desk <etopo> <mods> <ledger> <deskdir>)
+FILE | EDIT state/game_ui.txt | PROJECTION | earth_moth_driver.c atomic write (tmp then rename, :47 to :51), feed path :155 | rewritten by the driver
+FILE | EDIT state/stamps_ui.txt | PROJECTION | earth_moth_driver.c stamps path (:76) via the same atomic write | rewritten by the driver
+FILE | EDIT state/flag_hb.txt | PREFERENCE | earth_moth_driver.c hotbar() fopen "w" (:130), read at :120 | deleted any time (hotbar default)

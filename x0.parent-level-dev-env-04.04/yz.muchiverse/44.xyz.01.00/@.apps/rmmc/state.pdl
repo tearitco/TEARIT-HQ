@@ -1,0 +1,4 @@
+# state.pdl - every file rmmc may leave beside its book, and what kind of fact it is (no ghost data, owner 2026-11-07).
+# Each row names the line I saw it written at (2026-11-25 review, plan section 5 item 1).
+# FILE | name | kind | writer | regenerate_with
+FILE | rmmc-pchq/pieces/system/maps/rmmc/rmmc-0000/ | PROJECTION | rmmc_field_op writes cells.rgba (rmmc_field_op.c:95 to :99), cells.txt (:101), map.txt (:103), extrusion.pdl (:125), events.txt (:131, emptied), cells.marker (:133, APPENDS one byte per run: it grows, so it is not a pure projection; restart it on regenerate), skin.txt (:135) | rmmc_field_op <tileset_dir> <desk_dir>

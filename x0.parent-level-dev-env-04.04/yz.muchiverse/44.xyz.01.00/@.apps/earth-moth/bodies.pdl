@@ -1,0 +1,8 @@
+# bodies.pdl - the one radius table for every ball page (owner data, read at run time).
+# Read by planet_ball_op (&.widgits/_shared-lib/harness/ops/planet_ball_op.c) and
+# earth_moth_op (@.apps/earth-moth/ops/earth_moth_op.c). Radii are a scale of the
+# earth ball (92), not kilometres. A body not listed here is refused.
+# BODY | name | radius
+BODY | earth | 92
+BODY | moon | 25
+BODY | mars | 49
