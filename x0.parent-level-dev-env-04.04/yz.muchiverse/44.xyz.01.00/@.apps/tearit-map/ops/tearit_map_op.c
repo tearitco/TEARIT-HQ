@@ -10,7 +10,7 @@
 #include <ctype.h>
 #include <sys/stat.h>
 
-enum { SEA = 40, MOIST = 30, HILL = 70, MOUNT = 85, VER = 1, MAXN = 64, RATION_CAP = 3 };
+enum { SEA = 40, MOIST = 30, HILL = 70, MOUNT = 85, VER = 1, MAXN = 64, RATION_CAP = 3, WATER_CAP = 3 };
 
 enum Kind { WATER, GRASS, FOREST, HILLK, MOUNTK, DESERT, RIVER, COAST, BRIDGE };
 
@@ -253,7 +253,7 @@ hut:
 }
 
 static uint32_t rules_hash(void) {
-    return (uint32_t)(VER * 1000000 + SEA * 1000 + MOIST * 100 + HILL * 10 + MOUNT + RATION_CAP * 10000000);
+    return (uint32_t)(VER * 1000000 + SEA * 1000 + MOIST * 100 + HILL * 10 + MOUNT + RATION_CAP * 10000000 + WATER_CAP * 100000);
 }
 
 static int write_map(const char *path, uint32_t seed, int w, int h) {
@@ -272,6 +272,7 @@ static int write_map(const char *path, uint32_t seed, int w, int h) {
     fprintf(f, "RULE | hill | %d\n", HILL);
     fprintf(f, "RULE | mount | %d\n", MOUNT);
     fprintf(f, "RULE | ration | %d\n", RATION_CAP);
+    fprintf(f, "RULE | water | %d\n", WATER_CAP);
     fprintf(f, "RULESHASH | %u\n", rules_hash());
     fprintf(f, "NOTE | north | y=0\n");
     fprintf(f, "NOTE | neighbors | 4\n");
@@ -465,6 +466,7 @@ static int ledger_has_found(const char *ledger, int x, int y);
 static int ration_left(const char *map, const char *ledger, int *cap_out);
 static int where(const char *ledger, int sx, int sy, int *x, int *y);
 static void agent_at(const char *ledger, int sx, int sy, int *x, int *y);
+static int count_rows(const char *ledger, const char *prefix);
 static void mark_seen(int *seen, int w, int h, int x, int y) {
     const int dx[5] = { 0, 1, 0, -1, 0 };
     const int dy[5] = { 0, 0, 1, 0, -1 };
@@ -474,6 +476,19 @@ static void mark_seen(int *seen, int w, int h, int x, int y) {
         if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
         seen[yy * w + xx] = 1;
     }
+}
+
+static int count_rows(const char *ledger, const char *prefix) {
+    FILE *f;
+    char line[256];
+    int n = 0, k;
+    if (!ledger) return 0;
+    f = fopen(ledger, "r");
+    if (!f) return 0;
+    k = (int)strlen(prefix);
+    while (fgets(line, sizeof line, f)) if (!strncmp(line, prefix, (size_t)k)) n++;
+    fclose(f);
+    return n;
 }
 
 static int desk(const char *in, const char *dir, const char *ledger) {
@@ -530,7 +545,7 @@ static int desk(const char *in, const char *dir, const char *ledger) {
         }
         for (i = 0; i < w * h; i++) if (!seen[i]) { g[i] = 14; fog++; }
         free(seen);
-        printf("fog=%d\n", fog);
+        printf("fog=%d cities=%d\n", fog, count_rows(ledger, "FOUND |"));
     }
     if (mkdir(dir, 0755) != 0 && errno != EEXIST) { free(g); return 5; }
     snprintf(path, sizeof path, "%s/cells.txt", dir);
@@ -973,6 +988,52 @@ static int alter_op(const char *in, const char *out) {
     return 0;
 }
 
+static int water_cap_of(const char *map) {
+    FILE *f = fopen(map, "r");
+    char line[256];
+    int n = WATER_CAP, v;
+    if (!f) return n;
+    while (fgets(line, sizeof line, f)) {
+        if (sscanf(line, "RULE | water | %d", &v) == 1 && v > 0 && v < 100) n = v;
+    }
+    fclose(f);
+    return n;
+}
+
+static int beside_water(const int *g, int w, int h, int x, int y) {
+    const int dx[4] = { 1, 0, -1, 0 };
+    const int dy[4] = { 0, 1, 0, -1 };
+    int i;
+    for (i = 0; i < 4; i++) {
+        int xx = x + dx[i], yy = y + dy[i], k;
+        if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+        k = g[yy * w + xx];
+        if (k == WATER || k == RIVER) return 1;
+    }
+    return 0;
+}
+
+static int draw_op(const char *map, const char *ledger) {
+    int *g, w, h, sx, sy, x, y, rc, cap, stock;
+    FILE *f;
+    rc = load_map(map, &g, &w, &h, &sx, &sy);
+    if (rc) return rc;
+    where(ledger, sx, sy, &x, &y);
+    cap = water_cap_of(map);
+    stock = count_rows(ledger, "DRAW |");
+    if (!land(g[y * w + x]) || !beside_water(g, w, h, x, y)) {
+        free(g); printf("fail dry\n"); return 4;
+    }
+    if (stock >= cap) { free(g); printf("fail full\n"); return 4; }
+    f = fopen(ledger, "a");
+    if (!f) { free(g); return 5; }
+    fprintf(f, "DRAW | %d | %d\n", x, y);
+    fclose(f);
+    printf("stock=%d cap=%d\n", stock + 1, cap);
+    free(g);
+    return 0;
+}
+
 static int place_op(const char *map, const char *ledger) {
     int *g, w, h, sx, sy, x, y, rc;
     FILE *f;
@@ -1015,6 +1076,7 @@ int main(int argc, char **argv) {
     if (!strcmp(argv[1], "approach") && argc == 4) return approach_mineral(argv[2], argv[3]);
     if (!strcmp(argv[1], "dig") && argc == 4) return dig_op(argv[2], argv[3]);
     if (!strcmp(argv[1], "place") && argc == 4) return place_op(argv[2], argv[3]);
+    if (!strcmp(argv[1], "draw") && argc == 4) return draw_op(argv[2], argv[3]);
     if (!strcmp(argv[1], "checkpoint") && argc == 3) return checkpoint_op(argv[2]);
     if (!strcmp(argv[1], "verify") && argc == 3) return verify_op(argv[2]);
     if (!strcmp(argv[1], "alter") && argc == 4) return alter_op(argv[2], argv[3]);

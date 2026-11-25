@@ -191,6 +191,33 @@ RUN | $T/tearit_map_op.+x | verify | $T/chk-bad.txt
 EXPECT_EXIT | 4 | a changed prefix fails verify
 RUN | $T/tearit_map_op.+x | verify | $T/chk.txt
 EXPECT_EXIT | 0 | the original ledger still matches
+RUN | rm | -f | $T/towns.txt
+EXPECT_EXIT | 0 | town ledger cleared
+RUN | $T/tearit_map_op.+x | draw | $T/a.txt | $T/towns.txt
+EXPECT_EXIT | 4 | the start is not beside water
+RUN | $T/tearit_map_op.+x | found | $T/a.txt | $T/towns.txt
+EXPECT_EXIT | 0 | the first city
+RUN | $T/tearit_map_op.+x | step | $T/a.txt | $T/towns.txt | e
+EXPECT_EXIT | 0 | step east of the first city
+RUN | $T/tearit_map_op.+x | found | $T/a.txt | $T/towns.txt
+EXPECT_EXIT | 0 | the second city
+RUN | $T/tearit_map_op.+x | desk | $T/a.txt | $T/towns-desk | $T/towns.txt
+EXPECT_EXIT | 0 | desk of two cities
+EXPECT_OUT | cities=2 | both cities are counted
+RUN | $T/tearit_map_op.+x | draw | $T/a.txt | $T/towns.txt
+EXPECT_EXIT | 0 | the first draw
+EXPECT_OUT | stock=1 | one water is stored
+RUN | $T/tearit_map_op.+x | draw | $T/a.txt | $T/towns.txt
+EXPECT_EXIT | 0 | the second draw
+RUN | $T/tearit_map_op.+x | draw | $T/a.txt | $T/towns.txt
+EXPECT_EXIT | 0 | the third draw
+EXPECT_OUT | stock=3 | the stock is full
+RUN | cp | $T/towns.txt | $T/towns.keep
+EXPECT_EXIT | 0 | full stock saved
+RUN | $T/tearit_map_op.+x | draw | $T/a.txt | $T/towns.txt
+EXPECT_EXIT | 4 | a draw past the cap is refused
+RUN | cmp | -s | $T/towns.txt | $T/towns.keep
+EXPECT_EXIT | 0 | a refused draw writes nothing
 RUN | rm | -f | $T/pl.txt
 EXPECT_EXIT | 0 | place ledger cleared
 RUN | $T/tearit_map_op.+x | place | $T/a.txt | $T/pl.txt

@@ -110,6 +110,8 @@ An orbit is not a cell. It is a row: which body, an altitude, an angle. The ship
 
 The same travel exists on the flat map before any globe. The owner wants a lot of space flight, and a 2D picture of it: black space cells on the map, satellites, and a flight to the Moon or Mars. Those are later rows, not a new generator. A space cell is a kind, the way water is a kind. A satellite is a row with a position. A flight is a row that leaves the land cells and enters the black cells, then a landing row that arrives on another body's seed. The 2D desk paints the black the same way it paints water. The 3D globe, when it exists, reads those same rows. Do not add the black cells or the satellites while the proof is still one flat chunk.
 
+**Two cities and a water stock (2026-11-25).** Seed 1 founds a city at `4,0`, steps east, and founds a second at `5,0`. The desk count is `cities=2`. `RULE | water | 3`. `draw` works only on land beside water or a river. The start is dry. After the east step, three draws fill the stock and a fourth writes nothing. Not on the open window.
+
 **Ledger checkpoint (2026-11-25).** `checkpoint` appends `CHECK` and the hash of every byte before that row. `verify` passes on that file. `alter` adds one to the first move's x and `verify` exits 4. The original file still passes. Not on the open window.
 
 **Two agent moods (2026-11-25).** `agent` with `near` walks east, south, west, north and skips the human cell. `far` walks north, west, south, east. On seed 1 those are `15,8` and `14,7`. An unknown mood writes nothing. No model. Not on the open window.
