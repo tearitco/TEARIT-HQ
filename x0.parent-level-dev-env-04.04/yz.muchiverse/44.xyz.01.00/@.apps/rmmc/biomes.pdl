@@ -1,0 +1,57 @@
+# biomes.pdl - the island biomes of book rmmc page rmmc-0001, as DATA (owner 2026-11-25: taller mountains, lakes, snow and sand, Minecraft-look blocks).
+# Read by ops/rmmc_biome_op.c (its header is the format reference). Every number that shapes the land lives here and nowhere else.
+# Heights are levels above the floor level (H). Plain grass is about 3; a lake surface is 1 or 0; a mountain peak is many times the plain.
+# Biomes apply in file order: a later row overwrites an earlier one where they overlap (cone rows only RAISE).
+# Coordinates are cells of the 216 x 156 island (the Centroid small page at 3x). The painter clips every row to the island outline.
+RULE  | seed         | 20261125
+RULE  | noise_scale  | 7
+RULE  | snow_line    | 14
+RULE  | tile_px      | 16
+RULE  | rock_tile    | stone
+RULE  | tree_trunk   | wood_side
+RULE  | tree_leaves  | leaves
+# TILE | name | slot | png under the Mineclonia asset root (shared/MINECLONIA-ASSET-SOURCE-LOCATION.pdl) | fallback colour if the PNG is missing | tint | overlay
+# The grass top, the leaves and the grass-side overlay are grey in Mineclonia (the game tints them by biome), so they carry a tint here.
+TILE  | grass_top    | 1  | ITEMS/mcl_core/textures/mcl_core_grass_block_top.png      | 5d9a3a | 8cc766 | -
+TILE  | grass_side   | 2  | ITEMS/mcl_core/textures/default_dirt.png                  | 7a5230 | -      | ITEMS/mcl_core/textures/mcl_core_grass_block_side_overlay.png
+TILE  | dirt         | 3  | ITEMS/mcl_core/textures/default_dirt.png                  | 7a5230 | -      | -
+TILE  | stone        | 4  | ITEMS/mcl_core/textures/default_stone.png                 | 808080 | -      | -
+TILE  | sand         | 5  | ITEMS/mcl_core/textures/default_sand.png                  | dbd3a0 | -      | -
+TILE  | snow         | 6  | ITEMS/mcl_core/textures/default_snow.png                  | f2f8fc | -      | -
+TILE  | snow_side    | 7  | ITEMS/mcl_core/textures/mcl_core_grass_side_snowed.png    | e8eef2 | -      | -
+TILE  | water        | 8  | ITEMS/mcl_core/textures/default_water_source_animated.png | 3f6fd0 | -      | -
+TILE  | water_deep   | 9  | ITEMS/mcl_core/textures/default_water_source_animated.png | 2a4ea0 | a0a8d8 | -
+TILE  | wood_side    | 10 | ITEMS/mcl_core/textures/default_tree.png                  | 6b4f2a | -      | -
+TILE  | wood_top     | 11 | ITEMS/mcl_core/textures/default_tree_top.png              | 9c7a45 | -      | -
+TILE  | leaves       | 12 | ITEMS/mcl_core/textures/default_leaves.png                | 3f8a2c | 6fc044 | -
+TILE  | gravel       | 13 | ITEMS/mcl_core/textures/default_gravel.png                | 8a8680 | -      | -
+# BIOME | name | shape | cx | cy | rx | ry | mode | base | peak | top | side | cap | cap_from | jitter
+# 1. grass over the whole island, gently rolling (value noise, +-1 level)
+BIOME | grass        | all     | 0   | 0   | 0  | 0  | flat | 3 | -  | grass_top | grass_side | -    | -         | 1
+# 2. a desert patch at the plain height, with a little roll
+BIOME | desert       | ellipse | 52  | 98  | 28 | 15 | flat | 3 | -  | sand      | sand       | -    | -         | 1
+# 3. the beach: land within 3 cells of the outline, one level below the plain
+BIOME | beach        | rim     | 0   | 0   | 3  | 0  | flat | 2 | -  | sand      | sand       | -    | -         | 0
+# 4. lake one (east): a sand rim, shallow water below it, deep water in the middle
+BIOME | lake1_rim    | ellipse | 172 | 104 | 17 | 12 | flat | 2 | -  | sand      | sand       | -    | -         | 0
+BIOME | lake1_water  | ellipse | 172 | 104 | 13 | 9  | flat | 1 | -  | water     | water      | -    | -         | 0
+BIOME | lake1_deep   | ellipse | 172 | 104 | 7  | 5  | flat | 0 | -  | water_deep | water_deep | -   | -         | 0
+# 5. lake two (south-west)
+BIOME | lake2_rim    | ellipse | 78  | 120 | 17 | 11 | flat | 2 | -  | sand      | sand       | -    | -         | 0
+BIOME | lake2_water  | ellipse | 78  | 120 | 13 | 8  | flat | 1 | -  | water     | water      | -    | -         | 0
+BIOME | lake2_deep   | ellipse | 78  | 120 | 6  | 4  | flat | 0 | -  | water_deep | water_deep | -   | -         | 0
+# 6. the smaller hill (grass on top, dirt-grass sides)
+BIOME | hill         | ellipse | 120 | 110 | 17 | 12 | cone | 3 | 9  | grass_top | grass_side | -    | -         | 1
+# 7. the snow-capped range: stone body, stepped slopes, snow where H >= RULE snow_line. Three overlapping cones raise the tallest peak to 28
+BIOME | range_west   | ellipse | 112 | 62  | 22 | 17 | cone | 3 | 20 | stone     | stone      | snow | snow_line | 2
+BIOME | range_east   | ellipse | 178 | 66  | 22 | 17 | cone | 3 | 19 | stone     | stone      | snow | snow_line | 2
+BIOME | range_main   | ellipse | 146 | 56  | 34 | 24 | cone | 3 | 28 | stone     | stone      | snow | snow_line | 2
+# 8. a dirt trench, two levels below the plain (the reference frame 3-trench-dirt-walls)
+BIOME | trench       | rect    | 150 | 128 | 24 | 2  | flat | 1 | -  | dirt      | dirt       | -    | -         | 0
+# TREE | name | cx | cy | trunk_h | crown_r | crown_h : trunk is wood, crown is leaves; positions are on the plain
+TREE  | tree_a | 100 | 100 | 6 | 2 | 4
+TREE  | tree_b | 112 | 92  | 6 | 2 | 4
+TREE  | tree_c | 128 | 98  | 5 | 1 | 4
+TREE  | tree_d | 96  | 82  | 6 | 2 | 4
+TREE  | tree_e | 160 | 118 | 5 | 1 | 4
+TREE  | tree_f | 70  | 80  | 6 | 2 | 4

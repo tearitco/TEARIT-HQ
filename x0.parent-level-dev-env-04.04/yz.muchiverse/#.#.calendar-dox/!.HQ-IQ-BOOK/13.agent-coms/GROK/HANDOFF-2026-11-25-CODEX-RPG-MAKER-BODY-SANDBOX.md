@@ -141,3 +141,13 @@ The book, the page, and a mode-2 dump of the field already exist. Follow "Start 
 - Voxel verbs already started: `16.game/MINECRAFT-EVENTS-HANDOFF-FARMING-WATER-MOBS-DAYNIGHT-2026-11-22.md`
 - How a book opens in rpg-edit: `16.game/RTA-BATTERY-CONVERSION-2026-11-21.md` (Centon and Bay slice)
 - Charset cache: `#.NNEST_ASSETS` RMMV character sheets, next to `rmmv-www-img/tilesets/World_A2.png`
+
+## rmmc-0001 island biomes (2026-11-25, claude)
+
+The island page (rmmc-0001, Centroid small page at 3x, 216 x 156) now has taller mountains, two lakes, a desert, a sand beach, snow caps, six trees and a dirt trench, painted by a generic op from DATA rows. This replaces the magic-coordinate approach of `rmmc_field_op.c`.
+
+- `@.apps/rmmc/biomes.pdl` is the only place the numbers live: `RULE` (seed, noise scale, snow line, rock tile), `TILE` (atlas slot, Mineclonia PNG, tint), `BIOME` (shape, centre, radii, flat or cone, base and peak height, top / side / cap tiles, jitter), `TREE`. Biomes apply in file order, cones only raise. A variant is a file that `INCLUDE`s the base and restates one row.
+- `@.apps/rmmc/ops/rmmc_biome_op.c` (built to `ops/+x/`): `rmmc_biome_op biomes.pdl <desk>` repaints in place and keeps the island outline and underside depth; `check ...` reads a desk back (`key value` lines); `png <desk> out.png [px]` draws a top view. The header documents the format and the exit codes.
+- Desk files written: `cells.txt` (floor = top tile, wall = side tile, depth), `map.txt` (glyph = cell height: `1`..`9`, `A`..`Z` = 10..35, `a b c` = -2 -1 0), `extrusion.pdl`, `legend.txt` (glyph and slot legend), `cells.rgba` (16 px Mineclonia atlas), `cells.marker` (size old mod 4000 + 1), `events.txt` empty.
+- Rerun: `cp` the backup (`/tmp/claude-1000/rmmc-0001-before/`, or rebuild with `rmmc_scale_op <centroid small> <desk> 3`) over the desk, then `rmmc_biome_op biomes.pdl <desk>`. Harness: `harness/rmmc_biomes.pal` + `cases/rmmc_biomes.pdl` (scratch desk only).
+- NOT verified: the live 3D view (no engine was started). The 3D side rule read from `bv_raymarch.frag`: top face = floor tile, sides above the floor level = wall tile, hung blocks = rock slot. Heights were reasoned from `bv_render_3d.c` (`zh[]`, `zs[]`), not seen in the engine. The block under the plain's floor level shows the floor (grass top) tile on its sides at the island edge.

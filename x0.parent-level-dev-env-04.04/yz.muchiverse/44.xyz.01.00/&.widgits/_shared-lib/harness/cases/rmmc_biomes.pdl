@@ -1,0 +1,150 @@
+# rmmc_biomes.pdl - rmmc_biome_op paints a desk from BIOME rows (@.apps/rmmc/biomes.pdl), 2026-11-25. Everything runs in a scratch tree under $T; the live rmmc-0001 desk is never read or written.
+# The source is the real Centroid small page scaled 3x by rmmc_scale_op (the way rmmc-0001 was made), so the outline is the real island (216 x 156).
+# Variants of the biome file are written with WRITE: INCLUDE the base, then restate ONE row (a later row with the same name replaces the earlier one).
+RESULTS | ../results/rmmc_biomes.txt
+ENV | LC_ALL | C
+CASE | build
+SCRATCH |
+MKDIR | house/@.apps/rmmc
+MKDIR | house/shared
+MKDIR | a
+MKDIR | a/rmmc
+MKDIR | b
+MKDIR | b/rmmc
+COPY | @.apps/rmmc/biomes.pdl | house/@.apps/rmmc/biomes.pdl
+COPY | shared/MINECLONIA-ASSET-SOURCE-LOCATION.pdl | house/shared/MINECLONIA-ASSET-SOURCE-LOCATION.pdl
+RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -o | $T/scale.+x | $HOUSE/@.apps/rmmc/ops/rmmc_scale_op.c
+EXPECT_EXIT | 0 | the-scale-op-compiles
+RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -o | $T/biome.+x | $HOUSE/@.apps/rmmc/ops/rmmc_biome_op.c | -lpng | -lz
+EXPECT_EXIT | 0 | the-biome-op-compiles
+RUN | $T/scale.+x | $HOUSE/@.apps/centroid/centroid-pchq/pieces/system/maps/centroid/small | $T/src | 3
+EXPECT_OUT | 216x156 | the-source-island-is-216-by-156
+RUN | $T/scale.+x | $HOUSE/@.apps/centroid/centroid-pchq/pieces/system/maps/centroid/small | $T/a/rmmc/desk | 3
+RUN | $T/scale.+x | $HOUSE/@.apps/centroid/centroid-pchq/pieces/system/maps/centroid/small | $T/b/rmmc/desk | 3
+RUN | /usr/bin/stat | -c | %s | $T/src/cells.marker
+EXPECT_OUT_IS | 1697 | the-source-marker-has-its-old-size
+RUN | $T/biome.+x | $T/house/@.apps/rmmc/biomes.pdl | $T/a/rmmc/desk
+EXPECT_EXIT | 0 | the-biome-op-paints-desk-A
+EXPECT_OUT | land=17460 | the-painted-island-keeps-17460-land-cells
+RUN | $T/biome.+x | $T/house/@.apps/rmmc/biomes.pdl | $T/b/rmmc/desk
+EXPECT_EXIT | 0 | the-biome-op-paints-desk-B
+EXPECT_OUT | from png 13 | all-13-tiles-come-from-the-mineclonia-textures-none-is-a-flat-fallback
+SUMTREE | hA | a
+SUMTREE | hB | b
+EXPECT_EQ | $hA | $hB | same-input-twice-gives-identical-bytes
+RUN | /usr/bin/stat | -c | %s | $T/a/rmmc/desk/cells.marker
+EXPECT_OUT_IS | 1698 | the-marker-grew-to-old-mod-4000-plus-1-so-the-engine-reloads
+RUN | /usr/bin/stat | -c | %s | $T/a/rmmc/desk/events.txt
+EXPECT_OUT_IS | 0 | events-txt-is-empty
+RUN | /usr/bin/grep | -c | tile_px=16 | $T/a/rmmc/desk/cells.txt
+EXPECT_OUT_IS | 1 | the-atlas-is-16px-blocks
+RUN | /usr/bin/grep | -c | ^SLOT | $T/a/rmmc/desk/legend.txt
+EXPECT_OUT_IS | 14 | the-legend-lists-13-slots-and-the-rock-slot
+
+CASE | checks-on-the-painted-desk
+RUN | $T/biome.+x | check | $T/house/@.apps/rmmc/biomes.pdl | $T/a/rmmc/desk | $T/src | outline_diff
+CAPTURE | diff
+EXPECT_EQ | $diff | 0 | no-land-outside-the-island-outline-and-none-lost
+RUN | $T/biome.+x | check | $T/house/@.apps/rmmc/biomes.pdl | $T/a/rmmc/desk | $T/src | land
+CAPTURE | land
+RUN | $T/biome.+x | check | $T/house/@.apps/rmmc/biomes.pdl | $T/a/rmmc/desk | $T/src | src_land
+CAPTURE | srcland
+EXPECT_EQ | $land | $srcland | land-cell-count-equals-the-source-count
+EXPECT_GE | $land | 17000 | the-island-has-land-vacuity
+RUN | $T/biome.+x | check | $T/house/@.apps/rmmc/biomes.pdl | $T/a/rmmc/desk | - | grass_h
+CAPTURE | g
+RUN | $T/biome.+x | check | $T/house/@.apps/rmmc/biomes.pdl | $T/a/rmmc/desk | - | mount_h
+CAPTURE | mx
+CALC | lim | $g | * | 3
+EXPECT_GE | $g | 2 | the-grass-plain-has-a-height-vacuity
+EXPECT_GE | $mx | $lim | the-tallest-snow-or-stone-mountain-is-at-least-3x-the-grass-height
+RUN | $T/biome.+x | check | $T/house/@.apps/rmmc/biomes.pdl | $T/a/rmmc/desk | - | lake_cells
+CAPTURE | lc
+EXPECT_GE | $lc | 100 | there-are-lake-cells-vacuity
+RUN | $T/biome.+x | check | $T/house/@.apps/rmmc/biomes.pdl | $T/a/rmmc/desk | - | lake_bad
+CAPTURE | lb
+EXPECT_EQ | $lb | 0 | every-lake-cell-is-lower-than-its-neighbouring-land
+RUN | $T/biome.+x | check | $T/house/@.apps/rmmc/biomes.pdl | $T/a/rmmc/desk | - | outline_sand
+CAPTURE | os
+EXPECT_GE | $os | 100 | sand-cells-exist-on-the-outline
+RUN | $T/biome.+x | check | $T/house/@.apps/rmmc/biomes.pdl | $T/a/rmmc/desk | - | snow_cells
+CAPTURE | sc
+EXPECT_GE | $sc | 100 | there-are-snow-cells-vacuity
+RUN | $T/biome.+x | check | $T/house/@.apps/rmmc/biomes.pdl | $T/a/rmmc/desk | - | snow_low
+CAPTURE | sl
+EXPECT_EQ | $sl | 0 | snow-only-at-or-above-the-snow-line
+RUN | $T/biome.+x | check | $T/house/@.apps/rmmc/biomes.pdl | $T/a/rmmc/desk | - | slot_bad
+CAPTURE | sb
+EXPECT_EQ | $sb | 0 | every-slot-used-exists-in-the-atlas
+RUN | $T/biome.+x | check | $T/house/@.apps/rmmc/biomes.pdl | $T/a/rmmc/desk | - | slots_used
+CAPTURE | su
+EXPECT_GE | $su | 8 | at-least-8-slots-are-used-vacuity
+RUN | $T/biome.+x | check | $T/house/@.apps/rmmc/biomes.pdl | $T/a/rmmc/desk | - | glyph_bad
+CAPTURE | gb
+EXPECT_EQ | $gb | 0 | every-land-cell-has-a-glyph-and-no-sky-cell-has-one
+
+CASE | negative-controls-on-the-real-island
+WRITE | house/@.apps/rmmc/seedmut.pdl | INCLUDE \p biomes.pdl\nRULE \p seed \p 777\n
+RUN | $T/scale.+x | $HOUSE/@.apps/centroid/centroid-pchq/pieces/system/maps/centroid/small | $T/deskC | 3
+RUN | $T/biome.+x | $T/house/@.apps/rmmc/seedmut.pdl | $T/deskC
+EXPECT_EXIT | 0 | a-variant-with-another-seed-paints
+SUMTREE | hC | deskC
+EXPECT_NE | $hA | $hC | NEGATIVE-another-seed-gives-different-bytes-so-the-equality-above-can-fail
+WRITE | house/@.apps/rmmc/lakehigh.pdl | INCLUDE \p biomes.pdl\nBIOME \p lake1_water \p ellipse \p 172 \p 104 \p 13 \p 9 \p flat \p 9 \p - \p water \p water \p - \p - \p 0\n
+RUN | $T/scale.+x | $HOUSE/@.apps/centroid/centroid-pchq/pieces/system/maps/centroid/small | $T/deskD | 3
+RUN | $T/biome.+x | $T/house/@.apps/rmmc/lakehigh.pdl | $T/deskD
+EXPECT_EXIT | 0 | the-lake-above-grass-variant-paints
+RUN | $T/biome.+x | check | $T/house/@.apps/rmmc/lakehigh.pdl | $T/deskD | - | lake_bad
+CAPTURE | lbad
+EXPECT_GE | $lbad | 1 | NEGATIVE-a-lake-above-the-sand-rim-turns-the-lake-check-red
+WRITE | house/@.apps/rmmc/snowlow.pdl | INCLUDE \p biomes.pdl\nBIOME \p range_main \p ellipse \p 146 \p 56 \p 34 \p 24 \p cone \p 3 \p 28 \p stone \p stone \p snow \p 6 \p 2\n
+RUN | $T/scale.+x | $HOUSE/@.apps/centroid/centroid-pchq/pieces/system/maps/centroid/small | $T/deskE | 3
+RUN | $T/biome.+x | $T/house/@.apps/rmmc/snowlow.pdl | $T/deskE
+EXPECT_EXIT | 0 | the-low-snow-variant-paints
+RUN | $T/biome.+x | check | $T/house/@.apps/rmmc/snowlow.pdl | $T/deskE | - | snow_low
+CAPTURE | slow
+EXPECT_GE | $slow | 1 | NEGATIVE-snow-below-the-snow-line-turns-the-snow-check-red
+WRITE | house/@.apps/rmmc/lowrange.pdl | INCLUDE \p biomes.pdl\nBIOME \p range_west \p ellipse \p 112 \p 62 \p 22 \p 17 \p cone \p 3 \p 5 \p stone \p stone \p snow \p snow_line \p 2\nBIOME \p range_east \p ellipse \p 178 \p 66 \p 22 \p 17 \p cone \p 3 \p 5 \p stone \p stone \p snow \p snow_line \p 2\nBIOME \p range_main \p ellipse \p 146 \p 56 \p 34 \p 24 \p cone \p 3 \p 5 \p stone \p stone \p snow \p snow_line \p 2BIOME \p hill \p ellipse \p 120 \p 110 \p 17 \p 12 \p cone \p 3 \p 5 \p grass_top \p grass_side \p - \p - \p 1\n
+RUN | $T/scale.+x | $HOUSE/@.apps/centroid/centroid-pchq/pieces/system/maps/centroid/small | $T/deskF | 3
+RUN | $T/biome.+x | $T/house/@.apps/rmmc/lowrange.pdl | $T/deskF
+EXPECT_EXIT | 0 | the-low-mountains-variant-paints
+RUN | $T/biome.+x | check | $T/house/@.apps/rmmc/lowrange.pdl | $T/deskF | - | mount_h
+CAPTURE | mxl
+CALC | limm | $lim | - | 1
+EXPECT_LE | $mxl | $limm | NEGATIVE-mountains-of-peak-5-fail-the-3x-grass-height-check
+WRITE | house/@.apps/rmmc/nobeach.pdl | INCLUDE \p biomes.pdl\nBIOME \p beach \p rim \p 0 \p 0 \p 0 \p 0 \p flat \p 2 \p - \p sand \p sand \p - \p - \p 0\n
+RUN | $T/scale.+x | $HOUSE/@.apps/centroid/centroid-pchq/pieces/system/maps/centroid/small | $T/deskG | 3
+RUN | $T/biome.+x | $T/house/@.apps/rmmc/nobeach.pdl | $T/deskG
+EXPECT_EXIT | 0 | the-no-beach-variant-paints
+RUN | $T/biome.+x | check | $T/house/@.apps/rmmc/nobeach.pdl | $T/deskG | - | outline_sand
+CAPTURE | osn
+CALC | osm | $os | - | 1
+EXPECT_LE | $osn | $osm | NEGATIVE-without-the-beach-row-far-fewer-sand-cells-touch-the-outline-so-the-sand-count-can-fall
+
+CASE | negative-controls-on-a-tiny-desk
+MKDIR | mini
+MKDIR | minisrc
+WRITE | mini/cells.txt | width=4\nheight=3\ntile_px=24\natlas_cols=16\natlas_tiles=43\ncells\n0,0,0 1,0,2 1,0,2 0,0,0\n1,0,2 1,0,2 1,0,2 1,0,2\n0,0,0 1,0,2 1,0,2 0,0,0\n
+WRITE | minisrc/cells.txt | width=4\nheight=3\ntile_px=24\natlas_cols=16\natlas_tiles=43\ncells\n0,0,0 1,0,2 1,0,2 0,0,0\n1,0,2 1,0,2 1,0,2 1,0,2\n0,0,0 1,0,2 1,0,2 0,0,0\n
+RUN | $T/biome.+x | $T/house/@.apps/rmmc/biomes.pdl | $T/mini
+EXPECT_EXIT | 0 | the-tiny-desk-paints
+EXPECT_OUT | land=8 | the-tiny-desk-keeps-its-8-land-cells
+RUN | $T/biome.+x | check | $T/house/@.apps/rmmc/biomes.pdl | $T/mini | $T/minisrc | outline_diff
+CAPTURE | md
+EXPECT_EQ | $md | 0 | the-tiny-desk-outline-is-unchanged
+RUN | $T/biome.+x | check | $T/house/@.apps/rmmc/biomes.pdl | $T/mini | $T/minisrc | slot_bad
+CAPTURE | ms
+EXPECT_EQ | $ms | 0 | the-tiny-desk-has-no-missing-slot
+WRITE | mini/cells.txt | width=4\nheight=3\ntile_px=16\natlas_cols=16\natlas_tiles=14\nrock_slot=4\ncells\n1,0,2 1,0,2 1,0,2 0,0,0\n1,0,2 1,0,2 1,0,2 1,0,2\n0,0,0 1,0,2 1,0,2 0,0,0\n
+RUN | $T/biome.+x | check | $T/house/@.apps/rmmc/biomes.pdl | $T/mini | $T/minisrc | outline_diff
+CAPTURE | md2
+EXPECT_EQ | $md2 | 1 | NEGATIVE-a-land-cell-added-outside-the-outline-turns-the-outline-check-red
+WRITE | mini/cells.txt | width=4\nheight=3\ntile_px=16\natlas_cols=16\natlas_tiles=14\nrock_slot=4\ncells\n99,0,2 1,0,2 1,0,2 0,0,0\n1,0,2 1,0,2 1,0,2 1,0,2\n0,0,0 1,0,2 1,0,2 0,0,0\n
+RUN | $T/biome.+x | check | $T/house/@.apps/rmmc/biomes.pdl | $T/mini | - | slot_bad
+CAPTURE | ms2
+EXPECT_GE | $ms2 | 1 | NEGATIVE-a-slot-that-is-not-in-the-atlas-turns-the-slot-check-red
+RUN | $T/biome.+x | $T/house/@.apps/rmmc/nonexistent.pdl | $T/mini
+EXPECT_EXIT | 3 | a-missing-biomes-file-exits-3
+RUN | $T/biome.+x
+EXPECT_EXIT | 2 | no-arguments-is-a-usage-exit-2
+CLEAN |

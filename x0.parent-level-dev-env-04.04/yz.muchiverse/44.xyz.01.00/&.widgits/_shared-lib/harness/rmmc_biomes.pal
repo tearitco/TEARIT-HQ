@@ -1,0 +1,4 @@
+# rmmc_biomes.pal - the island biomes of book rmmc page rmmc-0001: data rows (biomes.pdl) painted by rmmc_biome_op, read back by its check verb (2026-11-25)
+exec ./ops/+x/harness_case_op.+x cases/rmmc_biomes.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/rmmc_biomes.pdl
+halt
