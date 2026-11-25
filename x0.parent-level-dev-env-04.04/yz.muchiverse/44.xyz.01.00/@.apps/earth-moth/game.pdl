@@ -1,0 +1,5 @@
+# Earth moth. Page earth is the round ETOPO5 globe. The world clock stays paused.
+GAME   | name        | earth-moth
+GAME   | title       | Earth moth
+GAME   | driver      | {book}/ops/+x/earth_moth_op.+x
+GAME   | clock       | pause
