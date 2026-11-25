@@ -16,8 +16,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 static int known(const char *v) {
-    return !strcmp(v, "spawn") || !strcmp(v, "walk") || !strcmp(v, "face") || !strcmp(v, "jump") || !strcmp(v, "reset") || !strcmp(v, "seat"); }
-static int notwired(const char *v) { return !strcmp(v, "mine") || !strcmp(v, "place") || !strcmp(v, "pick"); }
+    return !strcmp(v, "spawn") || !strcmp(v, "walk") || !strcmp(v, "face") || !strcmp(v, "jump") || !strcmp(v, "reset") || !strcmp(v, "seat") || !strcmp(v, "mine") || !strcmp(v, "place"); }
 static int run(char *const av[], char *out, size_t osz) {
     int p[2]; if (pipe(p)) return 2; pid_t c = fork(); if (c < 0) return 2;
     if (c == 0) { alarm(20); dup2(p[1], 1); dup2(p[1], 2); close(p[0]); close(p[1]); execv(av[0], av); _exit(127); }
@@ -25,10 +24,9 @@ static int run(char *const av[], char *out, size_t osz) {
     int st = 0; waitpid(c, &st, 0); char *e = strchr(out, '\n'); if (e) *e = 0; return WIFEXITED(st) ? WEXITSTATUS(st) : 99; }
 static void result(const char *rp, int code, const char *out) { FILE *f = fopen(rp, "w"); if (f) { if (code == 0) fputs("ok\n", f); else fprintf(f, "refused: %s [exit %d]\n", out[0] ? out : "no reason given", code); fclose(f); } }
 int main(int argc, char **argv) {
-    if (argc < 2 || (!known(argv[1]) && !notwired(argv[1]))) { fprintf(stderr, "rmmc_verb: unknown verb\n"); return 2; }
+    if (argc < 2 || (!known(argv[1]))) { fprintf(stderr, "rmmc_verb: unknown verb\n"); return 2; }
     const char *v = argv[1], *arg = getenv("GAME_ARG"); if (!arg) arg = "";
     for (const char *c = arg; *c; c++) if (*c == '\n' || *c == '\r' || *c == '\'' || *c == '|' || (unsigned char)*c < 32) { fprintf(stderr, "rmmc_verb: bad argument\n"); return 2; }
-    if (notwired(v)) { fprintf(stderr, "rmmc_verb: %s is not wired yet (NOT VERIFIED)\n", v); return 2; }
     char a1[64] = "", a2[64] = ""; { char t[256]; snprintf(t, sizeof t, "%s", arg); for (char *c = t; *c; c++) if (*c == ',') *c = ' '; if (sscanf(t, "%63s %63s", a1, a2) < 0) a1[0] = 0; }
     if ((!strcmp(v, "walk") || !strcmp(v, "face")) && (strlen(a1) != 1 || !strchr("nesw", a1[0]))) { fprintf(stderr, "rmmc_verb: %s needs n, e, s or w\n", v); return 2; }
     int sx = 0, sz = 0; if (!strcmp(v, "spawn") && (!a1[0] || !a2[0] || sscanf(a1, "%d", &sx) != 1 || sscanf(a2, "%d", &sz) != 1)) { fprintf(stderr, "rmmc_verb: spawn needs x z\n"); return 2; }
@@ -57,6 +55,17 @@ int main(int argc, char **argv) {
     else if (!strcmp(v, "face")) { char *av[] = { vop, "face", data, led, (char *)actor, a1, NULL }; code = run(av, out, sizeof out); }
     else if (!strcmp(v, "jump")) { char *av[] = { vop, "jump", data, led, (char *)actor, NULL }; code = run(av, out, sizeof out); }
     else if (!strcmp(v, "reset")) { char *av[] = { vop, "reset", data, led, (char *)actor, NULL }; code = run(av, out, sizeof out); }
+    else if (!strcmp(v, "mine") || !strcmp(v, "place")) {   /* the column IN FRONT of her: where (her cell + facing) -> that column's top -> MINE it / PLACE on top of it (one ledger row each, vox_op) */
+        char o2[200]; char *wa[] = { vop, "where", data, led, (char *)actor, NULL }; int ax = 0, ay = 0, az = 0; char fc = '-';
+        if (run(wa, o2, sizeof o2) != 0 || sscanf(o2, "at=%d,%d,%d", &ax, &ay, &az) != 3) { snprintf(out, sizeof out, "no such actor"); code = 10; }
+        else { char *fp = strstr(o2, "face="); if (fp) fc = fp[5]; if (!strchr("nesw", fc)) fc = 's';
+            int fx = ax + (fc == 'e') - (fc == 'w'), fz = az + (fc == 's') - (fc == 'n'); char gx[32], gz[32], o3[200]; snprintf(gx, sizeof gx, "%d", fx); snprintf(gz, sizeof gz, "%d", fz);
+            char *g[] = { vop, "ground", data, led, gx, gz, NULL }; int c2 = run(g, o3, sizeof o3); int top = -1; if (c2 == 0) sscanf(o3, "top=%d", &top);
+            if (c2 != 0 || top < 0) { snprintf(out, sizeof out, "no ground in front at %d,%d", fx, fz); code = 11; }
+            else if (!strcmp(v, "mine")) { char cell[96]; snprintf(cell, sizeof cell, "%d,%d,%d", fx, top, fz); char *av[] = { vop, "mine", data, led, (char *)actor, "hand", cell, NULL }; code = run(av, out, sizeof out); }
+            else { char item[64] = "dirt", pp[PATH_MAX + 96]; snprintf(pp, sizeof pp, "%s/play/pick.txt", book); FILE *pf = fopen(pp, "r"); if (pf) { if (fgets(item, sizeof item, pf)) item[strcspn(item, "\r\n'| ")] = 0; fclose(pf); } if (!item[0]) snprintf(item, sizeof item, "dirt");
+                char cell[96], one[8] = "1"; snprintf(cell, sizeof cell, "%d,%d,%d", fx, top + 1, fz); char *gv[] = { vop, "give", data, led, (char *)actor, item, one, "hotbar", NULL }; char og[200]; run(gv, og, sizeof og);   /* creative hotbar: the picked block is given first, as a GIVE row */
+                char *av[] = { vop, "place", data, led, (char *)actor, item, cell, NULL }; code = run(av, out, sizeof out); } } }
     else { char *av[] = { vop, "seat", data, led, (char *)actor, a1, NULL }; code = run(av, out, sizeof out); }
     if (code == 0 && access(pop, X_OK) == 0) { char o2[300]; char *av[] = { pop, "project", seed, desk, led, pose, hm, NULL }; if (run(av, o2, sizeof o2)) { snprintf(out, sizeof out, "projection failed: %s", o2); code = 5; } }
     result(rp, code, out); if (code) fprintf(stderr, "%s\n", out);

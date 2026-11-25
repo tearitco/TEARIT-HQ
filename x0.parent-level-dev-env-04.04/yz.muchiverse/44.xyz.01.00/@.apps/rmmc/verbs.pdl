@@ -11,7 +11,7 @@ VERB | face  | yes | ui | dir | turn on the spot (a FACE row: the facing is a fo
 VERB | jump  | yes | ui |     | hop up one level and land back on the same column (both MOVE rows or none; 15 with no ground under the feet)
 VERB | reset | yes | ui |     | back to the spawn point (a RESET row)
 VERB | seat  | yes | ui | who | who drives Asa: human or harness (a SEAT row; the last row wins; no row = harness)
-# mine, place and pick are listed so the manifest shows the plan; the engine answers exit 2 "not wired yet". NOT VERIFIED, priority 3 (owner 2026-11-25: break and place later).
-VERB | mine  | no  | ui | dir | NOT WIRED: dig the block in front
-VERB | place | no  | ui | item dir | NOT WIRED: put a block down
-VERB | pick  | no  | ui | item | NOT WIRED: choose the block to place (a preference, not a ledger row)
+# mine and place act on the column IN FRONT of Asa (her facing); place uses the hotbar pick (play/pick.txt, default dirt). pick is not a verb: it is a preference written by rmmc_pick_op.
+# Only the top block of a column can be mined or built on (overhangs and tunnels are not representable, plan 7).
+VERB | mine  | yes | ui |     | dig the top block of the column in front (a MINE row; the column drops one level; refused 13 with nothing to dig, 11 off the island)
+VERB | place | yes | ui |     | put the picked block on top of the column in front (a PLACE row; the column rises one level; refused 11 off the island)

@@ -85,8 +85,8 @@ EXPECT_EXIT | 2 | NEGATIVE-a-bad-direction-is-refused-2
 ENV | GAME_ARG |
 RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_verb.+x | bogus
 EXPECT_EXIT | 2 | NEGATIVE-an-unknown-verb-is-refused-2
-RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_verb.+x | mine
-EXPECT_EXIT | 2 | mine-is-NOT-wired-yet-and-says-so-(exit-2)
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_verb.+x | pick
+EXPECT_EXIT | 2 | pick-is-not-a-verb-(it-is-the-hotbar-preference,-exit-2)
 ENV | GAME_ARG | e'x
 RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_verb.+x | walk
 EXPECT_EXIT | 2 | NEGATIVE-a-quote-in-the-argument-is-refused-2
