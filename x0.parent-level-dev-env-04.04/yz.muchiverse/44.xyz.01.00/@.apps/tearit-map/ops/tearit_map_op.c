@@ -905,6 +905,74 @@ static int dig_op(const char *map, const char *ledger) {
     return 0;
 }
 
+static uint32_t fold_line(uint32_t h, const char *s) {
+    while (*s) { h ^= (unsigned char)*s++; h *= 16777619u; }
+    return h;
+}
+
+static uint32_t ledger_hash(const char *path) {
+    FILE *f = fopen(path, "r");
+    char line[512];
+    uint32_t h = 2166136261u;
+    if (!f) return h;
+    while (fgets(line, sizeof line, f)) h = fold_line(h, line);
+    fclose(f);
+    return h;
+}
+
+static int checkpoint_op(const char *ledger) {
+    uint32_t h = ledger_hash(ledger);
+    FILE *f = fopen(ledger, "a");
+    if (!f) return 5;
+    fprintf(f, "CHECK | %u\n", h);
+    fclose(f);
+    printf("check=%u\n", h);
+    return 0;
+}
+
+static int verify_op(const char *ledger) {
+    FILE *f = fopen(ledger, "r");
+    char line[512];
+    uint32_t h = 2166136261u;
+    int checks = 0;
+    unsigned got;
+    if (!f) return 5;
+    while (fgets(line, sizeof line, f)) {
+        if (sscanf(line, "CHECK | %u", &got) == 1) {
+            if (got != h) { fclose(f); printf("fail check\n"); return 4; }
+            checks++;
+        }
+        h = fold_line(h, line);
+    }
+    fclose(f);
+    if (!checks) { printf("fail none\n"); return 4; }
+    printf("checks=%d\n", checks);
+    return 0;
+}
+
+static int alter_op(const char *in, const char *out) {
+    FILE *f = fopen(in, "r");
+    FILE *o;
+    char line[512];
+    int flipped = 0;
+    if (!f) return 5;
+    o = fopen(out, "w");
+    if (!o) { fclose(f); return 5; }
+    while (fgets(line, sizeof line, f)) {
+        int a, b;
+        char rest[64];
+        if (!flipped && sscanf(line, "MOVE | %d | %d | %63s", &a, &b, rest) == 3) {
+            fprintf(o, "MOVE | %d | %d | %s\n", a + 1, b, rest);
+            flipped = 1;
+        } else fputs(line, o);
+    }
+    fclose(f);
+    fclose(o);
+    if (!flipped) { printf("fail alter\n"); return 4; }
+    printf("altered=1\n");
+    return 0;
+}
+
 static int place_op(const char *map, const char *ledger) {
     int *g, w, h, sx, sy, x, y, rc;
     FILE *f;
@@ -947,6 +1015,9 @@ int main(int argc, char **argv) {
     if (!strcmp(argv[1], "approach") && argc == 4) return approach_mineral(argv[2], argv[3]);
     if (!strcmp(argv[1], "dig") && argc == 4) return dig_op(argv[2], argv[3]);
     if (!strcmp(argv[1], "place") && argc == 4) return place_op(argv[2], argv[3]);
+    if (!strcmp(argv[1], "checkpoint") && argc == 3) return checkpoint_op(argv[2]);
+    if (!strcmp(argv[1], "verify") && argc == 3) return verify_op(argv[2]);
+    if (!strcmp(argv[1], "alter") && argc == 4) return alter_op(argv[2], argv[3]);
     if (!strcmp(argv[1], "found") && argc == 4) return found_op(argv[2], argv[3]);
     if (!strcmp(argv[1], "eat") && argc == 4) return body_op(argv[2], argv[3], 1);
     if (!strcmp(argv[1], "sleep") && argc == 4) return body_op(argv[2], argv[3], 0);

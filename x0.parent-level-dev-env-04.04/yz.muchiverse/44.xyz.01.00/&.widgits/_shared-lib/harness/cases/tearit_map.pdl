@@ -176,6 +176,21 @@ RUN | cmp | -s | $T/near.txt | $T/far.txt
 EXPECT_EXIT | 1 | the two moods disagree
 RUN | $T/tearit_map_op.+x | agent | $T/a.txt | $T/badmood.txt | fly
 EXPECT_EXIT | 2 | an unknown mood is refused
+RUN | rm | -f | $T/chk.txt
+EXPECT_EXIT | 0 | checkpoint ledger cleared
+RUN | $T/tearit_map_op.+x | step | $T/a.txt | $T/chk.txt | e
+EXPECT_EXIT | 0 | a step to checkpoint
+RUN | $T/tearit_map_op.+x | checkpoint | $T/chk.txt
+EXPECT_EXIT | 0 | the hash row is appended
+EXPECT_OUT | check= | the hash was printed
+RUN | $T/tearit_map_op.+x | verify | $T/chk.txt
+EXPECT_EXIT | 0 | the untouched ledger matches
+RUN | $T/tearit_map_op.+x | alter | $T/chk.txt | $T/chk-bad.txt
+EXPECT_EXIT | 0 | one move coordinate is changed
+RUN | $T/tearit_map_op.+x | verify | $T/chk-bad.txt
+EXPECT_EXIT | 4 | a changed prefix fails verify
+RUN | $T/tearit_map_op.+x | verify | $T/chk.txt
+EXPECT_EXIT | 0 | the original ledger still matches
 RUN | rm | -f | $T/pl.txt
 EXPECT_EXIT | 0 | place ledger cleared
 RUN | $T/tearit_map_op.+x | place | $T/a.txt | $T/pl.txt
