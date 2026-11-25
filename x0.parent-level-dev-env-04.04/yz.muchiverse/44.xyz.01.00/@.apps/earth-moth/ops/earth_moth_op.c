@@ -14,13 +14,22 @@
 #include <sys/stat.h>
 
 #define N 72
-#define R 12.0
+#define R_LAVA 12.0
+#define R_OIL 16.0
+#define R_WATER 20.0
+#define R_GRASS 24.0
 #define ETW 4320
 #define ETH 2160
 
-enum { T_EMPTY = 0, T_LAVA = 1 };
+enum { T_EMPTY = 0, T_LAVA = 1, T_OIL = 2, T_WATER = 3, T_GRASS = 4 };
 
-static const char *LAVA_PNG = "ITEMS/mcl_core/textures/default_lava_source_animated.png";
+/* Mineclonia has no oil block. The oil shell uses the coal block, the darkest liquid-dark block in mcl_core. */
+static const char *SHELL_PNG[] = {
+    "ITEMS/mcl_core/textures/default_lava_source_animated.png",
+    "ITEMS/mcl_core/textures/default_coal_block.png",
+    "ITEMS/mcl_core/textures/default_water_source_animated.png",
+    "ITEMS/mcl_core/textures/mcl_core_grass_block_top.png"
+};
 
 static char hglyph(int h) {
     if (h < 1) h = 1;
@@ -120,19 +129,22 @@ static void blit16(FILE *o, const char *root, const char *rel) {
 
 static int cell_of(const int16_t *e, int x, int y, int *lat_m, int *lon_m, int *hh) {
     double cx = (N - 1) / 2.0, cy = (N - 1) / 2.0;
-    double dx = (x - cx) / R, dy = (cy - y) / R, z, lat, lon;
+    double dx = x - cx, dy = cy - y, dist, z, lat, lon;
     int tile, h;
-    if (dx * dx + dy * dy > 1.0) { *hh = 0; return T_EMPTY; }
-    z = sqrt(1.0 - dx * dx - dy * dy);
-    lat = asin(dy) * 180.0 / M_PI;
-    lon = atan2(dx, z) * 180.0 / M_PI;
+    dist = sqrt(dx * dx + dy * dy);
+    if (dist > R_GRASS) { *hh = 0; return T_EMPTY; }
+    z = sqrt(1.0 - (dist / R_GRASS) * (dist / R_GRASS));
+    lat = asin(dy / R_GRASS) * 180.0 / M_PI;
+    lon = atan2(dx, R_GRASS * z) * 180.0 / M_PI;
     (void)e;
     if (lat_m) *lat_m = (int)lround(lat);
     if (lon_m) *lon_m = (int)lround(lon);
-    /* A smooth molten ball, shorter than the old crust so the page can hold shells. */
     h = 4 + (int)(z * 18.0);
     if (h > 60) h = 60;
-    tile = T_LAVA;
+    if (dist <= R_LAVA) tile = T_LAVA;
+    else if (dist <= R_OIL) tile = T_OIL;
+    else if (dist <= R_WATER) tile = T_WATER;
+    else tile = T_GRASS;
     *hh = h;
     return tile;
 }
@@ -193,10 +205,10 @@ static int desk(const char *etopo, const char *mine, const char *ledger, const c
     snprintf(path, sizeof path, "%s/cells.rgba", dir);
     f = fopen(path, "w");
     if (!f) { free(e); return 5; }
-    /* Slot 0 is empty. Slot 1 is lava. Six unused slots keep the 8-tile atlas. */
+    /* Slot 0 empty, then lava, oil, water, grass. Pad to 8 tiles. */
     for (y = 0; y < 16 * 16; y++) { fputc(0, f); fputc(0, f); fputc(0, f); fputc(0, f); }
-    blit16(f, mine, LAVA_PNG);
-    for (x = 2; x < 8; x++) for (y = 0; y < 16 * 16; y++) { fputc(0, f); fputc(0, f); fputc(0, f); fputc(0, f); }
+    for (x = 0; x < 4; x++) blit16(f, mine, SHELL_PNG[x]);
+    for (x = 5; x < 8; x++) for (y = 0; y < 16 * 16; y++) { fputc(0, f); fputc(0, f); fputc(0, f); fputc(0, f); }
     fclose(f);
     snprintf(path, sizeof path, "%s/map.txt", dir);
     f = fopen(path, "w");
@@ -218,20 +230,8 @@ static int desk(const char *etopo, const char *mine, const char *ledger, const c
     snprintf(path, sizeof path, "%s/events.txt", dir);
     f = fopen(path, "w");
     if (!f) { free(e); return 5; }
-    if (land_ok(e, px, py)) fprintf(f, "%d %d 210 170 120 block 0 2 1\n", px, py);
-    {
-        FILE *lf = fopen(ledger, "r");
-        char line[256];
-        int a, b;
-        if (lf) {
-            while (fgets(line, sizeof line, lf)) {
-                if (sscanf(line, "CREEPER | %d | %d", &a, &b) == 2 && land_ok(e, a, b)) fprintf(f, "%d %d 40 140 40 block 0 2 1\n", a, b);
-                else if (sscanf(line, "PIG | %d | %d", &a, &b) == 2 && land_ok(e, a, b)) fprintf(f, "%d %d 220 150 160 block 0 2 1\n", a, b);
-                else if (sscanf(line, "COW | %d | %d", &a, &b) == 2 && land_ok(e, a, b)) fprintf(f, "%d %d 90 60 40 block 0 2 1\n", a, b);
-            }
-            fclose(lf);
-        }
-    }
+    /* Trees, the person, and the other seats are the next shells. Not drawn on these rings. */
+    (void)px; (void)py;
     fclose(f);
     snprintf(path, sizeof path, "%s/view.pdl", dir);
     f = fopen(path, "w");
