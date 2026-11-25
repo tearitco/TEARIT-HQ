@@ -1,0 +1,26 @@
+# tutorial_narration.pdl - the words of the rmmc user tutorial (frames from shots_tutorial.pdl). DATA: edit a line, re-render, no code.
+# LINE | shot | english | japanese. The video pairs an English voice with Japanese subtitles and a twin with a Japanese voice and English subtitles (never the same language twice).
+LINE | t01-tour | The window: menus on top, the Pals sidebar on the left, the island in the middle, chat on the right and the hotbar along the bottom. | 画面の説明：上にメニュー、左にペットの一覧、中央に島、右にチャット、下にホットバーがあります。
+LINE | t02-walk1 | The arrow keys walk Asa one cell. | 矢印キーでアサが一マス歩きます。
+LINE | t03-walk2 | Press again for another step east. | もう一度押すと、東へもう一歩進みます。
+LINE | t04-jump | Space makes her jump. | スペースキーでジャンプします。
+LINE | t05-place1 | G places the picked block, here dirt, in front of her. | Gキーで、選んだブロック（ここでは土）を目の前に置きます。
+LINE | t06-place2 | Place another one on top. | もう一つ、上に積みます。
+LINE | t07-swing1 | B mines. The first swing only cracks the block. | Bキーで掘ります。最初の一振りではひびが入るだけです。
+LINE | t08-break | The second swing breaks it. The pillar is lower, and the little block drops and flies into her bag. Watch the count on the hotbar. | 二振り目で壊れます。柱が低くなり、小さなブロックが落ちてバッグに入ります。ホットバーの数字に注目。
+LINE | t09-log | Number keys pick a hotbar slot. Five is the log, and G places it. | 数字キーでホットバーを選びます。5は丸太で、Gで置けます。
+LINE | t10-axe | Pick the axe with nine and swing. Trees need an axe. | 9で斧を選んで振ります。木には斧が必要です。
+LINE | t11-axe-break | The log breaks and drops. | 丸太が壊れて落ちます。
+LINE | t12-flip | The hotbar has pages. Zero flips to the next one. | ホットバーにはページがあります。0で次のページへ。
+LINE | t13-planks | Pick planks and press C to craft. One log makes four planks. | 板を選んでCで作ります。丸太一本から板が四枚できます。
+LINE | t14-table | Pick the crafting table and press C. Four planks make a table. | 作業台を選んでC。板四枚で作業台ができます。
+LINE | t15-place-tbl | G places the table. | Gで作業台を置きます。
+LINE | t16-log2 | Back on page one for another log. | 最初のページに戻って、もう一本丸太を置きます。
+LINE | t17-axe2 | Two swings with the axe. | 斧で二回振ります。
+LINE | t18-planks2 | Craft the planks again. | もう一度、板を作ります。
+LINE | t19-pickaxe | With the table beside her, pick the pickaxe and press C to craft it. | 作業台のそばで、つるはしを選んでCを押すと作れます。
+LINE | t20-stone | Place a stone block. | 石のブロックを置きます。
+LINE | t21-hand | By hand, stone will not break. The sidebar says so. | 素手では石は壊れません。サイドバーにもそう出ます。
+LINE | t22-pick | With the pickaxe picked, the same key cracks it. | つるはしを選ぶと、同じキーでひびが入ります。
+LINE | t23-stone-brk | And it breaks. | そして壊れます。
+LINE | t24-outro | Walk, jump, place, mine and craft: all from the keyboard. | 歩く、跳ぶ、置く、掘る、作る。すべてキーボードだけで。
