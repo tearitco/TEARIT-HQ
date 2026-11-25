@@ -412,6 +412,7 @@ typedef struct {
     /* A SECOND solid run under a column (cells.txt tokens 4..6 per cell: "F,Wl,D,U,UD,US"): tile slot U for it, hung UD levels below the floor level, its top US levels below the floor TOP (zoff + 1 - US). A column is otherwise one contiguous run, so a hull floating over a planet could not keep the planet's own centre under it. 0 = none. */
     unsigned short *under; unsigned char *udep, *usink; int under_any;
     int rock;               /* cells.txt rock_slot=: atlas slot painted on the hung (negative z) blocks; 0 = the cell floor tile. */
+    int nocard;             /* cells.txt furniture_cards=0: this desk is TERRAIN, a glyph of height 2 is a 2-high column, never a table card (the editor view.pdl event_draw=billboard turned every height-2 glyph of the rmmc island into a tile-less card over a black fill, seen 2026-11-25). */
     int evlift;             /* cells.txt event_lift=1 (D114, the voxel desk): a map event stands ON TOP of its column (the extrusion height of its map.txt glyph minus the floor level) instead of inside it. */
     unsigned char depth[128]; /* DEPTH row: blocks hung BELOW the floor (negative z levels), the float depth of an island. */
     int zoff;               /* the deepest DEPTH in use: every grid level and every box is lifted by this so levels below the floor have a place. With DEPTH in use a cell with no floor and no wall tile has no block (the sky shows), so there is no separate hole key. */
@@ -579,6 +580,7 @@ static int maker_load_base(const char *root) {
                 in_cells = 1;
             }
             continue;
+            else if (strncmp(line, "furniture_cards=0", 17) == 0) g_mk.nocard = 1;
         }
         if (row >= g_mk.h) break;
         const char *q = line;
@@ -4187,7 +4189,7 @@ static int render_one_frame(void) {
             char vp[PATH_BUF], mode[32];
             snprintf(vp, sizeof(vp), "%s/pieces/system/view.pdl", focused_project_root);
             read_kv_str(vp, "event_draw", mode, sizeof(mode));
-            int card_furn = strncmp(mode, "billboard", 9) == 0;
+            int card_furn = strncmp(mode, "billboard", 9) == 0 && !g_mk.nocard;      /* a terrain desk opts out (cells.txt furniture_cards=0) */
             /* building_draw=sprite (view.pdl, default cubes; building_thickness=10..100 percent of a cell, default 80): tall glyph cells (height >= 3: walls, doors) are drawn like a sprite entity - the picture of the cell's tile, each opaque pixel a column,
              * transparent pixels left out - instead of a stack of cubes. Budget: at most BSPR_MAX_BOXES slabs (a cell of height h costs h) and BSPR_MAX_SLOTS distinct tile pictures (a model each); cells over the budget stay cubes. */
             char bmode[32]; read_kv_str(vp, "building_draw", bmode, sizeof(bmode));

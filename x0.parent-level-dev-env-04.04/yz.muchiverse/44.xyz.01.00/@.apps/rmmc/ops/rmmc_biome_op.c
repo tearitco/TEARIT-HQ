@@ -389,7 +389,7 @@ static int build(const char *biomes_path, const char *dir) {
 
     /* text files */
     char *cells = malloc(N * 16 + 4096), *map = malloc(N + (size_t)Hh + 16); size_t cn = 0, mn = 0;
-    cn += (size_t)sprintf(cells + cn, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=16\natlas_tiles=%d\nrock_slot=%d\nevent_lift=1\ncells\n", W, Hh, px, tiles, rock);
+    cn += (size_t)sprintf(cells + cn, "width=%d\nheight=%d\ntile_px=%d\natlas_cols=16\natlas_tiles=%d\nrock_slot=%d\nevent_lift=1\nfurniture_cards=0\ncells\n", W, Hh, px, tiles, rock);
     int used[128]; memset(used, 0, sizeof used);
     for (int y = 0; y < Hh; y++) {
         for (int x = 0; x < W; x++) {
