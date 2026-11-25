@@ -35,6 +35,7 @@ static uint32_t mix(uint32_t s, int x, int y, int stream) {
 }
 
 static int at(int *g, int w, int x, int y) { return g[y * w + x]; }
+static int load_map(const char *path, int **g, int *w, int *h, int *sx, int *sy);
 static void setg(int *g, int w, int x, int y, int k) { g[y * w + x] = k; }
 
 static void paint(int *g, int w, int h, uint32_t seed) {
@@ -423,6 +424,50 @@ static int picture(const char *in, const char *ppm) {
     return 0;
 }
 
+static int hut_of(const char *path, int *hx, int *hy) {
+    FILE *f = fopen(path, "r");
+    char line[256];
+    int x, y, w = 0, h = 0;
+    uint32_t seed = 0;
+    *hx = *hy = -1;
+    if (!f) return 5;
+    while (fgets(line, sizeof line, f)) {
+        unsigned s = 0;
+        if (sscanf(line, "HUT | %d | %d", &x, &y) == 2) { *hx = x; *hy = y; }
+        else if (sscanf(line, "MAP | %*d | %u | %d | %d", &s, &w, &h) == 3) seed = s;
+    }
+    fclose(f);
+    if (*hx >= 0) return 0;
+    if (w < 1 || h < 1) return 4;
+    {
+        int *g, sx, sy, i;
+        if (load_map(path, &g, &w, &h, &sx, &sy)) return 4;
+        for (y = 0; y < h && *hx < 0; y++) for (x = 0; x < w; x++) {
+            if (!land(g[y * w + x]) || g[y * w + x] == BRIDGE) continue;
+            if ((mix(seed, x, y, 4) % 5u) == 0u) { *hx = x; *hy = y; }
+        }
+        if (*hx < 0) for (i = 0; i < w * h && *hx < 0; i++) if (land(g[i])) { *hx = i % w; *hy = i / w; }
+        free(g);
+    }
+    if (*hx < 0) return 4;
+    f = fopen(path, "a");
+    if (!f) return 5;
+    fprintf(f, "HUT | %d | %d\n", *hx, *hy);
+    fclose(f);
+    return 0;
+}
+
+static int opened(const char *ledger, int seat) {
+    FILE *f = fopen(ledger, "r");
+    char line[256];
+    int s, a, b;
+    if (!f) return 0;
+    while (fgets(line, sizeof line, f))
+        if (sscanf(line, "OPEN | %d | %d | %d", &s, &a, &b) == 3 && s == seat) { fclose(f); return 1; }
+    fclose(f);
+    return 0;
+}
+
 static int mineral_of(const char *path, int *mx, int *my) {
     FILE *f = fopen(path, "r");
     char line[256];
@@ -763,6 +808,7 @@ static int desk(const char *in, const char *dir, const char *ledger) {
         fprintf(f, "%d %d %d %d %d block 0 2 1\n", px, py, rr, gg, bb);
     }
     if (!ledger_has_dig(ledger, mx, my)) fprintf(f, "%d %d 180 80 200 block 0 2 1\n", mx, my);
+    { int hx, hy; if (!hut_of(in, &hx, &hy)) fprintf(f, "%d %d 160 110 40 block 0 2 1\n", hx, hy); }
     if (ax >= 0 && ay >= 0) fprintf(f, "%d %d 40 80 220 block 0 2 1\n", ax, ay);
     fclose(f);
     snprintf(path, sizeof path, "%s/map.ppm", dir);
@@ -1234,6 +1280,73 @@ static int place_op(const char *map, const char *ledger) {
     return 0;
 }
 
+static int agent_founded(const char *ledger) {
+    FILE *f = fopen(ledger, "r");
+    char line[256], who[16];
+    int a, b;
+    if (!f) return 0;
+    while (fgets(line, sizeof line, f))
+        if (sscanf(line, "FOUND | %d | %d | %15s", &a, &b, who) == 3 && !strcmp(who, "agent")) { fclose(f); return 1; }
+    fclose(f);
+    return 0;
+}
+
+static int hut_op(const char *map, const char *ledger) {
+    int *g, w, h, sx, sy, x, y, hx, hy, rc;
+    FILE *f;
+    rc = load_map(map, &g, &w, &h, &sx, &sy);
+    if (rc) return rc;
+    if (hut_of(map, &hx, &hy)) { free(g); printf("fail hut\n"); return 4; }
+    where(ledger, sx, sy, &x, &y);
+    if (x != hx || y != hy || opened(ledger, 0)) { free(g); printf("fail hut\n"); return 4; }
+    f = fopen(ledger, "a");
+    if (!f) { free(g); return 5; }
+    fprintf(f, "OPEN | 0 | %d | %d | cache\n", x, y);
+    fclose(f);
+    printf("hut=%d,%d\n", x, y);
+    free(g);
+    return 0;
+}
+
+/* One beat of the other seat's life: open the hut, found once, otherwise walk. */
+static int roam_op(const char *map, const char *ledger) {
+    int *g, w, h, sx, sy, s2x, s2y, ax, ay, hx, hy, px, py, rc, i;
+    const int dx[4] = { 1, 0, -1, 0 };
+    const int dy[4] = { 0, 1, 0, -1 };
+    int best = -1, bestd = 0;
+    FILE *f;
+    rc = load_map(map, &g, &w, &h, &sx, &sy);
+    if (rc) return rc;
+    if (start_n(map, 1, &s2x, &s2y)) { free(g); return 4; }
+    where(ledger, sx, sy, &px, &py);
+    agent_at(ledger, s2x, s2y, &ax, &ay);
+    if (hut_of(map, &hx, &hy)) { free(g); return 4; }
+    f = fopen(ledger, "a");
+    if (!f) { free(g); return 5; }
+    if (!opened(ledger, 1) && ax == hx && ay == hy) {
+        fprintf(f, "OPEN | 1 | %d | %d | cache\n", ax, ay);
+        printf("roam=hut %d,%d\n", ax, ay);
+    } else if (opened(ledger, 1) && !agent_founded(ledger) && land(g[ay * w + ax]) && !(ax == px && ay == py) && !ledger_has_found(ledger, ax, ay)) {
+        fprintf(f, "FOUND | %d | %d | agent\n", ax, ay);
+        printf("roam=found %d,%d\n", ax, ay);
+    } else {
+        bestd = (ax > hx ? ax - hx : hx - ax) + (ay > hy ? ay - hy : hy - ay);
+        for (i = 0; i < 4; i++) {
+            int xx = ax + dx[i], yy = ay + dy[i], d;
+            if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+            if (!land(g[yy * w + xx]) || (xx == px && yy == py)) continue;
+            d = (xx > hx ? xx - hx : hx - xx) + (yy > hy ? yy - hy : hy - yy);
+            if (best < 0 || d < bestd) { best = i; bestd = d; }
+        }
+        if (best < 0) { fclose(f); free(g); printf("fail roam\n"); return 4; }
+        fprintf(f, "AGENT | %d | %d | near\n", ax + dx[best], ay + dy[best]);
+        printf("roam=walk %d,%d\n", ax + dx[best], ay + dy[best]);
+    }
+    fclose(f);
+    free(g);
+    return 0;
+}
+
 static int fog_op(const char *ledger, const char *dir) {
     char p[1100];
     int on = fog_drawn(ledger);
@@ -1281,5 +1394,22 @@ int main(int argc, char **argv) {
     if (!strcmp(argv[1], "agent") && argc == 4) return agent_op(argv[2], argv[3], "near");
     if (!strcmp(argv[1], "agent") && argc == 5) return agent_op(argv[2], argv[3], argv[4]);
     if (!strcmp(argv[1], "fog") && argc == 4) return fog_op(argv[2], argv[3]);
+    if (!strcmp(argv[1], "hut") && argc == 4) return hut_op(argv[2], argv[3]);
+    if (!strcmp(argv[1], "roam") && argc == 4) return roam_op(argv[2], argv[3]);
+    if (!strcmp(argv[1], "life") && argc == 3) {
+        char p[1100], ln[8];
+        FILE *f;
+        int on = 0;
+        fog_path(argv[2], p, sizeof p);
+        { char *s = strrchr(p, '/'); if (s) strcpy(s + 1, "roam.txt"); }
+        f = fopen(p, "r");
+        if (f) { if (fgets(ln, sizeof ln, f) && ln[0] == '1') on = 1; fclose(f); }
+        f = fopen(p, "w");
+        if (!f) return 5;
+        fprintf(f, "%d\n", on ? 0 : 1);
+        fclose(f);
+        printf("life=%s\n", on ? "off" : "on");
+        return 0;
+    }
     return 2;
 }

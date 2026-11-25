@@ -33,6 +33,17 @@ static int run_op(char *const av[]) {
     return WIFEXITED(st) && WEXITSTATUS(st) == 0 ? 0 : 1;
 }
 
+static int roam_on(const char *edit) {
+    char p[1100], ln[8];
+    FILE *f;
+    snprintf(p, sizeof p, "%s/state/games/tearit-map/roam.txt", edit);
+    f = fopen(p, "r");
+    if (!f) return 0;
+    if (!fgets(ln, sizeof ln, f)) { fclose(f); return 0; }
+    fclose(f);
+    return ln[0] == '1';
+}
+
 static int fog_on(const char *edit) {
     char p[1100], ln[8];
     FILE *f;
@@ -54,14 +65,18 @@ static void publish(const char *feed, int on, const char *msg, const char *op, c
     if (!on) fputs("gm_on=\ngm_pop=\ngmbar_on=\n", f);
     else {
         /* The board already draws this feed: gm_pop empty hides the centre popup, gmbar_on shows the bottom strip in its place. */
+        const char *rl = roam_on(edit) ? "Life on" : "Life off";
         fprintf(f, "gm_on=1\ngm_pid=%ld\ngm_pop=\ngmbar_on=1\n", (long)getpid());
-        fprintf(f, "gmbar_title=%s\ngmbar_n=6\n", msg && *msg ? msg : "Tearit map");
+        fprintf(f, "gmbar_title=%s\ngmbar_n=9\n", msg && *msg ? msg : "Tearit map");
         fprintf(f, "gmbar_0_label=North\ngmbar_0_act='%s' step '%s' '%s' n\n", op, ledger, ledger);
         fprintf(f, "gmbar_1_label=East\ngmbar_1_act='%s' step '%s' '%s' e\n", op, ledger, ledger);
         fprintf(f, "gmbar_2_label=South\ngmbar_2_act='%s' step '%s' '%s' s\n", op, ledger, ledger);
         fprintf(f, "gmbar_3_label=West\ngmbar_3_act='%s' step '%s' '%s' w\n", op, ledger, ledger);
         fprintf(f, "gmbar_4_label=Dig\ngmbar_4_act='%s' dig '%s' '%s'\n", op, ledger, ledger);
-        fprintf(f, "gmbar_5_label=%s\ngmbar_5_act='%s' fog '%s' '%s'\n", fl, op, ledger, dir);
+        fprintf(f, "gmbar_5_label=Found\ngmbar_5_act='%s' found '%s' '%s'\n", op, ledger, ledger);
+        fprintf(f, "gmbar_6_label=Hut\ngmbar_6_act='%s' hut '%s' '%s'\n", op, ledger, ledger);
+        fprintf(f, "gmbar_7_label=%s\ngmbar_7_act='%s' fog '%s' '%s'\n", fl, op, ledger, dir);
+        fprintf(f, "gmbar_8_label=%s\ngmbar_8_act='%s' life '%s'\n", rl, op, ledger);
     }
     fclose(f);
     rename(tmp, feed);
@@ -78,13 +93,17 @@ static void stamps(const char *edit, int on, const char *op, const char *ledger,
     if (!f) return;
     if (!on) fputs("stamp_on=\nn_stamp=0\n", f);
     else {
-        fputs("stamp_on=1\nn_stamp=6\n", f);
+        const char *rl = roam_on(edit) ? "Life on" : "Life off";
+        fputs("stamp_on=1\nn_stamp=9\n", f);
         fprintf(f, "stamp_0_label=North\nstamp_0_act='%s' step '%s' '%s' n\n", op, ledger, ledger);
         fprintf(f, "stamp_1_label=East\nstamp_1_act='%s' step '%s' '%s' e\n", op, ledger, ledger);
         fprintf(f, "stamp_2_label=South\nstamp_2_act='%s' step '%s' '%s' s\n", op, ledger, ledger);
         fprintf(f, "stamp_3_label=West\nstamp_3_act='%s' step '%s' '%s' w\n", op, ledger, ledger);
         fprintf(f, "stamp_4_label=Dig\nstamp_4_act='%s' dig '%s' '%s'\n", op, ledger, ledger);
-        fprintf(f, "stamp_5_label=%s\nstamp_5_act='%s' fog '%s' '%s'\n", fl, op, ledger, dir);
+        fprintf(f, "stamp_5_label=Found\nstamp_5_act='%s' found '%s' '%s'\n", op, ledger, ledger);
+        fprintf(f, "stamp_6_label=Hut\nstamp_6_act='%s' hut '%s' '%s'\n", op, ledger, ledger);
+        fprintf(f, "stamp_7_label=%s\nstamp_7_act='%s' fog '%s' '%s'\n", fl, op, ledger, dir);
+        fprintf(f, "stamp_8_label=%s\nstamp_8_act='%s' life '%s'\n", rl, op, ledger);
     }
     fclose(f);
     rename(tmp, path);
@@ -193,7 +212,7 @@ int main(int argc, char **argv) {
     hotbar(edit, "0");
     stamps(edit, 1, op, ledger, deskdir);
     publish(feed, 1, "Tearit map", op, ledger, deskdir, edit);
-    { const char *ow = getenv("GAME_OWNER_PID"); long owner = ow ? atol(ow) : 0; long led_m = 0;
+    { const char *ow = getenv("GAME_OWNER_PID"); long owner = ow ? atol(ow) : 0; long led_m = 0; int beat = 0;
     if (!stat(ledger, &st)) led_m = (long)st.st_mtime;
     while (!stop_) {
         if (owner > 1 && kill((pid_t)owner, 0) != 0 && errno == ESRCH) break;
@@ -209,6 +228,10 @@ int main(int argc, char **argv) {
             }
             if (cursor > 65536 && truncate(act, 0) == 0) cursor = 0;
         } else if (!stat(act, &st) && st.st_size < cursor) cursor = 0;
+        if (roam_on(edit) && (beat++ % 4) == 0) {
+            char *av[] = { op, "roam", ledger, ledger, NULL };
+            run_op(av);
+        }
         if (!stat(ledger, &st) && (long)st.st_mtime != led_m) { led_m = (long)st.st_mtime; desk(op, ledger, deskdir); }
         publish(feed, 1, "Tearit map", op, ledger, deskdir, edit);
         stamps(edit, 1, op, ledger, deskdir);
