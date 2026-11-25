@@ -9,6 +9,8 @@
 #include <errno.h>
 #include <ctype.h>
 #include <sys/stat.h>
+#include <png.h>
+#include <setjmp.h>
 
 enum { SEA = 40, MOIST = 30, HILL = 70, MOUNT = 85, VER = 1, MAXN = 64, RATION_CAP = 3, WATER_CAP = 3 };
 
@@ -478,6 +480,90 @@ static void mark_seen(int *seen, int w, int h, int x, int y) {
     }
 }
 
+static void pix(unsigned char *p, int x, int y, int r, int g, int b) {
+    unsigned char *d;
+    if (x < 0 || y < 0 || x > 15 || y > 15) return;
+    d = p + (y * 16 + x) * 4;
+    d[0] = (unsigned char)r; d[1] = (unsigned char)g; d[2] = (unsigned char)b; d[3] = 255;
+}
+
+static void fill_sprite(unsigned char *p, int which) {
+    int x, y;
+    memset(p, 0, 16 * 16 * 4);
+    for (y = 2; y < 14; y++) for (x = 4; x < 12; x++) {
+        if (which == 0) pix(p, x, y, 240, 200, 160);
+        if (which == 1) pix(p, x, y, 170, 180, 190);
+        if (which == 2) pix(p, x, y, 180, 140, 70);
+        if (which == 3) pix(p, x, y, 80, 220, 210);
+    }
+    if (which == 0) { pix(p, 6, 6, 40, 30, 20); pix(p, 9, 6, 40, 30, 20); pix(p, 7, 9, 180, 80, 70); pix(p, 8, 9, 180, 80, 70); }
+    if (which == 1) { pix(p, 6, 6, 40, 200, 255); pix(p, 9, 6, 40, 200, 255); pix(p, 6, 10, 40, 40, 50); pix(p, 9, 10, 40, 40, 50); }
+    if (which == 2) { for (x = 3; x < 13; x++) pix(p, x, 6, 120, 80, 40); for (y = 3; y < 8; y++) { pix(p, 4, y, 120, 80, 40); pix(p, 11, y, 120, 80, 40); } }
+    if (which == 3) { for (x = 6; x < 10; x++) pix(p, x, 4, 230, 255, 255); pix(p, 5, 8, 230, 255, 255); pix(p, 10, 8, 230, 255, 255); }
+}
+
+static int write_vox(const char *dir, const char *hex, int which) {
+    char path[512];
+    unsigned char px[16 * 16 * 4];
+    FILE *f;
+    int i;
+    snprintf(path, sizeof path, "%s/emoji", dir);
+    mkdir(path, 0755);
+    snprintf(path, sizeof path, "%s/emoji/%s", dir, hex);
+    mkdir(path, 0755);
+    snprintf(path, sizeof path, "%s/emoji/%s/voxels_16.csv", dir, hex);
+    f = fopen(path, "w");
+    if (!f) return 5;
+    fill_sprite(px, which);
+    fputs("# resolution=16\n# scale=1.0\n# transform=0,0,0\nr,g,b,a\n", f);
+    for (i = 0; i < 256; i++)
+        fprintf(f, "%d,%d,%d,%d\n", px[i * 4], px[i * 4 + 1], px[i * 4 + 2], px[i * 4 + 3]);
+    fclose(f);
+    return 0;
+}
+
+static unsigned char *load_a5(int *w, int *h) {
+    const char *cands[] = {
+        "/home/no/Desktop/github/work/NNEST-12.00/#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A5.png",
+        "#.NNEST_ASSETS/rmmv-www-img/tilesets/Outside_A5.png",
+        0
+    };
+    int i;
+    for (i = 0; cands[i]; i++) {
+        FILE *fp = fopen(cands[i], "rb");
+        png_structp png;
+        png_infop info;
+        png_bytep *rows;
+        unsigned char *img;
+        int y, ww, hh;
+        if (!fp) continue;
+        png = png_create_read_struct(PNG_LIBPNG_VER_STRING, 0, 0, 0);
+        if (!png) { fclose(fp); continue; }
+        info = png_create_info_struct(png);
+        if (!info || setjmp(png_jmpbuf(png))) { png_destroy_read_struct(&png, info ? &info : 0, 0); fclose(fp); continue; }
+        png_init_io(png, fp);
+        png_read_info(png, info);
+        ww = (int)png_get_image_width(png, info);
+        hh = (int)png_get_image_height(png, info);
+        png_set_expand(png);
+        png_set_strip_16(png);
+        if (!(png_get_color_type(png, info) & PNG_COLOR_MASK_ALPHA)) png_set_filler(png, 0xff, PNG_FILLER_AFTER);
+        png_read_update_info(png, info);
+        if (png_get_channels(png, info) < 3 || ww < 48 || hh < 48) { png_destroy_read_struct(&png, &info, 0); fclose(fp); continue; }
+        rows = calloc((size_t)hh, sizeof(png_bytep));
+        img = calloc((size_t)ww * hh, 4);
+        if (!rows || !img) { free(rows); free(img); png_destroy_read_struct(&png, &info, 0); fclose(fp); return 0; }
+        for (y = 0; y < hh; y++) rows[y] = img + (size_t)y * ww * 4;
+        png_read_image(png, rows);
+        png_destroy_read_struct(&png, &info, 0);
+        fclose(fp);
+        free(rows);
+        *w = ww; *h = hh;
+        return img;
+    }
+    return 0;
+}
+
 static int count_rows(const char *ledger, const char *prefix) {
     FILE *f;
     char line[256];
@@ -523,6 +609,8 @@ static int desk(const char *in, const char *dir, const char *ledger) {
             if (ledger_has_found(ledger, x, y)) g[y * w + x] = 10;
     }
     int px = sx, py = sy, cap = RATION_CAP, rat = RATION_CAP;
+    int ne = 0, exs[8], eys[8], ewhich[8];
+    char eid[8][16], enam[8][16], ehex[8][8];
     if (ledger) where(ledger, sx, sy, &px, &py);
     rat = ration_left(in, ledger, &cap);
     if (ledger && rat < cap && g[py * w + px] != 10) g[py * w + px] = 11;
@@ -543,9 +631,35 @@ static int desk(const char *in, const char *dir, const char *ledger) {
             }
             fclose(mv);
         }
+        if (py >= 0 && py < h && px >= 0 && px < w && seen[py * w + px] && ne < 8) {
+            snprintf(eid[ne], 16, "seat0"); snprintf(enam[ne], 16, "person"); snprintf(ehex[ne], 8, "1F9D1");
+            exs[ne] = px; eys[ne] = py; ewhich[ne] = 0; ne++;
+        }
+        if (ax >= 0 && ay >= 0 && ay < h && ax < w && seen[ay * w + ax] && ne < 8) {
+            snprintf(eid[ne], 16, "seat1"); snprintf(enam[ne], 16, "robot"); snprintf(ehex[ne], 8, "1F916");
+            exs[ne] = ax; eys[ne] = ay; ewhich[ne] = 1; ne++;
+        }
+        if (mx >= 0 && my >= 0 && my < h && mx < w && seen[my * w + mx] && !ledger_has_dig(ledger, mx, my) && !ledger_has_place(ledger, mx, my) && ne < 8) {
+            snprintf(eid[ne], 16, "mineral"); snprintf(enam[ne], 16, "gem"); snprintf(ehex[ne], 8, "1F48E");
+            exs[ne] = mx; eys[ne] = my; ewhich[ne] = 3; ne++;
+        }
+        if (ledger) {
+            FILE *cf = fopen(ledger, "r");
+            char cl[256];
+            int ncity = 0, a, b;
+            if (cf) {
+                while (fgets(cl, sizeof cl, cf)) {
+                    if (sscanf(cl, "FOUND | %d | %d", &a, &b) == 2 && a >= 0 && b >= 0 && a < w && b < h && seen[b * w + a] && ne < 8) {
+                        snprintf(eid[ne], 16, "city%d", ncity); snprintf(enam[ne], 16, "castle"); snprintf(ehex[ne], 8, "1F3F0");
+                        exs[ne] = a; eys[ne] = b; ewhich[ne] = 2; ne++; ncity++;
+                    }
+                }
+                fclose(cf);
+            }
+        }
         for (i = 0; i < w * h; i++) if (!seen[i]) { g[i] = 14; fog++; }
         free(seen);
-        printf("fog=%d cities=%d\n", fog, count_rows(ledger, "FOUND |"));
+        printf("fog=%d cities=%d entities=%d\n", fog, count_rows(ledger, "FOUND |"), ne);
     }
     if (mkdir(dir, 0755) != 0 && errno != EEXIST) { free(g); return 5; }
     snprintf(path, sizeof path, "%s/cells.txt", dir);
@@ -560,14 +674,27 @@ static int desk(const char *in, const char *dir, const char *ledger) {
     snprintf(path, sizeof path, "%s/cells.rgba", dir);
     f = fopen(path, "w");
     if (!f) { free(g); return 5; }
-    for (i = 0; i < 15; i++) {
-        int pxs;
-        unsigned char r = i < 9 ? rgb[i][0] : (i == 9 ? 180 : i == 10 ? 240 : i == 11 ? 90 : i == 12 ? 40 : i == 13 ? 230 : 20);
-        unsigned char gg = i < 9 ? rgb[i][1] : (i == 9 ? 40 : i == 10 ? 200 : i == 11 ? 40 : i == 12 ? 80 : i == 13 ? 230 : 24);
-        unsigned char b = i < 9 ? rgb[i][2] : (i == 9 ? 200 : i == 10 ? 40 : i == 11 ? 30 : i == 12 ? 220 : i == 13 ? 210 : 32);
-        for (pxs = 0; pxs < 16; pxs++) {
-            fputc(r, f); fputc(gg, f); fputc(b, f); fputc(255, f);
+    {
+        /* Outside_A5.png is 48px tiles, 8 across. One sample from each tile fills that atlas cell. Fog and the markers stay flat. */
+        static const int tile_at[9][2] = { {3,6},{0,2},{0,3},{4,3},{0,7},{1,2},{7,6},{5,8},{0,4} };
+        int aw = 0, ah = 0, used = 0;
+        unsigned char *a5 = load_a5(&aw, &ah);
+        for (i = 0; i < 15; i++) {
+            int pxs, tx = 0, ty = 0;
+            unsigned char r = i < 9 ? rgb[i][0] : (i == 9 ? 180 : i == 10 ? 240 : i == 11 ? 90 : i == 12 ? 40 : i == 13 ? 230 : 20);
+            unsigned char gg = i < 9 ? rgb[i][1] : (i == 9 ? 40 : i == 10 ? 200 : i == 11 ? 40 : i == 12 ? 80 : i == 13 ? 230 : 24);
+            unsigned char b = i < 9 ? rgb[i][2] : (i == 9 ? 200 : i == 10 ? 40 : i == 11 ? 30 : i == 12 ? 220 : i == 13 ? 210 : 32);
+            if (a5 && i < 9) { tx = tile_at[i][0] * 48; ty = tile_at[i][1] * 48; used = 1; }
+            for (pxs = 0; pxs < 16; pxs++) {
+                if (a5 && i < 9 && tx + 47 < aw && ty + 47 < ah) {
+                    int sx = tx + (pxs % 4) * 12 + 6, sy = ty + (pxs / 4) * 12 + 6;
+                    unsigned char *s = a5 + ((size_t)sy * aw + sx) * 4;
+                    fputc(s[0], f); fputc(s[1], f); fputc(s[2], f); fputc(255, f);
+                } else { fputc(r, f); fputc(gg, f); fputc(b, f); fputc(255, f); }
+            }
         }
+        free(a5);
+        printf("tiles=%s\n", used ? "rtp" : "flat");
     }
     fclose(f);
     snprintf(path, sizeof path, "%s/map.txt", dir);
@@ -617,6 +744,22 @@ static int desk(const char *in, const char *dir, const char *ledger) {
         fclose(m);
         if (stat(path, &ms) == 0) n = (int)ms.st_size;
         printf("desk=%s marker=%d\n", dir, n);
+        snprintf(path, sizeof path, "%s/entities.pdl", dir);
+        m = fopen(path, "w");
+        if (m) {
+            int ei;
+            for (ei = 0; ei < ne; ei++) {
+                fprintf(m, "ENTITY | %s | %s | %s | %d | %d\n", eid[ei], enam[ei], ehex[ei], exs[ei], eys[ei]);
+                write_vox(dir, ehex[ei], ewhich[ei]);
+            }
+            fclose(m);
+        }
+        snprintf(path, sizeof path, "%s/tiles.pdl", dir);
+        m = fopen(path, "w");
+        if (m) {
+            fputs("TILE | water | Outside_A5.png | 3 | 6\nTILE | grass | Outside_A5.png | 0 | 2\nTILE | forest | Outside_A5.png | 0 | 3\nTILE | hill | Outside_A5.png | 4 | 3\nTILE | mountain | Outside_A5.png | 0 | 7\nTILE | desert | Outside_A5.png | 1 | 2\nTILE | river | Outside_A5.png | 7 | 6\nTILE | coast | Outside_A5.png | 5 | 8\nTILE | bridge | Outside_A5.png | 0 | 4\n", m);
+            fclose(m);
+        }
     }
     free(g);
     return 0;

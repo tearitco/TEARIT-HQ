@@ -218,6 +218,14 @@ RUN | $T/tearit_map_op.+x | draw | $T/a.txt | $T/towns.txt
 EXPECT_EXIT | 4 | a draw past the cap is refused
 RUN | cmp | -s | $T/towns.txt | $T/towns.keep
 EXPECT_EXIT | 0 | a refused draw writes nothing
+RUN | $T/tearit_map_op.+x | desk | $T/a.txt | $T/ent
+EXPECT_EXIT | 0 | desk names the entities
+EXPECT_OUT | entities=1 | only the seen person
+EXPECT_OUT | tiles=rtp | ground tiles come from Outside_A5
+RUN | grep | -q | 1F9D1 | $T/ent/entities.pdl
+EXPECT_EXIT | 0 | the person names an emoji sheet
+RUN | test | -s | $T/ent/emoji/1F9D1/voxels_16.csv
+EXPECT_EXIT | 0 | the person sprite csv exists
 RUN | rm | -f | $T/pl.txt
 EXPECT_EXIT | 0 | place ledger cleared
 RUN | $T/tearit_map_op.+x | place | $T/a.txt | $T/pl.txt

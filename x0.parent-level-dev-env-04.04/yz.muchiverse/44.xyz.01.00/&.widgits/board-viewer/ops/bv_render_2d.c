@@ -1864,6 +1864,44 @@ int main(void) {
         }
     }
 
+    /* A tearit desk names its actors in entities.pdl and paints each one
+     * from emoji/<hex>/voxels_16.csv. The atlas path sets map_ok to 2,
+     * which used to skip every entity. */
+    if (map_ok == 2 && !side_mode && cell > 0) {
+        char dd[PATH_BUF], ep[PATH_BUF];
+        if (desk_dir(dd, sizeof(dd))) {
+            snprintf(ep, sizeof(ep), "%s/entities.pdl", dd);
+            FILE *ef = host_fopen(ep, "r");
+            char eline[MAX_LINE];
+            while (ef && fgets(eline, sizeof(eline), ef)) {
+                char id[64], name[64], hex[16];
+                int ex, ey;
+                if (sscanf(eline, "ENTITY | %63[^|] | %63[^|] | %15[^|] | %d | %d", id, name, hex, &ex, &ey) != 5) continue;
+                field_trim(hex);
+                int scx = ex - ox, scy = ey - oy;
+                if (scx < 0 || scy < 0 || scx >= cols || scy >= rows) continue;
+                char csv[PATH_BUF];
+                snprintf(csv, sizeof(csv), "%s/emoji/%s/voxels_16.csv", dd, hex);
+                FILE *sf = host_fopen(csv, "r");
+                if (!sf) continue;
+                unsigned char spr[16 * 16 * 4];
+                int n = 0;
+                char sline[128];
+                while (n < 256 && fgets(sline, sizeof(sline), sf)) {
+                    int r, g, b, a;
+                    if (sline[0] == '#' || sline[0] == 'r') continue;
+                    if (sscanf(sline, "%d,%d,%d,%d", &r, &g, &b, &a) != 4) continue;
+                    spr[n * 4] = (unsigned char)r; spr[n * 4 + 1] = (unsigned char)g;
+                    spr[n * 4 + 2] = (unsigned char)b; spr[n * 4 + 3] = (unsigned char)a;
+                    n++;
+                }
+                fclose(sf);
+                if (n == 256) blit_emoji(px, W, scx * cell, scy * cell, cell, spr);
+            }
+            if (ef) fclose(ef);
+        }
+    }
+
     /* --- entities / hero / animals: emoji sprite if we have one, else
      * a solid colour square (inner 60%) --- */
     for (int i = 0; !map_ok && !(g_own_ascii && want_ascii) && i < g_nent; i++) {
