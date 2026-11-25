@@ -126,6 +126,14 @@ RUN CHECK 2026-10-24 (owner: "check them out from relay / frame history to be su
   Side finding: piececraft-hq's board-viewer sessions run the same orchestrator + renderer + chtpm_parser_pal shape; that is
   the engine of the x11-hq boards, so "the terminal pair" is not gone from the house even for the converted apps.
 
+2026-11-25 NUANCE (no relaunch)
+  Share / sunset / promote is the chapter note SYNERGY-SUNSET-PROMOTE-2026-11-25.md.
+  Re-checked without running button.sh: 42 button.sh files still match pkill. WSR kill
+  still pkills system/renderer, keyboard_input, prisc, chtpm_parser_pal, chtpm_rgb_render,
+  and gl_mirror with no session cwd. Group B still starts system/orchestrator.
+  player_trade.c writes pieces/player_you/holdings.txt, not a ledger row.
+  my-lawyer still carries its own system/*.c and appends case text to a txt file.
+
 NOT VERIFIED (be honest about it)
   * The classification is from button.sh and the file tree; the run check above covers 24 of the 30.
   * Whether each binary still builds on this machine was not checked (button.sh `check` exists in wsr-pal only).
