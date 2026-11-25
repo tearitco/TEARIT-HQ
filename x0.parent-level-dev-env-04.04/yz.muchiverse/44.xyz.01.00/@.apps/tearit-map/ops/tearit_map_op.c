@@ -6,7 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <errno.h>
 #include <ctype.h>
+#include <sys/stat.h>
 
 enum { SEA = 40, MOIST = 30, HILL = 70, MOUNT = 85, VER = 1, MAXN = 64 };
 
@@ -416,6 +418,86 @@ static int picture(const char *in, const char *ppm) {
     return 0;
 }
 
+static int desk(const char *in, const char *dir) {
+    FILE *f = fopen(in, "r");
+    char line[256], kind[32], path[512];
+    int w = 0, h = 0, x, y, *g, i, sx = 0, sy = 0, mx = 0, my = 0;
+    static const unsigned char rgb[9][3] = {
+        { 40, 90, 160 }, { 70, 140, 60 }, { 20, 90, 40 }, { 140, 120, 70 },
+        { 120, 120, 120 }, { 190, 170, 90 }, { 60, 160, 170 }, { 200, 180, 80 }, { 120, 70, 40 }
+    };
+    static const char glyph[] = "~.T^Ms=c#";
+    if (!f) return 5;
+    if (!fgets(line, sizeof line, f)) { fclose(f); return 4; }
+    if (sscanf(line, "MAP | %*d | %*u | %d | %d", &w, &h) != 2) { fclose(f); return 4; }
+    g = calloc((size_t)w * h, sizeof(int));
+    for (i = 0; i < w * h; i++) g[i] = -1;
+    while (fgets(line, sizeof line, f)) {
+        if (sscanf(line, "CELL | %d | %d | %31s", &x, &y, kind) == 3) {
+            int k = cell_kind(kind);
+            if (k >= 0 && x >= 0 && y >= 0 && x < w && y < h) g[y * w + x] = k;
+        } else if (sscanf(line, "START | 0 | %d | %d", &x, &y) == 2) { sx = x; sy = y; }
+        else if (sscanf(line, "MINERAL | %d | %d", &x, &y) == 2) { mx = x; my = y; }
+    }
+    fclose(f);
+    for (i = 0; i < w * h; i++) if (g[i] < 0) { free(g); return 4; }
+    if (mkdir(dir, 0755) != 0 && errno != EEXIST) { free(g); return 5; }
+    snprintf(path, sizeof path, "%s/cells.txt", dir);
+    f = fopen(path, "w");
+    if (!f) { free(g); return 5; }
+    fprintf(f, "width=%d\nheight=%d\ntile_px=4\natlas_cols=1\natlas_tiles=9\ncells\n", w, h);
+    for (y = 0; y < h; y++) {
+        for (x = 0; x < w; x++) fprintf(f, "%s%d,0", x ? " " : "", g[y * w + x]);
+        fputc('\n', f);
+    }
+    fclose(f);
+    snprintf(path, sizeof path, "%s/cells.rgba", dir);
+    f = fopen(path, "w");
+    if (!f) { free(g); return 5; }
+    for (i = 0; i < 9; i++) {
+        int pxs;
+        for (pxs = 0; pxs < 16; pxs++) {
+            fputc(rgb[i][0], f); fputc(rgb[i][1], f); fputc(rgb[i][2], f); fputc(255, f);
+        }
+    }
+    fclose(f);
+    snprintf(path, sizeof path, "%s/map.txt", dir);
+    f = fopen(path, "w");
+    if (!f) { free(g); return 5; }
+    for (y = 0; y < h; y++) {
+        for (x = 0; x < w; x++) fputc(glyph[g[y * w + x]], f);
+        fputc('\n', f);
+    }
+    fclose(f);
+    snprintf(path, sizeof path, "%s/events.txt", dir);
+    f = fopen(path, "w");
+    if (!f) { free(g); return 5; }
+    fprintf(f, "%d %d 240 220 80 block 0 2 1\n", sx, sy);
+    fprintf(f, "%d %d 180 80 200 block 0 2 1\n", mx, my);
+    fclose(f);
+    snprintf(path, sizeof path, "%s/map.ppm", dir);
+    {
+        char mapfile[512];
+        snprintf(mapfile, sizeof mapfile, "%s", in);
+        picture(mapfile, path);
+    }
+    snprintf(path, sizeof path, "%s/cells.marker", dir);
+    {
+        FILE *m = fopen(path, "r");
+        int n = 0;
+        char b[4000];
+        if (m) { n = (int)fread(b, 1, sizeof b, m); fclose(m); }
+        if (n < 4000) n++;
+        m = fopen(path, "w");
+        if (!m) { free(g); return 5; }
+        for (i = 0; i < n; i++) fputc('m', m);
+        fclose(m);
+        printf("desk=%s marker=%d\n", dir, n);
+    }
+    free(g);
+    return 0;
+}
+
 int main(int argc, char **argv) {
     unsigned long seed;
     int w, h;
@@ -433,5 +515,6 @@ int main(int argc, char **argv) {
     if (!strcmp(argv[1], "check") && argc == 3) return check_file(argv[2]);
     if (!strcmp(argv[1], "sabotage") && argc == 4) return sabotage(argv[2], argv[3]);
     if (!strcmp(argv[1], "picture") && argc == 4) return picture(argv[2], argv[3]);
+    if (!strcmp(argv[1], "desk") && argc == 4) return desk(argv[2], argv[3]);
     return 2;
 }

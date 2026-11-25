@@ -26,3 +26,23 @@ EXPECT_EXIT | 4 | water on the bridge fails
 RUN | $T/tearit_map_op.+x | picture | $T/a.txt | $T/a.ppm
 EXPECT_EXIT | 0 | ppm writes
 EXPECT_OUT | picture= | picture path printed
+RUN | $T/tearit_map_op.+x | desk | $T/a.txt | $T/d1
+EXPECT_EXIT | 0 | desk writes
+EXPECT_OUT | marker=1 | a new desk marker starts at 1
+RUN | $T/tearit_map_op.+x | desk | $T/a.txt | $T/d2
+EXPECT_EXIT | 0 | second desk
+RUN | cmp | -s | $T/d1/cells.txt | $T/d2/cells.txt
+EXPECT_EXIT | 0 | cells match
+RUN | cmp | -s | $T/d1/cells.rgba | $T/d2/cells.rgba
+EXPECT_EXIT | 0 | atlas matches
+RUN | cmp | -s | $T/d1/map.txt | $T/d2/map.txt
+EXPECT_EXIT | 0 | glyphs match
+RUN | cmp | -s | $T/d1/events.txt | $T/d2/events.txt
+EXPECT_EXIT | 0 | events match
+RUN | rm | -f | $T/d1/cells.txt | $T/d1/cells.rgba | $T/d1/map.txt | $T/d1/events.txt | $T/d1/map.ppm
+EXPECT_EXIT | 0 | pictures deleted
+RUN | $T/tearit_map_op.+x | desk | $T/a.txt | $T/d1
+EXPECT_EXIT | 0 | desk rebuilt
+EXPECT_OUT | marker=2 | marker grew
+RUN | cmp | -s | $T/d1/cells.txt | $T/d2/cells.txt
+EXPECT_EXIT | 0 | rebuilt cells match
