@@ -1,0 +1,15 @@
+# beats.pdl - Asa's walk on the island as DATA (plan 9.2, minimal first: a walk across grass, sand and into the lake, then back; the harness/AI controller). CONFIG.
+# BEAT | n | seconds | verb | arg | count | expect | note
+#   verb arg count   one verb page played `count` times (spawn: arg = "x z", count 1)       seconds   how long the recorder would hold the picture after the beat (printed, never slept here)
+#   expect           the TILE NAME (legend.txt SLOT row of the seed desk) of the cell Asa must stand on after the beat, or - for any land: `rmmc_beat_op check` fails when a beat ends over sky or off the map or on another tile
+# The route is taken from the island's real cells: row 100 runs grass (x 140 to 155, the last four a level higher), sand (x 156 to 160), shallow water (x 161 to 167) and deep water from x 168 (a walk into it is refused 18).
+BEAT | 1  | 1.0 | spawn | 140 100 | 1  | grass_top | Asa appears on the grass plain
+BEAT | 2  | 2.0 | walk  | e       | 12 | grass_top | across the grass to the foot of the slope (x 152)
+BEAT | 3  | 1.0 | walk  | e       | 3  | grass_top | up the one-level slope (x 155)
+BEAT | 4  | 1.0 | walk  | e       | 1  | sand      | down onto the sand rim (x 156, a drop of 2)
+BEAT | 5  | 1.0 | walk  | e       | 4  | sand      | along the sand to the shore (x 160)
+BEAT | 6  | 1.0 | walk  | e       | 1  | water     | into the shallow water (x 161)
+BEAT | 7  | 1.0 | face  | s       | 1  | water     | turn to look across the lake
+BEAT | 8  | 1.0 | jump  | -       | 1  | water     | a hop in the water
+BEAT | 9  | 2.0 | walk  | w       | 1  | sand      | climb out onto the sand (x 160, out of the water by 2)
+BEAT | 10 | 2.0 | walk  | w       | 4  | sand      | back along the sand (x 156) (the grass slope above is 2 higher than the sand: a walk up it is refused, 18)

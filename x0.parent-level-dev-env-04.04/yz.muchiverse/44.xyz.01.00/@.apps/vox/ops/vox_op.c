@@ -9,10 +9,15 @@
  *   place <actor> <item> <x> <y> <z>     PLACE row (removes one item from the bag) + TURN
  *   wait <n>                             TURN row (a manual turn, n turns)         sleep <actor>   SLEEP + SPAWNPOINT + TURN skipping to the wake minute
  *   eat <actor> <item>                   EAT row (removes one food item from the bag, lowers hunger by RULE food_<item>) + TURN; refused: not food/none in bag (16), hunger 0 (23)
+ *   walk <actor> <n|e|s|w>               MOVE one column on, resolving the target height from the terrain (highest solid + 1): refused 11 off the map or over no ground, 18 for a step up above RULE step_up, a fall above fall_max, water deeper than water_max_depth (D137)
+ *   face <actor> <n|e|s|w>               FACE row (a turn on the spot; no cell change, no turn counted)      jump <actor>   two MOVE rows (up RULE jump_height, back down) in ONE write; 15 no ground under the feet, 18 no room
+ *   seat <actor> <human|harness>         SEAT row: who drives the actor (a row, never a file); `seat <actor>` prints seat=human|harness (no row = harness)
+ *   reset <actor>                        RESET row: back to the spawn point (the first MOVE, or the last SPAWNPOINT)      ground <x> <z>  top=<highest solid y> kind=<kind> water=<highest water y or -1>      where <actor>
+ *   (data_dir may also hold terrain.heightmap: a second terrain source, see load_heightmap; limits DMAX 216 for the desk projection, HMAX 256 columns for the heightmap)
  *   status | cell <x y z> | inv <actor> | hunger <actor>  read only (hunger: rises hunger_per_turn on every TURN row for a spawned actor, cap hunger_max; at starve_at mine/place refuse 22)
  *   verify                               re-run every intent row into memory and compare bytes (exit 14 = hand-edited or not reproducible)
  *   replay <dst_ledger>                  re-run every intent row of <ledger> into a NEW file (identical bytes expected)
- * Rows: GIVE|actor|item|n|why  MOVE|actor|x|y|z  DAMAGE|actor|tool|x|y|z|power|progress  MINE|actor|x|y|z|kind  DROP|actor|item|n
+ * Rows: FACE|actor|dir  RESET|actor|spawn  SEAT|actor|who  GIVE|actor|item|n|why  MOVE|actor|x|y|z  DAMAGE|actor|tool|x|y|z|power|progress  MINE|actor|x|y|z|kind  DROP|actor|item|n
  *       PLACE|actor|item|x|y|z  EAT|actor|item|value  TURN|n|verb  DAY|d  SLEEP|actor|bx|by|bz|skipped_turns=N  SPAWNPOINT|actor|x|y|z
  * Every mutating verb runs verify first, so a hand-edited ledger refuses (14) before anything is added.
  * Exit: 0 ok, 2 usage, 9 missing rule/file, 10 unknown actor, 11 out of bounds, 12 out of reach, 13 target invalid, 14 ledger not reproducible,
@@ -35,7 +40,7 @@
 #define MAXD 32
 #define MAXX 32
 #define NM 32
-typedef struct { char name[NM]; int x, y, z, has, hunger, ni; char item[MAXI][NM]; int cnt[MAXI]; } Actor;
+typedef struct { char name[NM]; int x, y, z, has, hunger, ni; char item[MAXI][NM]; int cnt[MAXI]; int sx, sy, sz; char dir; int seat; } Actor;   /* sx sy sz = the spawn point (first MOVE, then the last SPAWNPOINT), dir = the last FACE letter (n e s w) or 0 */
 typedef struct { int x, y, z; char kind[NM]; } Cell;
 typedef struct { int x, y, z, prog; } Dmg;
 typedef struct { char kind[NM], tool[NM], drops[NM]; int hard, minp, count, solid; } Blk;
@@ -54,6 +59,36 @@ static int split(char *line, char **f, int max) {
     while (n < max) { while (*s == ' ') s++; f[n++] = s; char *b = strchr(s, '|'); if (!b) break; *b = 0; s = b + 1; }
     for (int i = 0; i < n; i++) { char *e = f[i] + strlen(f[i]); while (e > f[i] && isspace((unsigned char)e[-1])) *--e = 0; }
     return n;
+}
+/* HEIGHTMAP terrain source (D137): <data>/terrain.heightmap, rows (runs of equal columns along one board row; vox z = the desk row, vox x = the desk column, vox y = height):
+ *   META | width | W      META | height | H      META | shift | S      (S is only for the readers that map desk levels to vox y: ground_y = level - 1 + S)
+ *   RUN | z | x0 | n | ground_y | kind_top | kind_below | water_level      columns x0..x0+n-1 of row z: y == ground_y is kind_top, 0 <= y < ground_y is kind_below,
+ *                                                                          ground_y < y <= water_level is water (water_level -1 = none); every other y is air
+ * A column with no RUN is sky (air all the way). Consulted by kind_at AFTER the changed cells and BEFORE the TERRAIN boxes. The arrays are static and sized by the engine's own board limit
+ * (256 x 256 columns, 6 bytes each = 384 KiB of bss): the first island is 216 x 156. A row outside META width/height or past 256, or an unknown kind name more than HK kinds, refuses (exit 9). */
+#define HMAX 256
+#define HK 32
+typedef struct { short top, wl; unsigned char kt, kb; } HCol;
+static HCol HM[HMAX][HMAX]; static int hm_on, hm_w, hm_h; static char HKN[HK][NM]; static int nhk;
+static int hk(const char *k) { for (int i = 0; i < nhk; i++) if (!strcmp(HKN[i], k)) return i; if (nhk >= HK) return -1; snprintf(HKN[nhk], NM, "%s", k); return nhk++; }
+static int load_heightmap(FILE *fp) {
+    char l[512], *f[10]; for (int z = 0; z < HMAX; z++) for (int x = 0; x < HMAX; x++) HM[z][x].top = -1, HM[z][x].wl = -1;
+    while (fgets(l, sizeof l, fp)) { int n = split(l, f, 10);
+        if (n >= 3 && !strcmp(f[0], "META") && !strcmp(f[1], "width")) hm_w = atoi(f[2]);
+        else if (n >= 3 && !strcmp(f[0], "META") && !strcmp(f[1], "height")) hm_h = atoi(f[2]);
+        else if (n >= 8 && !strcmp(f[0], "RUN")) { int z = atoi(f[1]), x0 = atoi(f[2]), c = atoi(f[3]), gy = atoi(f[4]), wl = atoi(f[7]); int kt = hk(f[5]), kb = hk(f[6]);
+            if (kt < 0 || kb < 0 || z < 0 || z >= hm_h || z >= HMAX || x0 < 0 || c < 1 || x0 + c > hm_w || x0 + c > HMAX || gy < 0) return -1;
+            for (int x = x0; x < x0 + c; x++) { HM[z][x].top = (short)gy; HM[z][x].wl = (short)wl; HM[z][x].kt = (unsigned char)kt; HM[z][x].kb = (unsigned char)kb; } } }
+    if (hm_w < 1 || hm_h < 1 || hm_w > HMAX || hm_h > HMAX) return -1;
+    hm_on = 1; return 0;
+}
+static const char *hm_kind(int x, int y, int z) {   /* NULL = this source has no opinion (not loaded, off the map or sky column) */
+    if (!hm_on || x < 0 || z < 0 || x >= hm_w || z >= hm_h || y < 0) return NULL;
+    HCol *c = &HM[z][x]; if (c->top < 0) return NULL;
+    if (y == c->top) return HKN[c->kt];
+    if (y < c->top) return HKN[c->kb];
+    if (c->wl >= 0 && y <= c->wl) return "water";
+    return "air";
 }
 static int load_data(const char *dir) {
     char p[1024], l[512], *f[16]; FILE *fp;
@@ -79,7 +114,10 @@ static int load_data(const char *dir) {
     while (fgets(l, sizeof l, fp)) { int n = split(l, f, 16);
         if (n >= 8 && !strcmp(f[0], "TERRAIN") && nx < MAXX) { Box *b = &BX[nx++]; b->x1 = atoi(f[1]); b->y1 = atoi(f[2]); b->z1 = atoi(f[3]);
             b->x2 = atoi(f[4]); b->y2 = atoi(f[5]); b->z2 = atoi(f[6]); snprintf(b->kind, NM, "%s", f[7]); } }
-    fclose(fp); return 0;
+    fclose(fp);
+    snprintf(p, sizeof p, "%s/terrain.heightmap", dir);   /* OPTIONAL second terrain source (2026-11-25, D137): a generated CONFIG, columns of a whole island */
+    if ((fp = fopen(p, "r"))) { int rc = load_heightmap(fp); fclose(fp); if (rc) return -2; }
+    return 0;
 }
 static int R(const char *k) { for (int i = 0; i < nr; i++) if (!strcmp(RU[i].k, k)) return RU[i].v; fprintf(stderr, "missing rule %s\n", k); exit(9); }
 static Blk *blk(const char *kind) { for (int i = 0; i < nb; i++) if (!strcmp(BL[i].kind, kind)) return &BL[i]; return NULL; }
@@ -97,6 +135,7 @@ static int *bag(Actor *a, const char *item, int make) {
 }
 static const char *kind_at(W *w, int x, int y, int z) {
     for (int i = w->nc - 1; i >= 0; i--) if (w->c[i].x == x && w->c[i].y == y && w->c[i].z == z) return w->c[i].kind;
+    { const char *h = hm_kind(x, y, z); if (h) return h; }
     for (int i = nx - 1; i >= 0; i--) { Box *b = &BX[i];
         if (x >= b->x1 && x <= b->x2 && y >= b->y1 && y <= b->y2 && z >= b->z1 && z <= b->z2) return b->kind; }
     return "air";
@@ -117,7 +156,11 @@ static void fold(W *w, FILE *L) {
     char l[512], *f[10]; memset(w, 0, sizeof *w); rewind(L);
     while (fgets(l, sizeof l, L)) { int n = split(l, f, 10);
         if (n >= 5 && !strcmp(f[0], "GIVE")) { Actor *a = actor(w, f[1], 1); int *c = a ? bag(a, f[2], 1) : NULL; if (c) *c += atoi(f[3]); }
-        else if (n >= 5 && !strcmp(f[0], "MOVE")) { Actor *a = actor(w, f[1], 1); if (a) { a->x = atoi(f[2]); a->y = atoi(f[3]); a->z = atoi(f[4]); a->has = 1; } }
+        else if (n >= 5 && !strcmp(f[0], "MOVE")) { Actor *a = actor(w, f[1], 1); if (a) { if (!a->has) { a->sx = atoi(f[2]); a->sy = atoi(f[3]); a->sz = atoi(f[4]); } a->x = atoi(f[2]); a->y = atoi(f[3]); a->z = atoi(f[4]); a->has = 1; } }
+        else if (n >= 5 && !strcmp(f[0], "SPAWNPOINT")) { Actor *a = actor(w, f[1], 1); if (a) { a->sx = atoi(f[2]); a->sy = atoi(f[3]); a->sz = atoi(f[4]); } }
+        else if (n >= 3 && !strcmp(f[0], "RESET")) { Actor *a = actor(w, f[1], 1); if (a && a->has) { a->x = a->sx; a->y = a->sy; a->z = a->sz; } }
+        else if (n >= 3 && !strcmp(f[0], "FACE")) { Actor *a = actor(w, f[1], 1); if (a) a->dir = f[2][0]; }
+        else if (n >= 3 && !strcmp(f[0], "SEAT")) { Actor *a = actor(w, f[1], 1); if (a) a->seat = !strcmp(f[2], "human") ? 1 : 2; }
         else if (n >= 8 && !strcmp(f[0], "DAMAGE")) { int *p = dmg_at(w, atoi(f[3]), atoi(f[4]), atoi(f[5]), 1); if (p) *p = atoi(f[7]); }
         else if (n >= 5 && !strcmp(f[0], "MINE")) { int x = atoi(f[2]), y = atoi(f[3]), z = atoi(f[4]); set_cell(w, x, y, z, "air"); int *p = dmg_at(w, x, y, z, 0); if (p) *p = 0; }
         else if (n >= 4 && !strcmp(f[0], "DROP")) { Actor *a = actor(w, f[1], 1); int *c = a ? bag(a, f[2], 1) : NULL; if (c) *c += atoi(f[3]); }
@@ -227,11 +270,56 @@ static int v_sleep(W *w, FILE *L, const char *an) {
     adv(o, w->turn, turns, "sleep"); commit(L, o); fprintf(OUT, "skipped_turns=%d\n", turns); return 0;
 }
 
+/* ---- the walking verbs (D137, owner 2026-11-25: Asa walks, turns and jumps on the island). Every number is a RULE row: step_up, fall_max, water_max_depth, jump_height (and move_max must be at least 1 + the larger of step_up and fall_max,
+ * because a walk onto another level is ONE MOVE row whose manhattan length is 1 + |dy|). ---- */
+static int dir_delta(const char *d, int *dx, int *dz) { if (!d[0] || d[1]) return 0; *dx = *dz = 0;
+    switch (d[0]) { case 'n': *dz = -1; break; case 's': *dz = 1; break; case 'e': *dx = 1; break; case 'w': *dx = -1; break; default: return 0; } return 1; }
+static int top_solid(W *w, int x, int z) { for (int y = R("world_y_max"); y >= 0; y--) if (solid_at(w, x, y, z)) return y; return -1; }   /* highest solid y of a column, -1 = none */
+static int water_top(W *w, int x, int z, int from) { for (int y = R("world_y_max"); y >= from; y--) if (!strncmp(kind_at(w, x, y, z), "water", 5)) return y; return -1; }
+static int v_face(W *w, FILE *L, const char *an, const char *d) {
+    int dx, dz; if (!word_ok(an) || !dir_delta(d, &dx, &dz)) return 2;
+    Actor *a = actor(w, an, 0); if (!a || !a->has) { fprintf(stderr, "refused: unknown actor\n"); return 10; }
+    char o[160]; snprintf(o, sizeof o, "FACE | %s | %s\n", an, d); commit(L, o); fprintf(OUT, "face=%s\n", d); return 0;
+}
+static int v_walk(W *w, FILE *L, const char *an, const char *d) {
+    int dx, dz; if (!word_ok(an) || !dir_delta(d, &dx, &dz)) return 2;
+    Actor *a = actor(w, an, 0); if (!a || !a->has) { fprintf(stderr, "refused: unknown actor\n"); return 10; }
+    int tx = a->x + dx, tz = a->z + dz; if (tx < 0 || tz < 0 || tx > R("world_x_max") || tz > R("world_z_max")) { fprintf(stderr, "refused: out of bounds\n"); return 11; }
+    int top = top_solid(w, tx, tz); if (top < 0) { fprintf(stderr, "refused: no ground there\n"); return 11; }
+    int ny = top + 1, wl = water_top(w, tx, tz, ny), depth = wl >= 0 ? wl - top : 0;
+    if (depth > R("water_max_depth")) { fprintf(stderr, "refused: water %d deep\n", depth); return 18; }
+    int up = R("step_up"); if (!strncmp(kind_at(w, a->x, a->y, a->z), "water", 5)) up = R("step_up_wade");   /* climbing out of water may step higher (RULE step_up_wade) */
+    int dy = ny - a->y; if (dy > up) { fprintf(stderr, "refused: step up %d\n", dy); return 18; }
+    if (-dy > R("fall_max")) { fprintf(stderr, "refused: fall %d\n", -dy); return 18; }
+    return v_move(w, L, an, tx, ny, tz);
+}
+static int v_jump(W *w, FILE *L, const char *an) {
+    int jh = R("jump_height"), tm = R("turns_move"); if (!word_ok(an) || jh < 1) return 2;
+    Actor *a = actor(w, an, 0); if (!a || !a->has) { fprintf(stderr, "refused: unknown actor\n"); return 10; }
+    if (!solid_at(w, a->x, a->y - 1, a->z)) { fprintf(stderr, "refused: no ground under the feet\n"); return 15; }
+    for (int k = 1; k <= jh; k++) if (!inb(a->x, a->y + k, a->z) || solid_at(w, a->x, a->y + k, a->z)) { fprintf(stderr, "refused: no room to jump\n"); return 18; }
+    if (jh > R("move_max")) { fprintf(stderr, "refused: jump_height above move_max\n"); return 18; }
+    char o[512]; snprintf(o, sizeof o, "MOVE | %s | %d | %d | %d\n", an, a->x, a->y + jh, a->z); adv(o, w->turn, tm, "move");
+    char t[160]; snprintf(t, sizeof t, "MOVE | %s | %d | %d | %d\n", an, a->x, a->y, a->z); strcat(o, t); adv(o, w->turn + tm, tm, "move");
+    commit(L, o); fprintf(OUT, "jumped=%d,%d,%d\n", a->x, a->y, a->z); return 0;   /* BOTH rows or none: one write */
+}
+static int v_seat(W *w, FILE *L, const char *an, const char *who) {   /* who drives the actor: a ROW (D137, the Teropoly rule: a driver change is a row). The controllers (rmmc_beat_op, rmmc_driver) refuse when it is not them (exit 24); this op only records it */
+    if (!word_ok(an) || (strcmp(who, "human") && strcmp(who, "harness"))) return 2; (void)w;
+    char o[160]; snprintf(o, sizeof o, "SEAT | %s | %s\n", an, who); commit(L, o); fprintf(OUT, "seat=%s\n", who); return 0;
+}
+static int v_reset(W *w, FILE *L, const char *an) {
+    int tm = R("turns_move"); if (!word_ok(an)) return 2;
+    Actor *a = actor(w, an, 0); if (!a || !a->has) { fprintf(stderr, "refused: unknown actor\n"); return 10; }
+    char o[512]; snprintf(o, sizeof o, "RESET | %s | spawn\n", an); adv(o, w->turn, tm, "move"); commit(L, o); fprintf(OUT, "at=%d,%d,%d\n", a->sx, a->sy, a->sz); return 0;
+}
 /* intent dispatch shared by replay and verify: derived rows (MINE DROP DAY SPAWNPOINT, TURN other than wait) are regenerated, never replayed */
 static int intent(FILE *dst, const char *line) {
     char l[512], *f[10]; snprintf(l, sizeof l, "%s", line); int n = split(l, f, 10); W w; fold(&w, dst); int r = 0;
     if (n >= 5 && !strcmp(f[0], "GIVE")) r = v_give(&w, dst, f[1], f[2], atoi(f[3]), f[4]);
     else if (n >= 5 && !strcmp(f[0], "MOVE")) r = v_move(&w, dst, f[1], atoi(f[2]), atoi(f[3]), atoi(f[4]));
+    else if (n >= 3 && !strcmp(f[0], "FACE")) r = v_face(&w, dst, f[1], f[2]);
+    else if (n >= 3 && !strcmp(f[0], "RESET")) r = v_reset(&w, dst, f[1]);
+    else if (n >= 3 && !strcmp(f[0], "SEAT")) r = v_seat(&w, dst, f[1], f[2]);
     else if (n >= 8 && !strcmp(f[0], "DAMAGE")) r = v_mine(&w, dst, f[1], f[2], atoi(f[3]), atoi(f[4]), atoi(f[5]));
     else if (n >= 6 && !strcmp(f[0], "PLACE")) r = v_place(&w, dst, f[1], f[2], atoi(f[3]), atoi(f[4]), atoi(f[5]));
     else if (n >= 3 && !strcmp(f[0], "TURN") && !strcmp(f[2], "wait")) { int k = atoi(f[1]) - w.turn; r = v_wait(&w, dst, k); }
@@ -241,7 +329,7 @@ static int intent(FILE *dst, const char *line) {
 }
 static int is_intent(const char *s) {
     char l[512], *f[10]; snprintf(l, sizeof l, "%s", s); int n = split(l, f, 10);
-    return n >= 3 && (!strcmp(f[0], "GIVE") || !strcmp(f[0], "MOVE") || !strcmp(f[0], "DAMAGE") || !strcmp(f[0], "PLACE") || !strcmp(f[0], "SLEEP") || !strcmp(f[0], "EAT") || (!strcmp(f[0], "TURN") && !strcmp(f[2], "wait")));
+    return n >= 3 && (!strcmp(f[0], "GIVE") || !strcmp(f[0], "MOVE") || !strcmp(f[0], "FACE") || !strcmp(f[0], "RESET") || !strcmp(f[0], "SEAT") || !strcmp(f[0], "DAMAGE") || !strcmp(f[0], "PLACE") || !strcmp(f[0], "SLEEP") || !strcmp(f[0], "EAT") || (!strcmp(f[0], "TURN") && !strcmp(f[2], "wait")));
 }
 static int is_derived(const char *s) {
     char l[512], *f[10]; snprintf(l, sizeof l, "%s", s); int n = split(l, f, 10);
@@ -277,7 +365,7 @@ static int verify(FILE *L) {
 #define ATILES 43
 #define ATW (ACOLS * TPX)
 #define ATH (((ATILES + ACOLS - 1) / ACOLS) * TPX)
-#define DMAX 64
+#define DMAX 216   /* was 64: the first island is 216 columns wide (the engine board limit is 256) */
 static unsigned char AT[ATW * ATH * 4];
 static int pic_slot(const char *kind) { for (int i = 0; i < npc; i++) if (!strcmp(PC[i].kind, kind) && PC[i].slot > 0 && PC[i].slot < ATILES) return PC[i].slot; return 0; }
 static void build_atlas(void) {   /* one flat tile per PICTURE row (a darker 1 px edge and a faint 4 px check so a tile reads as a block); slot 0 stays fully transparent */
@@ -405,7 +493,7 @@ int main(int argc, char **argv) {
             if (!strncmp(o, "desk=", 5)) op.desk = o + 5; else if (!strncmp(o, "feed=", 5)) op.feed = o + 5; else if (!strncmp(o, "png=", 4)) op.png = o[4] ? o + 4 : NULL; else if (!strncmp(o, "self=", 5)) op.self = o + 5; else av[k++] = o; }
         ac = k > 2 ? 2 : k; }
     else while (ac > 0 && strchr(av[ac - 1], (int)'=')) { char *o = av[ac - 1]; if (!strncmp(o, "desk=", 5)) op.desk = o + 5; else if (!strncmp(o, "feed=", 5)) op.feed = o + 5; else if (!strncmp(o, "png=", 4)) op.png = o[4] ? o + 4 : NULL; else if (!strncmp(o, "self=", 5)) op.self = o + 5; else break; ac--; }
-    int mut = !strcmp(v, "give") || !strcmp(v, "move") || !strcmp(v, "mine") || !strcmp(v, "place") || !strcmp(v, "wait") || !strcmp(v, "sleep") || !strcmp(v, "eat") || !strcmp(v, "act");
+    int mut = !strcmp(v, "give") || !strcmp(v, "move") || !strcmp(v, "mine") || !strcmp(v, "place") || !strcmp(v, "wait") || !strcmp(v, "sleep") || !strcmp(v, "eat") || !strcmp(v, "act") || !strcmp(v, "walk") || !strcmp(v, "face") || !strcmp(v, "jump") || !strcmp(v, "reset") || (!strcmp(v, "seat") && argc == 6);
     if (mut && (r = verify(L))) { fclose(L); return r; }
     char cx[3][32]; char *av5[5];   /* a page passes the cell as one word x,y,z (the registry allows 4 params) */
     if ((!strcmp(v, "mine") || !strcmp(v, "place")) && ac == 3 && sscanf(av[2], "%31[-0-9],%31[-0-9],%31[-0-9]", cx[0], cx[1], cx[2]) == 3) {
@@ -419,6 +507,15 @@ int main(int argc, char **argv) {
     else if (!strcmp(v, "wait") && ac == 1) r = v_wait(&w, L, atoi(av[0]));
     else if (!strcmp(v, "sleep") && ac == 1) r = v_sleep(&w, L, av[0]);
     else if (!strcmp(v, "eat") && ac == 2) r = v_eat(&w, L, av[0], av[1]);
+    else if (!strcmp(v, "walk") && ac == 2) r = v_walk(&w, L, av[0], av[1]);
+    else if (!strcmp(v, "face") && ac == 2) r = v_face(&w, L, av[0], av[1]);
+    else if (!strcmp(v, "jump") && ac == 1) r = v_jump(&w, L, av[0]);
+    else if (!strcmp(v, "reset") && ac == 1) r = v_reset(&w, L, av[0]);
+    else if (!strcmp(v, "seat") && ac == 2) r = v_seat(&w, L, av[0], av[1]);
+    else if (!strcmp(v, "seat") && ac == 1) { Actor *a = actor(&w, av[0], 0); fprintf(OUT, "seat=%s\n", a && a->seat == 1 ? "human" : "harness"); r = 0; }   /* no SEAT row = harness */
+    else if (!strcmp(v, "ground") && ac == 2) { int x = atoi(av[0]), z = atoi(av[1]); if (!inb(x, 0, z)) { fprintf(stderr, "out of bounds\n"); r = 11; } else { int t = top_solid(&w, x, z), wl = t >= 0 ? water_top(&w, x, z, t + 1) : -1;
+        fprintf(OUT, "top=%d kind=%s water=%d\n", t, t >= 0 ? kind_at(&w, x, t, z) : "none", wl); r = 0; } }
+    else if (!strcmp(v, "where") && ac == 1) { Actor *a = actor(&w, av[0], 0); if (!a || !a->has) { fprintf(stderr, "unknown actor\n"); r = 10; } else { fprintf(OUT, "at=%d,%d,%d spawn=%d,%d,%d face=%c\n", a->x, a->y, a->z, a->sx, a->sy, a->sz, a->dir ? a->dir : '-'); r = 0; } }
     else if (!strcmp(v, "hunger") && ac == 1) { Actor *a = actor(&w, av[0], 0);
         if (!a) { fprintf(stderr, "unknown actor\n"); r = 10; } else { fprintf(OUT, "hunger=%d max=%d starved=%d\n", a->hunger, R("hunger_max"), a->hunger >= R("starve_at")); r = 0; } }
     else if (!strcmp(v, "status") && ac == 0) {
@@ -434,6 +531,6 @@ int main(int argc, char **argv) {
     else if (!strcmp(v, "verify") && ac == 0) { r = verify(L); if (!r) fprintf(OUT, "verified\n"); }
     else if (!strcmp(v, "replay") && ac == 1) {
         FILE *d = fopen(av[0], "w+x"); if (!d) { fprintf(stderr, "refused: destination exists or cannot be created\n"); r = 2; } else { FILE *keep = OUT; OUT = fopen("/dev/null", "w"); r = replay_into(L, d); fclose(OUT); OUT = keep; if (!r && !same(L, d)) r = 14; fclose(d); if (!r) fprintf(OUT, "replayed identical\n"); } }
-    if (!r && (!strcmp(v, "mine") || !strcmp(v, "place") || !strcmp(v, "eat") || !strcmp(v, "wait") || !strcmp(v, "sleep") || !strcmp(v, "move") || !strcmp(v, "give"))) board_hook(&w, L, argv[3], argv[2], argv[0]);
+    if (!r && (!strcmp(v, "mine") || !strcmp(v, "place") || !strcmp(v, "eat") || !strcmp(v, "wait") || !strcmp(v, "sleep") || !strcmp(v, "move") || !strcmp(v, "give") || !strcmp(v, "walk") || !strcmp(v, "jump") || !strcmp(v, "reset") || !strcmp(v, "face"))) board_hook(&w, L, argv[3], argv[2], argv[0]);
     fclose(L); return r;
 }

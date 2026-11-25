@@ -1,0 +1,94 @@
+# rmmc_seat (2026-11-25, D137, gate G5b): ONE controller at a time. The seat is a LEDGER row (SEAT | asa | human|harness). The key driver (a human) refuses while the seat is harness, the beat op (a harness or an AI) refuses
+# while it is human: exit 24, NOTHING written. The same verb pages serve both. The human path here is the key relay file `<code> <ms>` lines (arrows 1000-1003, space 32), not a real window.
+RESULTS | ../results/rmmc_seat.txt
+CASE | human-keys-become-verb-pages
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_beat_op.+x | $T/h | $T/h/@.apps/rmmc/beats.pdl | 1
+EXPECT_OUT | beat 1: spawn 140 100 x1 ok | the harness seat (no row) spawns Asa
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | seat | $T/h/@.apps/rmmc/vox | $T/led.txt | asa
+EXPECT_OUT_IS | seat=harness | with no SEAT row the seat is harness
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | seat | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | human
+EXPECT_OUT_IS | seat=human | the human takes the seat: a SEAT row
+EXPECT_HAS | led.txt | SEAT \p asa \p human | the seat is a ledger row
+WRITE | bp.txt | paused=1\n
+ENV | BLUEPRINTZ_DEBUG_FILE | $T/bp.txt
+WRITE | relay.txt | 1001 10\n1001 20\n1003 30\n65 35\n32 40\n
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --feed | $T/feed.txt
+EXPECT_EXIT | 0 | the driver plays the keys (right right down, an unknown key 65, space) as verb pages
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | where | $T/h/@.apps/rmmc/vox | $T/led.txt | asa
+EXPECT_OUT | at=142,6,101 spawn=140,6,100 | right x2 = x 142, down = row 101, jump returns to the same cell
+RUN | grep | -c | ^MOVE | $T/led.txt
+EXPECT_OUT | 6 | spawn, three walks and the jump's two rows: the unknown key wrote nothing
+EXPECT_HAS | h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/events.txt | 142 101 200 90 60 rig:asa 0 2 3 | the same projection as the beat op: row 101, facing south, jumping
+EXPECT_HAS | feed.txt | asa: at=142,6,101 | the feed names where Asa is
+EXPECT_HAS | feed.txt | seat human | and the seat
+EXPECT_HAS | feed.txt | events are paused in Blueprintz | with events paused the driver plays the verb DIRECTLY and says so on the feed
+EXPECT_FILE | bp.txt | paused=1\n | and never clears the owner's pause
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --once | --feed | $T/feed.txt
+RUN | /usr/bin/stat | -c | %Y | $T/feed.txt
+CAPTURE | m0
+SLEEP | 1300
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --once | --feed | $T/feed.txt
+RUN | /usr/bin/stat | -c | %Y | $T/feed.txt
+EXPECT_OUT_IS | $m0 | the-feed-is-written-only-when-its-bytes-change
+CLEAN |
+CASE | the-seat-refuses-the-other-controller
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_beat_op.+x | $T/h | $T/h/@.apps/rmmc/beats.pdl | 1
+WRITE | relay.txt | 1001 10\n
+RUN | cp | $T/led.txt | $T/before.txt
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once
+EXPECT_EXIT | 24 | NEGATIVE-the-key-driver-refuses-while-the-seat-is-harness-(24)
+RUN | cmp | $T/led.txt | $T/before.txt
+EXPECT_EXIT | 0 | and-wrote-nothing
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | seat | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | human
+RUN | cp | $T/led.txt | $T/before.txt
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_beat_op.+x | $T/h | $T/h/@.apps/rmmc/beats.pdl | 2
+EXPECT_EXIT | 24 | NEGATIVE-the-beat-op-refuses-while-the-seat-is-human-(24)
+RUN | cmp | $T/led.txt | $T/before.txt
+EXPECT_EXIT | 0 | and-wrote-nothing
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_beat_op.+x | $T/h | $T/h/@.apps/rmmc/beats.pdl | all
+EXPECT_EXIT | 24 | NEGATIVE-all-is-refused-too-(24)
+ENV | GAME_ARG | e
+ENV | RMMC_CALLER | harness
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_verb.+x | walk
+EXPECT_EXIT | 24 | NEGATIVE-the-verb-engine-itself-refuses-a-harness-caller-while-the-seat-is-human-(24)
+RUN | cmp | $T/led.txt | $T/before.txt
+EXPECT_EXIT | 0 | and-wrote-nothing
+ENV | RMMC_CALLER | human
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_verb.+x | walk
+EXPECT_EXIT | 0 | the-control-the-human-caller-may-walk
+RUN | cmp | -s | $T/led.txt | $T/before.txt
+EXPECT_EXIT | 1 | and-it-wrote-a-row
+ENV | RMMC_CALLER |
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | seat | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | harness
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_beat_op.+x | $T/h | $T/h/@.apps/rmmc/beats.pdl | 2
+EXPECT_EXIT | 0 | the-control-the-seat-back-to-harness-lets-the-beat-op-write
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | seat | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | robot
+EXPECT_EXIT | 2 | NEGATIVE-a-seat-other-than-human-or-harness-is-refused-2
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | verify | $T/h/@.apps/rmmc/vox | $T/led.txt
+EXPECT_OUT | verified | the-seat-rows-replay
+CLEAN |
+CASE | the-live-driver-follows-the-relay-and-goes-idle-and-ends-with-its-owner
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_beat_op.+x | $T/h | $T/h/@.apps/rmmc/beats.pdl | 1
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | seat | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | human
+WRITE | relay.txt | 1001 1\n
+SPAWN | OWN | /usr/bin/sleep | 600
+SPAWN | DRV | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --feed | $T/feed.txt | --owner-pid | $OWN
+WAIT_HAS | feed.txt | asa: at=140,6,100 | 8000 | the-driver-wrote-its-feed
+APPEND | relay.txt | 1001 5\n
+WAIT_HAS | h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/events.txt | 141 100 200 90 60 rig:asa 0 6 1 | 8000 | a-key-appended-after-start-walked-her-one-column
+WAIT_HAS | h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/events.txt | 141 100 200 90 60 rig:asa 0 6 0 | 8000 | after-idle_after_ms-the-driver-re-projected-idle-(pattern-0)
+RUN | grep | -c | ^MOVE | $T/led.txt
+EXPECT_OUT | 2 | the-history-line-before-the-start-was-NOT-replayed-(spawn-plus-one-walk)
+RUN | grep | -c | IDLE | $T/led.txt
+EXPECT_OUT | 0 | idle-is-never-a-ledger-row
+EXPECT_ALIVE | $DRV | the-driver-stays-up-while-its-owner-lives
+RUN | kill | $OWN
+SLEEP | 800
+EXPECT_DEAD | $DRV | the-driver-ends-when-its-owner-is-gone
+CLEAN |

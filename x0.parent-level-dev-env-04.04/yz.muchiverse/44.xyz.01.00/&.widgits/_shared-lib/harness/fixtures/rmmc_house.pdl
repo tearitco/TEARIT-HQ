@@ -1,0 +1,35 @@
+# fixture rmmc_house (2026-11-25, D137): a SCRATCH house under $T/h for the rmmc cases: the real ops compiled from source, the real data and the real seed island copied in, the rmmc env pointed at scratch paths.
+# The ledger is $T/led.txt (set by RMMC_LEDGER); the projection is the desk folder of the scratch book. Nothing here names a live path. Include it right after SCRATCH.
+ENV | BLUEPRINTZ_DEBUG_FILE | /nonexistent
+ENV | RMMC_LEDGER | $T/led.txt
+ENV | RMMC_DESK | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001
+ENV | RMMC_SEED |
+ENV | RMMC_ACTOR |
+ENV | RMMC_CALLER |
+ENV | GAME_ARG |
+MKDIR | h/xyzfs
+MKDIR | h/@.apps/rmmc/ops/+x
+MKDIR | h/@.apps/rmmc/vox
+MKDIR | h/@.apps/rmmc/rmmc-pchq/pieces/system
+MKDIR | h/@.apps/vox/ops/+x
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/h/@.apps/vox/ops/+x/vox_op.+x | $HOUSE/@.apps/vox/ops/vox_op.c
+EXPECT_EXIT | 0 | fixture: vox_op compiles
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/h/@.apps/rmmc/ops/+x/rmmc_verb.+x | $HOUSE/@.apps/rmmc/ops/rmmc_verb.c
+EXPECT_EXIT | 0 | fixture: rmmc_verb compiles
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | $HOUSE/@.apps/rmmc/ops/rmmc_project_op.c
+EXPECT_EXIT | 0 | fixture: rmmc_project_op compiles
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/h/@.apps/rmmc/ops/+x/rmmc_beat_op.+x | $HOUSE/@.apps/rmmc/ops/rmmc_beat_op.c
+EXPECT_EXIT | 0 | fixture: rmmc_beat_op compiles
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $HOUSE/@.apps/rmmc/ops/rmmc_driver.c
+EXPECT_EXIT | 0 | fixture: rmmc_driver compiles
+COPY | @.apps/rmmc/pose.pdl | h/@.apps/rmmc/pose.pdl
+COPY | @.apps/rmmc/beats.pdl | h/@.apps/rmmc/beats.pdl
+COPY | @.apps/rmmc/keys.pdl | h/@.apps/rmmc/keys.pdl
+COPY | @.apps/rmmc/verbs.pdl | h/@.apps/rmmc/verbs.pdl
+COPY | @.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | h/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl
+COPY | @.apps/rmmc/vox/rules.pdl | h/@.apps/rmmc/vox/rules.pdl
+COPY | @.apps/rmmc/vox/blocks.pdl | h/@.apps/rmmc/vox/blocks.pdl
+COPY | @.apps/rmmc/vox/terrain.pdl | h/@.apps/rmmc/vox/terrain.pdl
+COPY | @.apps/rmmc/vox/terrain.heightmap | h/@.apps/rmmc/vox/terrain.heightmap
+COPYDIR | @.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed
+COPYDIR | @.apps/rmmc/events | h/@.apps/rmmc/events

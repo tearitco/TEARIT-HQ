@@ -1,0 +1,56 @@
+# rmmc_heightmap (2026-11-25, D137, gate G2): rmmc_heightmap_op turns the SEED desk into vox's terrain.heightmap (a generated CONFIG): every land column once, heights from the desk's glyph, water flagged, a changed column goes red.
+RESULTS | ../results/rmmc_heightmap.txt
+CASE | the-real-island-seed
+SCRATCH
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/hm.+x | $HOUSE/@.apps/rmmc/ops/rmmc_heightmap_op.c
+EXPECT_EXIT | 0 | the op compiles
+COPYDIR | @.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | seed
+COPY | @.apps/rmmc/heightmap.pdl | heightmap.pdl
+RUN | $T/hm.+x | build | $T/seed | $T/heightmap.pdl | $T/out.heightmap
+EXPECT_OUT_IS | land=17460 runs=3497 shift=3 | the island has 17,460 land columns (216 x 156 minus sky) in 3,497 runs
+RUN | $T/hm.+x | check | $T/seed | $T/heightmap.pdl | $T/out.heightmap
+EXPECT_OUT_IS | land=17460 seen=17460 mismatches=0 | every land column appears exactly once with the desk's own heights and kinds, no sky column appears
+RUN | cmp | $T/out.heightmap | $HOUSE/@.apps/rmmc/vox/terrain.heightmap
+EXPECT_EXIT | 0 | the shipped CONFIG @.apps/rmmc/vox/terrain.heightmap is the regenerated file byte for byte
+RUN | $T/hm.+x | build | $T/seed | $T/heightmap.pdl | $T/again.heightmap
+RUN | cmp | $T/out.heightmap | $T/again.heightmap
+EXPECT_EXIT | 0 | the same seed gives the same bytes
+RUN | grep | -c | ^RUN | $T/out.heightmap
+EXPECT_OUT | 3497 | the file has 3497 RUN rows
+RUN | $T/hm.+x | build | $T/nothing | $T/heightmap.pdl | $T/x.heightmap
+EXPECT_EXIT | 3 | NEGATIVE-a-missing-seed-desk-is-refused-3
+EXPECT_NOFILE | x.heightmap | nothing-was-written-for-a-refused-build
+CLEAN |
+CASE | heights-water-and-a-changed-column
+SCRATCH
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/hm.+x | $HOUSE/@.apps/rmmc/ops/rmmc_heightmap_op.c
+EXPECT_EXIT | 0 | the op compiles
+COPY | @.apps/rmmc/heightmap.pdl | heightmap.pdl
+MKDIR | a
+MKDIR | b
+WRITE | a/legend.txt | GLYPH | c | 0 | -1\nGLYPH | 1 | 1 | 1\nGLYPH | 2 | 2 | 2\nGLYPH | 3 | 3 | 3\nSLOT | 1 | grass_top | x.png\nSLOT | 2 | grass_side | x.png\nSLOT | 8 | water | x.png\nSLOT | 9 | water_deep | x.png\n
+WRITE | a/map.txt | 3311c\n.2..3\n
+WRITE | a/cells.txt | width=5\nheight=2\ntile_px=16\natlas_cols=16\natlas_tiles=14\nevent_lift=1\ncells\n1,2,3 1,2,3 8,8,2 8,8,2 9,9,2\n0,0,0 1,2,3 0,0,0 0,0,0 1,2,3\n
+RUN | $T/hm.+x | build | $T/a | $T/heightmap.pdl | $T/a.heightmap
+EXPECT_OUT_IS | land=7 runs=5 shift=3 | seven land columns, five runs (sky counts for nothing)
+EXPECT_HAS | a.heightmap | RUN \p 0 \p 0 \p 2 \p 5 \p grass_top \p grass_side \p -1 | two grass columns of level 3: ground_y = 3 - 1 + shift 3 = 5 (and desk row 0 is vox z 0)
+EXPECT_HAS | a.heightmap | RUN \p 0 \p 2 \p 2 \p 2 \p sand \p sand \p 3 | shallow water (level 1): a sand bed at y 2 and water up to y 3, one block deep
+EXPECT_HAS | a.heightmap | RUN \p 0 \p 4 \p 1 \p 0 \p sand \p sand \p 2 | deep water (level 0): a bed at y 0 and water up to y 2, two blocks deep
+EXPECT_HAS | a.heightmap | RUN \p 1 \p 1 \p 1 \p 4 \p grass_top \p grass_side \p -1 | desk(x 1, row 1) is vox(x 1, z 1): level 2 gives ground_y 4
+EXPECT_HAS | a.heightmap | RUN \p 1 \p 4 \p 1 \p 5 \p grass_top \p grass_side \p -1 | the last column of row 1
+EXPECT_LACKS | a.heightmap | RUN \p 1 \p 0 | NEGATIVE-the-sky-cell-at-row-1-x-0-has-no-row
+RUN | $T/hm.+x | check | $T/a | $T/heightmap.pdl | $T/a.heightmap
+EXPECT_OUT_IS | land=7 seen=7 mismatches=0 | check agrees on the small desk
+WRITE | b/legend.txt | GLYPH | c | 0 | -1\nGLYPH | 1 | 1 | 1\nGLYPH | 2 | 2 | 2\nGLYPH | 3 | 3 | 3\nSLOT | 1 | grass_top | x.png\nSLOT | 2 | grass_side | x.png\nSLOT | 8 | water | x.png\nSLOT | 9 | water_deep | x.png\n
+WRITE | b/map.txt | 3311c\n.2..2\n
+WRITE | b/cells.txt | width=5\nheight=2\ntile_px=16\natlas_cols=16\natlas_tiles=14\nevent_lift=1\ncells\n1,2,3 1,2,3 8,8,2 8,8,2 9,9,2\n0,0,0 1,2,3 0,0,0 0,0,0 1,2,3\n
+RUN | $T/hm.+x | check | $T/b | $T/heightmap.pdl | $T/a.heightmap
+EXPECT_EXIT | 1 | NEGATIVE-one-column-of-the-desk-changed-(row-1-x-4-from-level-3-to-2)-and-the-check-goes-red
+EXPECT_OUT | mismatches=1 | exactly-one-mismatch-is-reported
+RUN | $T/hm.+x | build | $T/b | $T/heightmap.pdl | $T/b.heightmap
+RUN | cmp | -s | $T/a.heightmap | $T/b.heightmap
+EXPECT_EXIT | 1 | and-the-regenerated-file-differs-from-the-old-one
+WRITE | low.pdl | RULE | shift | 0\nWATER | water | 1 | sand\nWATER | water_deep | 2 | sand\n
+RUN | $T/hm.+x | build | $T/a | $T/low.pdl | $T/low.heightmap
+EXPECT_EXIT | 5 | NEGATIVE-a-deep-lake-bed-below-y-0-is-refused-5-(raise-RULE-shift)
+CLEAN |

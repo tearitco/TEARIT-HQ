@@ -1990,3 +1990,12 @@ COMMAND tearit_verb
   PARAMS verb,arg
   TEMPLATE exec "$D/@.apps/tearit-map/ops/+x/tearit_verb.+x" '{verb}'[ '{arg}']
 END
+
+# rmmc_verb = the walking verbs of the rmmc book (Asa on the island, D137). The engine reads GAME_ARG, calls ONE rule op (vox_op on the rmmc vox ledger) then rmmc_project_op, and writes play/result.txt; verb pages are written by verbgen from @.apps/rmmc/verbs.pdl.
+COMMAND rmmc_verb
+  LABEL rmmc: Run Verb
+  FIELD1 Verb:
+  FIELD2 Arg:
+  PARAMS verb,arg
+  TEMPLATE exec "$D/@.apps/rmmc/ops/+x/rmmc_verb.+x" '{verb}'[ '{arg}']
+END

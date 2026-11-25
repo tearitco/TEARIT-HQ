@@ -1,0 +1,14 @@
+# blocks.pdl (rmmc skin of vox, D137) - block kinds = the tile names of the island legend (rmmc-0001/seed/legend.txt SLOT rows), so the heightmap kinds are those names.
+# BLOCK | kind | hardness | tool_best | min_power | drops | count | solid | opaque | light | gravity | flammable   (break and place are NOT VERIFIED on the island yet: these rows only make the walk rules see solid or not)
+BLOCK | grass_top  | 2 | shovel | 0 | dirt    | 1 | 1 | 1 | 0 | 0 | 0
+BLOCK | grass_side | 2 | shovel | 0 | dirt    | 1 | 1 | 1 | 0 | 0 | 0
+BLOCK | dirt       | 2 | shovel | 0 | dirt    | 1 | 1 | 1 | 0 | 0 | 0
+BLOCK | stone      | 6 | pick   | 2 | stone   | 1 | 1 | 1 | 0 | 0 | 0
+BLOCK | sand       | 2 | shovel | 0 | sand    | 1 | 1 | 1 | 0 | 1 | 0
+BLOCK | snow       | 1 | shovel | 0 | snow    | 1 | 1 | 1 | 0 | 0 | 0
+BLOCK | snow_side  | 2 | shovel | 0 | dirt    | 1 | 1 | 1 | 0 | 0 | 0
+BLOCK | wood_side  | 4 | axe    | 0 | wood_side | 1 | 1 | 1 | 0 | 0 | 1
+BLOCK | wood_top   | 4 | axe    | 0 | wood_side | 1 | 1 | 1 | 0 | 0 | 1
+BLOCK | leaves     | 1 | shears | 0 | leaves  | 1 | 1 | 0 | 0 | 0 | 1
+BLOCK | gravel     | 2 | shovel | 0 | gravel  | 1 | 1 | 1 | 0 | 1 | 0
+BLOCK | water      | 0 | -      | 0 | -       | 0 | 0 | 0 | 0 | 0 | 0

@@ -1,0 +1,6 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | seat
+META         | generated          | verbgen
+STATE        | source               | events-hq
+NODE         | id=1 type=rmmc_verb | verb=seat|arg=

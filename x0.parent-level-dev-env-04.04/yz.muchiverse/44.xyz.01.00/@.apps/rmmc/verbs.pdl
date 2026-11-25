@@ -1,0 +1,17 @@
+# verbs.pdl - the rmmc manifest: which verbs are EVENT PAGES (BOOK 16.game/EVENT-VERB-PAGES-DESIGN.md; same grammar as @.apps/tearit-map/verbs.pdl). Read by &.widgits/events-hq/ops/+x/verbgen.+x
+#   verbgen check @.apps/rmmc   engine source <-> this file <-> events/ must agree
+#   verbgen gen   @.apps/rmmc   write events/<verb>/ for every page=yes verb (never overwrites an edited package)
+# The rules are ONE op (vox_op, D105/D137: the append-only vox ledger is the only authority); a page runs rmmc_verb, which calls vox_op and then rmmc_project_op (the projection the engine draws).
+# Who may call: the key driver (rmmc_driver, a human) and the beat op (rmmc_beat_op, a harness or an AI) both play these pages; the seat row says which of them may write.
+GAME | rmmc | rmmc_verb | ops/+x/rmmc_verb.+x | ops/rmmc_verb.c
+#   VERB | name | page | trigger | args | what it does
+VERB | spawn | yes | ui | x z | Asa appears on the island column (x, row z) at the top of its ground (refused 11 over sky or off the map, 18 when she is already on the island)
+VERB | walk  | yes | ui | dir | one column n, e, s or w; the height is resolved from the heightmap (a step up of 1, 2 out of water, a drop of 3, shallow water only; refused 11 off the island, 18 for a wall, a cliff or deep water)
+VERB | face  | yes | ui | dir | turn on the spot (a FACE row: the facing is a fold of the ledger)
+VERB | jump  | yes | ui |     | hop up one level and land back on the same column (both MOVE rows or none; 15 with no ground under the feet)
+VERB | reset | yes | ui |     | back to the spawn point (a RESET row)
+VERB | seat  | yes | ui | who | who drives Asa: human or harness (a SEAT row; the last row wins; no row = harness)
+# mine, place and pick are listed so the manifest shows the plan; the engine answers exit 2 "not wired yet". NOT VERIFIED, priority 3 (owner 2026-11-25: break and place later).
+VERB | mine  | no  | ui | dir | NOT WIRED: dig the block in front
+VERB | place | no  | ui | item dir | NOT WIRED: put a block down
+VERB | pick  | no  | ui | item | NOT WIRED: choose the block to place (a preference, not a ledger row)

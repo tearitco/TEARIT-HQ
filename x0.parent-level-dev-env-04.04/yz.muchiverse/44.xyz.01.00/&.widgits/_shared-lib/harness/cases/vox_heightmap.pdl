@@ -1,0 +1,160 @@
+# vox_heightmap (2026-11-25, D137, rmmc gate G1): vox's second terrain source terrain.heightmap, the walking verbs (walk face jump reset ground where) and the raised limits (DMAX 64 -> 216).
+# The island data is the REAL @.apps/rmmc/vox/ (copied into $T); every ledger is a scratch file under $T. vox's own cases (vox, vox_desk, vox_keys) must stay green.
+RESULTS | ../results/vox_heightmap.txt
+CASE | heightmap-columns-and-axes
+SCRATCH
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/vox_op.+x | $HOUSE/@.apps/vox/ops/vox_op.c
+EXPECT_EXIT | 0 | vox_op compiles
+MKDIR | d
+COPY | @.apps/rmmc/vox/rules.pdl | d/rules.pdl
+COPY | @.apps/rmmc/vox/blocks.pdl | d/blocks.pdl
+COPY | @.apps/rmmc/vox/terrain.pdl | d/terrain.pdl
+COPY | @.apps/rmmc/vox/terrain.heightmap | d/terrain.heightmap
+RUN | $T/vox_op.+x | ground | $T/d | $T/l.txt | 140 | 100
+EXPECT_OUT_IS | top=5 kind=grass_top water=-1 | a grass column of level 3 has its top at vox y 5 (level - 1 + shift 3)
+RUN | $T/vox_op.+x | ground | $T/d | $T/l.txt | 150 | 0
+EXPECT_OUT_IS | top=4 kind=sand water=-1 | desk(x=150,row=0) is vox(x=150,z=0): the beach sand column
+RUN | $T/vox_op.+x | ground | $T/d | $T/l.txt | 0 | 150
+EXPECT_OUT_IS | top=-1 kind=none water=-1 | NEGATIVE-the-mirrored-cell-(row 150, x 0)-is-sky: x and z are not swapped
+RUN | $T/vox_op.+x | ground | $T/d | $T/l.txt | 172 | 104
+EXPECT_OUT_IS | top=0 kind=sand water=2 | the middle of the east lake: a bed at y 0 and water to y 2 (deep water is 2 blocks)
+RUN | $T/vox_op.+x | ground | $T/d | $T/l.txt | 215 | 155
+EXPECT_OUT | top=-1 | the far corner is sky: the world is bounded by the island outline, not the box
+RUN | $T/vox_op.+x | ground | $T/d | $T/l.txt | 216 | 5
+EXPECT_EXIT | 11 | NEGATIVE-x-216-is-outside-the-world-(refused-11)
+RUN | $T/vox_op.+x | cell | $T/d | $T/l.txt | 150 | 4 | 0
+EXPECT_OUT_IS | sand | cell: the top block of the column
+RUN | $T/vox_op.+x | cell | $T/d | $T/l.txt | 150 | 5 | 0
+EXPECT_OUT_IS | air | cell: air over it
+RUN | $T/vox_op.+x | cell | $T/d | $T/l.txt | 172 | 2 | 104
+EXPECT_OUT_IS | water | cell: water over a lake bed
+RUN | $T/vox_op.+x | give | $T/d | $T/l.txt | asa | sand | 2 | test-seed
+EXPECT_EXIT | 0 | a bag of sand
+RUN | $T/vox_op.+x | move | $T/d | $T/l.txt | asa | 150 | 5 | 0
+EXPECT_EXIT | 0 | the first MOVE is a spawn on the sand
+RUN | $T/vox_op.+x | place | $T/d | $T/l.txt | asa | sand | 150 | 5 | 1
+EXPECT_EXIT | 0 | place sand on the heightmap column at (150,5,1)
+RUN | $T/vox_op.+x | cell | $T/d | $T/l.txt | 150 | 5 | 1
+EXPECT_OUT_IS | sand | a CHANGED cell wins over the heightmap (the heightmap says air there)
+RUN | $T/vox_op.+x | ground | $T/d | $T/l.txt | 150 | 1
+EXPECT_OUT_IS | top=5 kind=sand water=-1 | and the column top follows the ledger (4 -> 5)
+CLEAN |
+CASE | walk-face-jump-reset-and-refusals
+SCRATCH
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/vox_op.+x | $HOUSE/@.apps/vox/ops/vox_op.c
+EXPECT_EXIT | 0 | vox_op compiles
+MKDIR | d
+COPY | @.apps/rmmc/vox/rules.pdl | d/rules.pdl
+COPY | @.apps/rmmc/vox/blocks.pdl | d/blocks.pdl
+COPY | @.apps/rmmc/vox/terrain.pdl | d/terrain.pdl
+COPY | @.apps/rmmc/vox/terrain.heightmap | d/terrain.heightmap
+RUN | $T/vox_op.+x | move | $T/d | $T/l.txt | asa | 140 | 6 | 100
+EXPECT_OUT | at=140,6,100 | spawn on the grass plain (level 3 -> stand at y 6)
+RUN | $T/vox_op.+x | walk | $T/d | $T/l.txt | asa | e
+EXPECT_OUT | at=141,6,100 | walk east is x + 1
+RUN | $T/vox_op.+x | walk | $T/d | $T/l.txt | asa | s
+EXPECT_OUT | at=141,6,101 | walk south is z + 1 (the desk row grows downwards)
+RUN | $T/vox_op.+x | walk | $T/d | $T/l.txt | asa | n
+RUN | $T/vox_op.+x | walk | $T/d | $T/l.txt | asa | w
+RUN | $T/vox_op.+x | where | $T/d | $T/l.txt | asa
+EXPECT_OUT | at=140,6,100 spawn=140,6,100 face=- | n and w undo s and e
+RUN | $T/vox_op.+x | face | $T/d | $T/l.txt | asa | w
+EXPECT_EXIT | 0 | a FACE row
+RUN | $T/vox_op.+x | where | $T/d | $T/l.txt | asa
+EXPECT_OUT | face=w | the facing is a fold of the ledger
+RUN | $T/vox_op.+x | jump | $T/d | $T/l.txt | asa
+EXPECT_OUT | jumped=140,6,100 | a jump comes back down to the same cell
+RUN | grep | -c | ^MOVE | $T/l.txt
+EXPECT_OUT | 7 | spawn, 4 walks and a jump (2 MOVE rows) are 7 MOVE rows
+RUN | $T/vox_op.+x | verify | $T/d | $T/l.txt
+EXPECT_OUT | verified | the walking rows replay byte for byte
+RUN | $T/vox_op.+x | replay | $T/d | $T/l.txt | $T/copy.txt
+EXPECT_OUT | replayed identical | replay writes an identical ledger
+RUN | cmp | $T/l.txt | $T/copy.txt
+EXPECT_EXIT | 0 | and cmp agrees
+# refusals write NOTHING
+RUN | cp | $T/l.txt | $T/before.txt
+RUN | $T/vox_op.+x | walk | $T/d | $T/l.txt | asa | q
+EXPECT_EXIT | 2 | NEGATIVE-a-bad-direction-is-refused-2
+RUN | $T/vox_op.+x | face | $T/d | $T/l.txt | nobody | n
+EXPECT_EXIT | 10 | NEGATIVE-an-unknown-actor-is-refused-10
+RUN | $T/vox_op.+x | move | $T/d | $T/l.txt | asa | 100 | 6 | 100
+EXPECT_EXIT | 18 | NEGATIVE-a-teleport-over-move_max-is-refused-18
+RUN | $T/vox_op.+x | move | $T/d | $T/l.txt | bob | 0 | 6 | 0
+EXPECT_EXIT | 0 | a second actor spawns over the SKY (no ground there)
+RUN | $T/vox_op.+x | walk | $T/d | $T/l.txt | bob | n
+EXPECT_EXIT | 11 | NEGATIVE-walking-off-the-map-edge-z--1-is-refused-11
+RUN | $T/vox_op.+x | walk | $T/d | $T/l.txt | bob | s
+EXPECT_EXIT | 11 | NEGATIVE-walking-over-sky-with-no-ground-is-refused-11
+RUN | cp | $T/before.txt | $T/l2.txt
+RUN | $T/vox_op.+x | walk | $T/d | $T/l2.txt | asa | q
+RUN | cmp | $T/before.txt | $T/l2.txt
+EXPECT_EXIT | 0 | a refused walk left the ledger byte for byte
+CLEAN |
+CASE | step-up-fall-water-and-hand-edit
+SCRATCH
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/vox_op.+x | $HOUSE/@.apps/vox/ops/vox_op.c
+EXPECT_EXIT | 0 | vox_op compiles
+MKDIR | s
+COPY | @.apps/rmmc/vox/rules.pdl | s/rules.pdl
+COPY | @.apps/rmmc/vox/blocks.pdl | s/blocks.pdl
+COPY | @.apps/rmmc/vox/terrain.pdl | s/terrain.pdl
+# a hand-made world, row z=0: x0 plain (top 5), x1 +1 step (6), x2 a wall (9), x3 plain (5), x4 a drop of 2 (3), x5 shallow water (bed 0, water to 1), x6 deep water (bed 0, water to 2); row z=1: x0 a cliff (9), x1 plain (5)
+WRITE | s/terrain.heightmap | META | width | 8\nMETA | height | 2\nMETA | shift | 3\nRUN | 0 | 0 | 1 | 5 | grass_top | dirt | -1\nRUN | 0 | 1 | 1 | 6 | grass_top | dirt | -1\nRUN | 0 | 2 | 1 | 9 | stone | stone | -1\nRUN | 0 | 3 | 1 | 5 | grass_top | dirt | -1\nRUN | 0 | 4 | 1 | 3 | grass_top | dirt | -1\nRUN | 0 | 5 | 1 | 0 | sand | sand | 1\nRUN | 0 | 6 | 1 | 0 | sand | sand | 2\nRUN | 1 | 0 | 1 | 9 | stone | stone | -1\nRUN | 1 | 1 | 1 | 5 | grass_top | dirt | -1\n
+RUN | $T/vox_op.+x | move | $T/s | $T/l.txt | asa | 0 | 6 | 0
+RUN | $T/vox_op.+x | walk | $T/s | $T/l.txt | asa | e
+EXPECT_OUT | at=1,7,0 | a step up of 1 (top 5 to 6) is allowed: one MOVE row of length 1 plus the height change
+RUN | $T/vox_op.+x | walk | $T/s | $T/l.txt | asa | e
+EXPECT_EXIT | 18 | NEGATIVE-a-step-up-of-3-(top-6-to-9)-is-refused-18
+RUN | $T/vox_op.+x | walk | $T/s | $T/l.txt | asa | w
+EXPECT_OUT | at=0,6,0 | and back down one
+RUN | $T/vox_op.+x | move | $T/s | $T/l.txt | bob | 3 | 6 | 0
+RUN | $T/vox_op.+x | walk | $T/s | $T/l.txt | bob | w
+EXPECT_EXIT | 18 | NEGATIVE-a-wall-ahead-(top-9-vs-feet-6)-is-refused-18
+RUN | $T/vox_op.+x | walk | $T/s | $T/l.txt | bob | e
+EXPECT_OUT | at=4,4,0 | a drop of 2 (fall_max 3) is walked
+RUN | $T/vox_op.+x | walk | $T/s | $T/l.txt | bob | e
+EXPECT_OUT | at=5,1,0 | shallow water (1 deep, RULE water_max_depth 1) is walkable, a fall of 3
+RUN | $T/vox_op.+x | walk | $T/s | $T/l.txt | bob | e
+EXPECT_EXIT | 18 | NEGATIVE-deep-water-(2-deep)-is-refused-18
+RUN | $T/vox_op.+x | move | $T/s | $T/l.txt | cat | 0 | 10 | 1
+RUN | $T/vox_op.+x | walk | $T/s | $T/l.txt | cat | e
+EXPECT_EXIT | 18 | NEGATIVE-a-fall-of-4-(top-9-to-5)-is-refused-18
+RUN | $T/vox_op.+x | move | $T/s | $T/l.txt | eve | 0 | 12 | 1
+RUN | $T/vox_op.+x | jump | $T/s | $T/l.txt | eve
+EXPECT_EXIT | 15 | NEGATIVE-a-jump-in-the-air-(3-above-the-ground)-needs-ground-under-the-feet-15
+RUN | $T/vox_op.+x | move | $T/s | $T/l.txt | dan | 1 | 6 | 1
+RUN | $T/vox_op.+x | jump | $T/s | $T/l.txt | dan
+EXPECT_OUT | jumped=1,6,1 | a jump from the ground works
+RUN | $T/vox_op.+x | reset | $T/s | $T/l.txt | dan
+EXPECT_OUT | at=1,6,1 | reset returns to the spawn point (the first MOVE)
+RUN | $T/vox_op.+x | reset | $T/s | $T/l.txt | asa
+RUN | $T/vox_op.+x | where | $T/s | $T/l.txt | asa
+EXPECT_OUT | at=0,6,0 spawn=0,6,0 | asa is at her spawn
+RUN | $T/vox_op.+x | verify | $T/s | $T/l.txt
+EXPECT_OUT | verified | all of it replays
+# a hand-edited ledger is refused (14) and nothing is added
+RUN | cp | $T/l.txt | $T/good.txt
+APPEND | l.txt | MOVE \p asa \p 3 \p 6 \p 0\n
+RUN | cp | $T/l.txt | $T/tampered.txt
+RUN | $T/vox_op.+x | verify | $T/s | $T/l.txt
+EXPECT_EXIT | 14 | NEGATIVE-verify-refuses-a-hand-appended-MOVE-without-its-TURN-row-14
+RUN | $T/vox_op.+x | walk | $T/s | $T/l.txt | asa | e
+EXPECT_EXIT | 14 | NEGATIVE-a-verb-on-a-hand-edited-ledger-is-refused-14
+RUN | cmp | $T/l.txt | $T/tampered.txt
+EXPECT_EXIT | 0 | and wrote nothing
+CLEAN |
+CASE | limits-the-whole-island-desk-projection
+SCRATCH
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/vox_op.+x | $HOUSE/@.apps/vox/ops/vox_op.c
+EXPECT_EXIT | 0 | vox_op compiles
+MKDIR | d
+COPY | @.apps/rmmc/vox/rules.pdl | d/rules.pdl
+COPY | @.apps/rmmc/vox/blocks.pdl | d/blocks.pdl
+COPY | @.apps/rmmc/vox/terrain.pdl | d/terrain.pdl
+COPY | @.apps/rmmc/vox/terrain.heightmap | d/terrain.heightmap
+RUN | $T/vox_op.+x | desk | $T/d | $T/l.txt | $T/desk
+EXPECT_OUT | DESK mode=top 216x156 solid_columns=17460 | DMAX 216 lets vox's own projection draw the whole island: 17,460 solid columns (the land columns of the seed desk)
+RUN | $T/vox_op.+x | ground | $T/d | $T/l.txt | 146 | 56
+EXPECT_OUT | kind=snow | the snow cap of the main range is a column of the heightmap
+CLEAN |

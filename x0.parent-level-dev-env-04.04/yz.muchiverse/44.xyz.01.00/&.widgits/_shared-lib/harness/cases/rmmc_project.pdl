@@ -1,0 +1,106 @@
+# rmmc_project (2026-11-25, D137, gate G3): rmmc_project_op folds the vox ledger over the SEED island and writes the PROJECTION the engine reads: the pose from pose.pdl, the direction from the last move or FACE,
+# a cells.marker that GROWS, event_lift=1 kept, never read back, byte for byte regenerable. Scratch house + scratch ledger only.
+RESULTS | ../results/rmmc_project.txt
+CASE | pose-direction-marker-and-regeneration
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+MKDIR | keep
+RUN | touch | $T/led.txt
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
+EXPECT_OUT | projected actors=0 pattern=-1 marker=1 | an empty ledger projects no actor and the marker starts at 1 byte
+EXPECT_HAS | out/events.txt | 140 100 200 90 60 rig:asa 0 2 0 | with no ledger row the seed's own events row stays (pattern 0)
+SUMTREE | seed0 | h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | 140 | 6 | 100
+EXPECT_EXIT | 0 | spawn on the grass plain (desk 140,100)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | walk | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | e
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
+EXPECT_OUT | projected actors=1 pattern=1 marker=2 | the first ground step is pattern 1 and the marker grew from 1 to 2 bytes
+EXPECT_HAS | out/events.txt | 141 100 200 90 60 rig:asa 0 6 1 | x 141, row 100 (vox z), direction 6 (east), pattern 1, the charset name rig:asa and the colours of the seed row kept
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | walk | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | e
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
+EXPECT_HAS | out/events.txt | 142 100 200 90 60 rig:asa 0 6 2 | the second ground step is pattern 2 (the legs alternate per step)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | walk | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | s
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
+EXPECT_HAS | out/events.txt | 142 101 200 90 60 rig:asa 0 2 1 | walking south: row 101, direction 2, the third ground step is pattern 1 again
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | jump | $T/h/@.apps/rmmc/vox | $T/led.txt | asa
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
+EXPECT_HAS | out/events.txt | 142 101 200 90 60 rig:asa 0 2 3 | a jump (its last MOVE changed the level) is pattern 3, same column, direction kept
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | face | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | w
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
+EXPECT_HAS | out/events.txt | 142 101 200 90 60 rig:asa 0 4 0 | a FACE row turns her west (direction 4) with no move: pattern 0
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | walk | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | n
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
+EXPECT_HAS | out/events.txt | 142 100 200 90 60 rig:asa 0 8 2 | walking north: direction 8, the 4th ground step is pattern 2
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap | --idle
+EXPECT_HAS | out/events.txt | 142 100 200 90 60 rig:asa 0 8 0 | --idle writes pattern 0 (the expiry is the driver's job; the ledger has no clock)
+RUN | grep | -c | IDLE | $T/led.txt
+EXPECT_OUT | 0 | NEGATIVE-idle-is-never-a-ledger-row
+RUN | /usr/bin/stat | -c | %s | $T/out/cells.marker
+EXPECT_OUT_IS | 8 | the marker grew by one byte on each of the 8 projections (1 to 8)
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap | --no-marker
+RUN | /usr/bin/stat | -c | %s | $T/out/cells.marker
+EXPECT_OUT_IS | 8 | --no-marker leaves the marker alone (an events-only refresh)
+RUN | cmp | $T/out/cells.txt | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed/cells.txt
+EXPECT_EXIT | 0 | with no mined or placed block cells.txt is the seed's bytes
+RUN | cmp | $T/out/map.txt | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed/map.txt
+EXPECT_EXIT | 0 | and so is map.txt
+EXPECT_HAS | out/cells.txt | event_lift=1 | event_lift=1 is kept (an event stands ON its column)
+EXPECT_EXISTS | out/extrusion.pdl | the engine's extrusion table is in the projection folder
+EXPECT_EXISTS | out/legend.txt | the legend is in the projection folder
+EXPECT_EXISTS | out/cells.rgba | the atlas is in the projection folder
+EXPECT_EXISTS | out/skin.txt | skin.txt is in the projection folder
+EXPECT_EXISTS | out/rig_asa.pdl | the rig colours of Asa are in the projection folder
+SUMTREE | seed1 | h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed
+EXPECT_EQ | $seed0 | $seed1 | the SEED is never written by the projector
+# the projection is NEVER read back: scribble in it, project again, the scribble is gone
+RUN | cp | $T/out/events.txt | $T/keep/events.txt
+RUN | cp | $T/out/cells.txt | $T/keep/cells.txt
+RUN | cp | $T/out/map.txt | $T/keep/map.txt
+WRITE | out/cells.txt | scribbled projection, not an input\n
+WRITE | out/events.txt | 1 1 1 1 1 rig:asa 0 2 7\n
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
+RUN | cmp | $T/out/events.txt | $T/keep/events.txt
+EXPECT_EXIT | 0 | the scribbled events.txt was overwritten with the same bytes as before (a projection is not an input)
+RUN | cmp | $T/out/cells.txt | $T/keep/cells.txt
+EXPECT_EXIT | 0 | and cells.txt too
+# delete the whole projection and regenerate: identical bytes (cells.marker is size-only and starts again at 1)
+RUN | rm | -rf | $T/out
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
+EXPECT_OUT | marker=1 | the deleted marker starts at 1 byte
+RUN | cmp | $T/out/events.txt | $T/keep/events.txt
+EXPECT_EXIT | 0 | regenerated events.txt is identical
+RUN | cmp | $T/out/cells.txt | $T/keep/cells.txt
+EXPECT_EXIT | 0 | regenerated cells.txt is identical
+RUN | cmp | $T/out/map.txt | $T/keep/map.txt
+EXPECT_EXIT | 0 | regenerated map.txt is identical
+RUN | cmp | $T/out/cells.rgba | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed/cells.rgba
+EXPECT_EXIT | 0 | the atlas was put back from the seed
+# the pose rule is DATA: change pose.pdl, the pattern changes, the op is the same
+WRITE | pose7.pdl | POSE | MOVE_ODD | 1\nPOSE | MOVE_EVEN | 7\nPOSE | MOVE_LEVEL | 3\nPOSE | FACE | 0\nPOSE | IDLE | 0\nDIR | n | 8\nDIR | e | 6\nDIR | s | 2\nDIR | w | 4\n
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out7 | $T/led.txt | $T/pose7.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
+EXPECT_HAS | out7/events.txt | 142 100 200 90 60 rig:asa 0 8 7 | NEGATIVE-control: with MOVE_EVEN changed to 7 in the data the same ledger projects pattern 7
+WRITE | nopose.pdl | POSE | MOVE_ODD | 1\nDIR | n | 8\n
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out8 | $T/led.txt | $T/nopose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
+EXPECT_EXIT | 4 | NEGATIVE-a-pose-file-with-no-row-for-the-last-ledger-row-is-refused-4
+CLEAN |
+CASE | mined-and-placed-top-block-NOT-VERIFIED-live
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | shovel | 1 | test-seed
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | sand | 1 | test-seed
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | 140 | 6 | 100
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | shovel | 140 | 5 | 100
+EXPECT_OUT | broken | the top grass block (level 3 = vox y 5) takes one swing of the shovel
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
+EXPECT_HAS | out/events.txt | rig:asa 0 2 4 | a mine is pattern 4
+RUN | awk | NR==101{print substr($0,141,1) substr($0,142,1)} | $T/out/map.txt
+EXPECT_OUT_IS | 23 | the mined column (x 140, row 100) is level 2 now, its neighbour still 3
+RUN | awk | NR==109{split($0,a," "); print a[141]} | $T/out/cells.txt
+EXPECT_OUT_IS | 2,2,3 | its floor is the side tile (the dirt below)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | place | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | sand | 140 | 5 | 100
+EXPECT_EXIT | 0 | put sand back where the top block was
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
+EXPECT_HAS | out/events.txt | rig:asa 0 2 5 | a place is pattern 5
+RUN | awk | NR==109{split($0,a," "); print a[141]} | $T/out/cells.txt
+EXPECT_OUT_IS | 5,5,3 | the column shows the placed sand tile (slot 5) on top again
+CLEAN |

@@ -1,0 +1,72 @@
+# rmmc_beats (2026-11-25, D137, gate G5a): the HARNESS/AI controller. beats.pdl is data; rmmc_beat_op check resolves every beat against the real island cells (no writes); all/next/<n> play them through the verb pages.
+RESULTS | ../results/rmmc_beats.txt
+CASE | check-resolves-beats-against-the-island
+SCRATCH
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/beat.+x | $HOUSE/@.apps/rmmc/ops/rmmc_beat_op.c
+EXPECT_EXIT | 0 | rmmc_beat_op compiles
+ENV | RMMC_SEED | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed
+RUN | $T/beat.+x | $T/nohouse | $HOUSE/@.apps/rmmc/beats.pdl | check
+EXPECT_OUT_IS | beats=10 ok | all 10 beats end on the tile they expect (grass, sand, water) on the REAL island cells
+WRITE | air.pdl | BEAT \p 1 \p 1 \p spawn \p 0 0 \p 1 \p - \p spawn over the sky\n
+RUN | $T/beat.+x | $T/nohouse | $T/air.pdl | check
+EXPECT_EXIT | 4 | NEGATIVE-a-beat-whose-cell-is-air-fails-the-check-4
+WRITE | wrong.pdl | BEAT \p 1 \p 1 \p spawn \p 140 100 \p 1 \p sand \p the plain is grass, not sand\n
+RUN | $T/beat.+x | $T/nohouse | $T/wrong.pdl | check
+EXPECT_EXIT | 4 | NEGATIVE-a-beat-expecting-the-wrong-tile-fails-the-check-4
+WRITE | off.pdl | BEAT \p 1 \p 1 \p spawn \p 140 100 \p 1 \p grass_top \p x\nBEAT \p 2 \p 1 \p walk \p w \p 200 \p - \p walk off the west edge\n
+RUN | $T/beat.+x | $T/nohouse | $T/off.pdl | check
+EXPECT_EXIT | 4 | NEGATIVE-a-walk-off-the-island-fails-the-check-4
+WRITE | none.pdl | # no beats\n
+RUN | $T/beat.+x | $T/nohouse | $T/none.pdl | check
+EXPECT_EXIT | 2 | NEGATIVE-a-beats-file-with-no-beat-is-refused-2
+CLEAN |
+CASE | all-plays-the-walk-and-replays-identically
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_beat_op.+x | $T/h | $T/h/@.apps/rmmc/beats.pdl | all
+EXPECT_EXIT | 0 | all 10 beats play without a refusal
+EXPECT_OUT | beat 10: walk w x4 ok wait=2.0 | the last beat reports
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | where | $T/h/@.apps/rmmc/vox | $T/led.txt | asa
+EXPECT_OUT | at=156,5,100 spawn=140,6,100 face=s | Asa ends on the sand rim (x 156, level 2 = vox y 5), her FACE row from beat 7 still south
+RUN | grep | -c | ^MOVE | $T/led.txt
+EXPECT_OUT | 29 | 1 spawn, 21 walks and the jump (2 rows) and 5 more walks: 29 MOVE rows
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | verify | $T/h/@.apps/rmmc/vox | $T/led.txt
+EXPECT_OUT | verified | the ledger replays
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | replay | $T/h/@.apps/rmmc/vox | $T/led.txt | $T/copy.txt
+EXPECT_OUT | replayed identical | replay gives identical bytes
+RUN | cmp | $T/led.txt | $T/copy.txt
+EXPECT_EXIT | 0 | and cmp agrees
+EXPECT_HAS | h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/events.txt | 156 100 200 90 60 rig:asa 0 4 | the engines events.txt row has Asa at x 156, row 100, facing west
+RUN | cp | $T/led.txt | $T/first.txt
+RUN | rm | -f | $T/led.txt
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_beat_op.+x | $T/h | $T/h/@.apps/rmmc/beats.pdl | all
+RUN | cmp | $T/led.txt | $T/first.txt
+EXPECT_EXIT | 0 | the same beats on a fresh ledger give a byte-identical ledger
+CLEAN |
+CASE | next-and-one-beat-and-a-refusal
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_beat_op.+x | $T/h | $T/h/@.apps/rmmc/beats.pdl | next
+EXPECT_OUT | beat 1: spawn | next plays beat 1 on a fresh book
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_beat_op.+x | $T/h | $T/h/@.apps/rmmc/beats.pdl | next
+EXPECT_OUT | beat 2: walk e x12 ok | and then beat 2
+EXPECT_FILE | h/@.apps/rmmc/play/beat.txt | 2\n | the bookmark says 2 (a preference, not the game state)
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_beat_op.+x | $T/h | $T/h/@.apps/rmmc/beats.pdl | 99
+EXPECT_EXIT | 2 | NEGATIVE-there-is-no-beat-99-(2)
+# a walk into deep water is refused with the verb's own code and writes nothing more
+WRITE | deep.pdl | BEAT \p 1 \p 1 \p spawn \p 167 100 \p 1 \p water \p shallow water\nBEAT \p 2 \p 1 \p walk \p e \p 3 \p - \p into deep water\n
+RUN | rm | -f | $T/led.txt
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_beat_op.+x | $T/h | $T/deep.pdl | all
+EXPECT_EXIT | 18 | NEGATIVE-a-beat-into-deep-water-is-refused-18
+EXPECT_OUT | beat 2: refused at step 1 | the-refusal-names-the-beat-and-the-step
+RUN | grep | -c | ^MOVE | $T/led.txt
+EXPECT_OUT | 1 | only-the-spawn-row-exists-the-refused-walk-wrote-nothing
+CLEAN |
+CASE | a-walk-up-the-two-level-slope-is-refused
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+WRITE | up.pdl | BEAT \p 1 \p 1 \p spawn \p 156 100 \p 1 \p sand \p on the sand rim\nBEAT \p 2 \p 1 \p walk \p w \p 1 \p - \p up onto grass 2 levels higher\n
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_beat_op.+x | $T/h | $T/up.pdl | all
+EXPECT_EXIT | 18 | NEGATIVE-the-slope-is-two-levels-above-the-sand-so-the-walk-is-refused-18
+EXPECT_OUT | step up 2 | the-reason-is-the-step-up
+CLEAN |

@@ -1,0 +1,10 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | file_id            | keybinds
+META         | note               | rmmc book keybinds (2026-11-25, D137): the shape of teario-play's keybinds.pdl. Rows missing here fall back to the board-viewer built-in defaults. While Asa is POSSESSED (In: ON, the cursor on her, Enter) the engine does not move the cursor with these keys: it appends `<code> <ms>` lines to the instance state/interact_relay.txt, and rmmc_driver (the human controller) turns each into a verb PAGE (keys.pdl names the verb).
+# GAMEKEY | name | keycode      arrows 1000 left, 1001 right, 1002 up, 1003 down (as rpg-pet and teario-play); space 32
+GAMEKEY      | left | 1000
+GAMEKEY      | right | 1001
+GAMEKEY      | up | 1002
+GAMEKEY      | down | 1003
+GAMEKEY      | jump | 32

@@ -1,0 +1,47 @@
+# rules.pdl (rmmc skin of vox, D137) - copy of @.apps/vox/rules.pdl with the island numbers: the world is 216 x 156 columns (x 0..215, z = desk row 0..155) and 41 levels high (the tallest peak is level 28, vox y 30 with RULE shift 3); hunger is OFF (a rule value, not a code branch).
+RULE | world_x_max | 215
+RULE | world_y_max | 40
+RULE | world_z_max | 155
+RULE | reach | 4
+RULE | stack_max | 64
+RULE | place_needs_support | 1
+RULE | move_max | 4
+RULE | wait_max_turns | 10000
+RULE | turns_move | 1
+RULE | turns_mine | 1
+RULE | turns_place | 1
+RULE | minutes_per_turn | 10
+RULE | day_minutes | 1440
+RULE | start_minute | 420
+RULE | sleep_max_light | 3
+RULE | sleep_bed_reach | 3
+RULE | sleep_wake_minute | 420
+# TOOL | name | power (a swing of the block's tool_best uses that tool's power; any other tool swings at the hand's power)
+TOOL | hand | 1
+TOOL | shovel | 2
+TOOL | axe | 2
+TOOL | shears | 2
+TOOL | pick | 3
+# DAYLIGHT | minute | level 0..15 (linear between rows, integer division toward zero; the sky and rules read this, nothing stores a time of day)
+DAYLIGHT | 0 | 2
+DAYLIGHT | 300 | 2
+DAYLIGHT | 360 | 8
+DAYLIGHT | 420 | 15
+DAYLIGHT | 1080 | 15
+DAYLIGHT | 1140 | 8
+DAYLIGHT | 1200 | 2
+DAYLIGHT | 1440 | 2
+# hunger on manual turns (D110): every spawned actor gains hunger_per_turn on each TURN row (cap hunger_max); at starve_at mine and place refuse (22); EAT lowers hunger by food_<item> and costs turns_eat
+RULE | hunger_per_turn | 0
+RULE | hunger_max | 40
+RULE | starve_at | 30
+RULE | turns_eat | 1
+RULE | food_apple | 4
+RULE | food_bread | 12
+# walking (D137; read by vox_op walk and jump): a walk is ONE MOVE row of manhattan length 1 + |dy|, so move_max must be at least 1 + the larger of step_up and fall_max (1 + 3 = 4)
+RULE | step_up | 1
+# climbing out of water: the shore of a lake is 2 above its shallow bed, so a wader may step up 2
+RULE | fall_max | 3
+RULE | water_max_depth | 1
+RULE | jump_height | 1
+RULE | step_up_wade | 2

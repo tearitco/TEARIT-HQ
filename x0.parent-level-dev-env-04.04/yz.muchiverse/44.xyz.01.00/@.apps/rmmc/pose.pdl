@@ -1,0 +1,20 @@
+# pose.pdl - the pose rule of rmmc_project_op as DATA (plan 7.3; CONFIG, hand-edited; the op holds no number).
+# POSE | key | pattern     the engine draws a `rig:` events.txt row by its pattern field: 0 idle, 1 and 2 the two walk steps, 3 jump, 4 mine, 5 place (bv_rig.h).
+# key = the LAST ledger row of the actor that has a pose:
+#   MOVE_ODD   a ground MOVE (same level) that is the 1st, 3rd, ... ground step of the actor      MOVE_EVEN  the 2nd, 4th, ... ground step (so the legs alternate per step)
+#   MOVE_LEVEL a MOVE that changed the level (a jump's two rows, a step up, a drop)                 DAMAGE, MINE  a swing at a block      PLACE  a block put down
+#   FACE, RESET  a turn on the spot and a return to spawn      IDLE  written by `--idle` (the expiry is the DRIVER's job: the ledger has no clock, so idle is never a ledger row)
+POSE | MOVE_ODD   | 1
+POSE | MOVE_EVEN  | 2
+POSE | MOVE_LEVEL | 3
+POSE | DAMAGE     | 4
+POSE | MINE       | 4
+POSE | PLACE      | 5
+POSE | FACE       | 0
+POSE | RESET      | 0
+POSE | IDLE       | 0
+# DIR | letter | events.txt direction code  (2 S, 4 W, 6 E, 8 N: the engine's own codes)
+DIR | n | 8
+DIR | e | 6
+DIR | s | 2
+DIR | w | 4

@@ -1,0 +1,117 @@
+# rmmc_verbs (2026-11-25, D137, gate G4): the walking verbs are EVENT PAGES (verbgen from verbs.pdl) that run rmmc_verb: vox_op on the rmmc ledger, then rmmc_project_op. Refusals write NOTHING.
+RESULTS | ../results/rmmc_verbs.txt
+CASE | manifest-pages-registry-and-state
+EXPECT_HAS | $HOUSE/#.ref/menu/event_commands.registry.pdl | COMMAND rmmc_verb | the registry has the COMMAND row rmmc_verb
+EXPECT_HAS | $HOUSE/#.ref/menu/event_commands.registry.pdl | rmmc/ops/+x/rmmc_verb.+x | and it execs the engine
+RUN | $HOUSE/&.widgits/events-hq/ops/+x/verbgen.+x | check | $HOUSE/@.apps/rmmc
+EXPECT_EXIT | 0 | verbgen check: engine source, manifest and events/ agree
+EXPECT_OUT | PASS | verbgen says PASS
+EXPECT_HAS | $HOUSE/@.apps/rmmc/state.pdl | LEDGER | state.pdl declares the ledger
+EXPECT_HAS | $HOUSE/@.apps/rmmc/state.pdl | PROJECTION | state.pdl declares the projection
+EXPECT_HAS | $HOUSE/@.apps/rmmc/state.pdl | CONFIG | state.pdl declares the config files
+EXPECT_HAS | $HOUSE/@.apps/rmmc/state.pdl | PREFERENCE | state.pdl declares the preference files
+SCRATCH
+MKDIR | neg/ops
+COPY | @.apps/rmmc/ops/rmmc_verb.c | neg/ops/rmmc_verb.c
+WRITE | neg/verbs.pdl | GAME \p rmmc \p rmmc_verb \p ops/+x/rmmc_verb.+x \p ops/rmmc_verb.c\nVERB \p walk \p yes \p ui \p dir \p walk\n
+RUN | $HOUSE/&.widgits/events-hq/ops/+x/verbgen.+x | check | $T/neg
+EXPECT_EXIT | 1 | NEGATIVE-a-manifest-missing-engine-verbs-fails-the-check
+CLEAN |
+CASE | pages-are-the-path
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+MKDIR | h/@.apps/rmmc/play/world
+ENV | MUCHI_TARGET_ENT | $T/h/@.apps/rmmc/play/world
+ENV | GAME_ARG | 140 100
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/spawn | $T/h | ui
+EXPECT_EXIT | 0 | the spawn page was played
+EXPECT_HAS | h/@.apps/rmmc/play/result.txt | ok | the engine reports ok
+EXPECT_HAS | led.txt | MOVE \p asa \p 140 \p 6 \p 100 | spawn put Asa on top of the grass column (level 3: she stands at vox y 6)
+ENV | GAME_ARG | e
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/walk | $T/h | ui
+EXPECT_HAS | led.txt | MOVE \p asa \p 141 \p 6 \p 100 | the walk page appended one MOVE row
+EXPECT_HAS | h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/events.txt | 141 100 200 90 60 rig:asa 0 6 1 | and the projection drew her there, walking east, step 1
+ENV | GAME_ARG | n
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/face | $T/h | ui
+EXPECT_HAS | led.txt | FACE \p asa \p n | the face page appended a FACE row
+ENV | GAME_ARG |
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/jump | $T/h | ui
+EXPECT_HAS | h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/events.txt | 141 100 200 90 60 rig:asa 0 8 3 | the jump page: pattern 3, facing north
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/reset | $T/h | ui
+EXPECT_HAS | h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/events.txt | 140 100 200 90 60 rig:asa 0 8 0 | the reset page: back at the spawn column
+ENV | GAME_ARG | human
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/seat | $T/h | ui
+EXPECT_HAS | led.txt | SEAT \p asa \p human | the seat page appended a SEAT row
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | verify | $T/h/@.apps/rmmc/vox | $T/led.txt
+EXPECT_OUT | verified | the page-written ledger replays byte for byte
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | replay | $T/h/@.apps/rmmc/vox | $T/led.txt | $T/replay.txt
+EXPECT_OUT | replayed identical | replay of the page-written ledger
+RUN | cmp | $T/led.txt | $T/replay.txt
+EXPECT_EXIT | 0 | and cmp agrees
+CLEAN |
+CASE | refusals-write-nothing
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+ENV | GAME_ARG | e
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_verb.+x | walk
+EXPECT_EXIT | 10 | NEGATIVE-walking-before-spawning-is-refused-10-(unknown-actor)
+ENV | GAME_ARG | 0 0
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_verb.+x | spawn
+EXPECT_EXIT | 11 | NEGATIVE-spawning-over-the-sky-is-refused-11
+RUN | wc | -c | $T/led.txt
+EXPECT_OUT | 0 | and-the-ledger-has-no-row
+ENV | GAME_ARG | 999 5
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_verb.+x | spawn
+EXPECT_EXIT | 11 | NEGATIVE-spawning-off-the-map-is-refused-11
+ENV | GAME_ARG | 167 100
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_verb.+x | spawn
+EXPECT_EXIT | 0 | spawn in the shallow water at x 167 (the last shallow column of row 100)
+ENV | GAME_ARG | 140 100
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_verb.+x | spawn
+EXPECT_EXIT | 18 | NEGATIVE-spawning-again-far-away-is-refused-18
+RUN | cp | $T/led.txt | $T/before.txt
+RUN | cp | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/events.txt | $T/events_before.txt
+ENV | GAME_ARG | e
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_verb.+x | walk
+EXPECT_EXIT | 18 | NEGATIVE-walking-into-deep-water-(x-168)-is-refused-18
+EXPECT_HAS | h/@.apps/rmmc/play/result.txt | refused: water 2 deep [exit 18] | the reason and the exit code are on play/result.txt
+RUN | cmp | $T/led.txt | $T/before.txt
+EXPECT_EXIT | 0 | the refused walk left the ledger byte for byte
+RUN | cmp | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/events.txt | $T/events_before.txt
+EXPECT_EXIT | 0 | and the projection too (nothing is redrawn after a refusal)
+ENV | GAME_ARG | x
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_verb.+x | walk
+EXPECT_EXIT | 2 | NEGATIVE-a-bad-direction-is-refused-2
+ENV | GAME_ARG |
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_verb.+x | bogus
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-verb-is-refused-2
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_verb.+x | mine
+EXPECT_EXIT | 2 | mine-is-NOT-wired-yet-and-says-so-(exit-2)
+ENV | GAME_ARG | e'x
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_verb.+x | walk
+EXPECT_EXIT | 2 | NEGATIVE-a-quote-in-the-argument-is-refused-2
+ENV | GAME_ARG | w
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_verb.+x | walk
+EXPECT_EXIT | 0 | the-control-a-legal-walk-west-is-accepted
+RUN | cmp | -s | $T/led.txt | $T/before.txt
+EXPECT_EXIT | 1 | and-it-DID-change-the-ledger-(so-the-cmp-above-can-fail)
+# a hand-edited ledger is refused 14 and nothing is added
+APPEND | led.txt | MOVE \p asa \p 150 \p 6 \p 100\n
+RUN | cp | $T/led.txt | $T/tampered.txt
+ENV | GAME_ARG | w
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_verb.+x | walk
+EXPECT_EXIT | 14 | NEGATIVE-a-hand-edited-ledger-is-refused-14
+RUN | cmp | $T/led.txt | $T/tampered.txt
+EXPECT_EXIT | 0 | and nothing was added
+CLEAN |
+CASE | the-blueprintz-pause-is-never-cleared
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+WRITE | bp.txt | paused=1\n
+ENV | BLUEPRINTZ_DEBUG_FILE | $T/bp.txt
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_beat_op.+x | $T/h | $T/h/@.apps/rmmc/beats.pdl | 1
+EXPECT_OUT | beat 1: spawn 140 100 x1 ok | with events paused the beat still plays (the direct engine)
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --once
+EXPECT_EXIT | 0 | the driver starts on an absent relay
+EXPECT_FILE | bp.txt | paused=1\n | the pause file is exactly as the harness wrote it (never cleared)
+CLEAN |
