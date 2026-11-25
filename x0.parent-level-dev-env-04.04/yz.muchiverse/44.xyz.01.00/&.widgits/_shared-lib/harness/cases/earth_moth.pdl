@@ -1,35 +1,45 @@
 # earth_moth: the ETOPO ball and the Minecraft column formula (pc_generate_chunk:
 # surface tile, three dirt, then stone). A desk column is one solid run, so the
 # wall slot is stone and the floor slot is the surface. Scratch only.
-# $HOUSE is the first parent directory that contains xyzfs.
+# $HOUSE is the first parent directory that contains xyzfs. The op is compiled into $T
+# (a fresh clone has no +x); assets sit in #.NNEST_ASSETS three folders above $HOUSE.
 RESULTS | ../results/earth_moth.txt
 ENV | LC_ALL | C
+ENV | HOUSE | $HOUSE
 
 CASE | formula
 SCRATCH |
-RUN | $HOUSE/@.apps/earth-moth/ops/+x/earth_moth_op.+x | formula
+RUN | gcc | -std=gnu11 | -O2 | -o | $T/earth_moth_op.+x | $HOUSE/@.apps/earth-moth/ops/earth_moth_op.c | -lm | -lpng | -lz
+EXPECT_EXIT | 0 | op-compiles
+RUN | $T/earth_moth_op.+x | formula
 EXPECT_EXIT | 0 | formula-runs
 EXPECT_OUT | FORMULA chord R=92 center up=92 dn=92 | center-chord-is-the-radius
 EXPECT_OUT | FORMULA outside dist>92 empty | past-the-rim-is-empty
 EXPECT_OUT | FORMULA ocean elev<=0 water dip=5 | ocean-basin
 EXPECT_OUT | FORMULA mc z==surface tile z>=surface-3 dirt else stone | minecraft-stack
 EXPECT_OUT | FORMULA example surface=92 dirt=89,90,91 stone=88 | dirt-band-under-the-crust
+# KNOWN-BAD: pins the grass-top-stone-wall data shape (floor=surface, wall=stone) that greys the minimap; the op still produces it. Review doc TEARIT-MAP-GROK-WORK-REVIEW-AND-FIX-PLAN-2026-11-25 section 3 item 7, fix plan item 3. Change when the op changes.
 EXPECT_OUT | FORMULA slots floor=surface wall=stone | one-column-paints-stone-sides
 EXPECT_OUT | FORMULA atlas stone=6 dirt=7 | stone-and-dirt-slots
 
 CASE | formula-refused
 SCRATCH |
-RUN | $HOUSE/@.apps/earth-moth/ops/+x/earth_moth_op.+x | formula | bad
+RUN | gcc | -std=gnu11 | -O2 | -o | $T/earth_moth_op.+x | $HOUSE/@.apps/earth-moth/ops/earth_moth_op.c | -lm | -lpng | -lz
+EXPECT_EXIT | 0 | op-compiles
+RUN | $T/earth_moth_op.+x | formula | bad
 EXPECT_EXIT | 2 | NEGATIVE-an-extra-argument-is-refused
 
 CASE | scratch-desk
 SCRATCH |
-RUN | $HOUSE/@.apps/earth-moth/ops/+x/earth_moth_op.+x | desk | /home/no/Desktop/github/work/NNEST-12.00/#.NNEST_ASSETS/rta-sources/earth-moth/ETOPO5.DAT | /home/no/Desktop/github/work/NNEST-12.00/#.NNEST_ASSETS/mineclonia/mods | $T/ledger.txt | $T/earth
+RUN | gcc | -std=gnu11 | -O2 | -o | $T/earth_moth_op.+x | $HOUSE/@.apps/earth-moth/ops/earth_moth_op.c | -lm | -lpng | -lz
+EXPECT_EXIT | 0 | op-compiles
+RUN | $T/earth_moth_op.+x | desk | $HOUSE/../../../#.NNEST_ASSETS/rta-sources/earth-moth/ETOPO5.DAT | $HOUSE/../../../#.NNEST_ASSETS/mineclonia/mods | $T/ledger.txt | $T/earth
 EXPECT_EXIT | 0 | scratch-desk-builds
 EXPECT_OUT | spot africa | africa-named
 EXPECT_OUT | grass | africa-is-grass
 EXPECT_OUT | spot pacific | pacific-named
 EXPECT_OUT | water | pacific-is-water
+# KNOWN-BAD: same shape as above (grass floor 2 with stone wall 6); pins the grey-minimap bug, review doc section 3 item 7.
 RUN | grep | -q | -F | 2,6, | $T/earth/cells.txt
 EXPECT_EXIT | 0 | grass-top-stone-wall
 RUN | grep | -q | -F | ,0, | $T/earth/cells.txt

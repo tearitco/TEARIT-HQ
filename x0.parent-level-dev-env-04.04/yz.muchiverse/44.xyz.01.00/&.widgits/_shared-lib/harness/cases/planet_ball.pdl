@@ -1,68 +1,80 @@
-# planet_ball: one formula for every ball page. earth, moon, and mars each
-# get a page. solar is the page that holds all three, with gaps so the
-# balls do not merge. The earth desk proof stays in earth_moth.pal.
+# planet_ball: one radius table (@.apps/earth-moth/bodies.pdl) feeds planet_ball_op and earth_moth_op.
+# The old case grepped the op's own printed constants (a tautology: a wrong radius in the op passed).
+# Now the check is a property of a GENERATED desk: the number of rows of cells.txt that hold a
+# body's tiles must be 2*R (R from `formula`), the other body's tile must be absent, and a changed
+# bodies.pdl in a scratch house must change the desk (NEGATIVE: proves the check can fail).
+# Ops are compiled into $T (gitignored +x binaries are not in a fresh clone). Assets: ETOPO5 and the
+# mineclonia mods sit in #.NNEST_ASSETS three folders above $HOUSE.
 RESULTS | ../results/planet_ball.txt
 ENV | LC_ALL | C
+ENV | HOUSE | $HOUSE
 
-CASE | earth
+CASE | build
 SCRATCH |
-RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/planet_ball_op.+x | formula | earth
-EXPECT_EXIT | 0 | earth-formula
-EXPECT_OUT | FORMULA body=earth R=92 center up=92 dn=92 | earth-radius
-EXPECT_OUT | FORMULA outside dist>92 empty | earth-rim
-EXPECT_OUT | FORMULA ocean dip=5 | earth-ocean
-EXPECT_OUT | FORMULA surface=grass | earth-surface
-EXPECT_OUT | FORMULA mc z==surface tile z>=surface-3 dirt else stone | minecraft-stack
-EXPECT_OUT | FORMULA slots floor=surface wall=stone | stone-sides
-
-CASE | moon
-SCRATCH |
-RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/planet_ball_op.+x | formula | moon
+RUN | gcc | -std=gnu11 | -O2 | -o | $T/planet_ball_op.+x | $HOUSE/&.widgits/_shared-lib/harness/ops/planet_ball_op.c | -lm
+EXPECT_EXIT | 0 | planet-ball-op-compiles
+RUN | gcc | -std=gnu11 | -O2 | -o | $T/earth_moth_op.+x | $HOUSE/@.apps/earth-moth/ops/earth_moth_op.c | -lm | -lpng | -lz
+EXPECT_EXIT | 0 | earth-moth-op-compiles
+RUN | test | -f | $HOUSE/../../../#.NNEST_ASSETS/rta-sources/earth-moth/ETOPO5.DAT
+EXPECT_EXIT | 0 | etopo-asset-present
+MKDIR | pages
+RUN | $T/earth_moth_op.+x | pages | $HOUSE/../../../#.NNEST_ASSETS/rta-sources/earth-moth/ETOPO5.DAT | $HOUSE/../../../#.NNEST_ASSETS/mineclonia/mods | $T/pages
+EXPECT_EXIT | 0 | three-pages-build
+RUN | $T/planet_ball_op.+x | formula | moon
 EXPECT_EXIT | 0 | moon-formula
-EXPECT_OUT | FORMULA body=moon R=25 center up=25 dn=25 | moon-radius
-EXPECT_OUT | FORMULA outside dist>25 empty | moon-rim
-EXPECT_OUT | FORMULA ocean dip=0 | moon-has-no-ocean
-EXPECT_OUT | FORMULA surface=regolith | moon-surface
-EXPECT_OUT | FORMULA slots floor=surface wall=stone | stone-sides
-
-CASE | mars
-SCRATCH |
-RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/planet_ball_op.+x | formula | mars
-EXPECT_EXIT | 0 | mars-formula
-EXPECT_OUT | FORMULA body=mars R=49 center up=49 dn=49 | mars-radius
-EXPECT_OUT | FORMULA outside dist>49 empty | mars-rim
-EXPECT_OUT | FORMULA ocean dip=0 | mars-has-no-ocean
-EXPECT_OUT | FORMULA surface=dust | mars-surface
-EXPECT_OUT | FORMULA slots floor=surface wall=stone | stone-sides
-
-CASE | solar
-SCRATCH |
-RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/planet_ball_op.+x | formula | solar
+EXPECT_OUT | R=25 | formula-says-moon-R-25
+# KNOWN-BAD: the floor,wall pair (x,6) is the grass-top-stone-wall shape that greys the minimap (review doc TEARIT-MAP-GROK-WORK-REVIEW-AND-FIX-PLAN-2026-11-25 sections 3 item 7 and 5 item 3); change the pairs when the op changes shape.
+# desk rows holding moon tiles (floor 8, wall 6; grep -w, a pipe cannot appear in a RUN field) = 2*R = 50; mars (floor 9) = 2*49 = 98
+RUN | grep | -c | -w | -F | 8,6 | $T/pages/moon/cells.txt
+EXPECT_OUT_IS | 50 | moon-desk-has-2R-rows
+RUN | grep | -c | -w | -F | 9,6 | $T/pages/moon/cells.txt
+EXPECT_OUT_IS | 0 | NEGATIVE-the-moon-page-holds-no-mars-tile
+RUN | $T/planet_ball_op.+x | formula | mars
+EXPECT_OUT | R=49 | formula-says-mars-R-49
+RUN | grep | -c | -w | -F | 9,6 | $T/pages/mars/cells.txt
+EXPECT_OUT_IS | 98 | mars-desk-has-2R-rows
+RUN | grep | -c | -w | -F | 8,6 | $T/pages/mars/cells.txt
+EXPECT_OUT_IS | 0 | NEGATIVE-the-mars-page-holds-no-moon-tile
+# solar holds all three bodies (earth grass 2, moon 8, mars 9)
+RUN | grep | -c | -w | -F | 2,6 | $T/pages/solar/cells.txt
+EXPECT_OUT_IS | 122 | solar-holds-earth-rows
+RUN | grep | -c | -w | -F | 8,6 | $T/pages/solar/cells.txt
+EXPECT_OUT_IS | 51 | solar-holds-moon-rows
+RUN | grep | -c | -w | -F | 9,6 | $T/pages/solar/cells.txt
+EXPECT_OUT_IS | 99 | solar-holds-mars-rows
+RUN | $T/planet_ball_op.+x | formula | solar
 EXPECT_EXIT | 0 | solar-formula
 EXPECT_OUT | FORMULA solar pages earth moon mars solar | four-pages
-EXPECT_OUT | FORMULA solar bodies earth R=92 moon R=25 mars R=49 | three-bodies
 EXPECT_OUT | FORMULA solar gap earth-moon 117 | moon-does-not-merge
 EXPECT_OUT | FORMULA solar gap earth-mars 141 | mars-does-not-merge
 
-CASE | pages
+# NEGATIVE: a scratch house whose bodies.pdl says moon=30 must produce a 60-row moon desk,
+# so the "50" pin above really depends on the table (it can fail).
+CASE | radius-change
 SCRATCH |
-RUN | $HOUSE/@.apps/earth-moth/ops/+x/earth_moth_op.+x | pages | /home/no/Desktop/github/work/NNEST-12.00/#.NNEST_ASSETS/rta-sources/earth-moth/ETOPO5.DAT | /home/no/Desktop/github/work/NNEST-12.00/#.NNEST_ASSETS/mineclonia/mods | $T
-EXPECT_EXIT | 0 | three-pages-build
-EXPECT_OUT | PAGE | moon-page-named
-RUN | grep | -q | -F | 8,6, | $T/moon/cells.txt
-EXPECT_EXIT | 0 | moon-is-regolith-on-stone
-RUN | grep | -q | -F | 9,6, | $T/mars/cells.txt
-EXPECT_EXIT | 0 | mars-is-dust-on-stone
-RUN | grep | -q | -F | 2,6, | $T/solar/cells.txt
-EXPECT_EXIT | 0 | solar-holds-earth-grass
-RUN | grep | -q | -F | 8,6, | $T/solar/cells.txt
-EXPECT_EXIT | 0 | solar-holds-the-moon
-RUN | grep | -q | -F | 9,6, | $T/solar/cells.txt
-EXPECT_EXIT | 0 | solar-holds-mars
+RUN | gcc | -std=gnu11 | -O2 | -o | $T/planet_ball_op.+x | $HOUSE/&.widgits/_shared-lib/harness/ops/planet_ball_op.c | -lm
+EXPECT_EXIT | 0 | planet-ball-op-compiles
+RUN | gcc | -std=gnu11 | -O2 | -o | $T/earth_moth_op.+x | $HOUSE/@.apps/earth-moth/ops/earth_moth_op.c | -lm | -lpng | -lz
+EXPECT_EXIT | 0 | earth-moth-op-compiles
+COPY | @.apps/earth-moth/bodies.pdl | @.apps/earth-moth/bodies.pdl
+RUN | sed | -i | /moon/s/25$/30/ | $T/@.apps/earth-moth/bodies.pdl
+EXPECT_EXIT | 0 | scratch-table-edited
+ENV | HOUSE | $T
+RUN | $T/planet_ball_op.+x | formula | moon
+EXPECT_OUT | R=30 | scratch-table-moon-R-30
+MKDIR | pages
+RUN | $T/earth_moth_op.+x | pages | $HOUSE/../../../#.NNEST_ASSETS/rta-sources/earth-moth/ETOPO5.DAT | $HOUSE/../../../#.NNEST_ASSETS/mineclonia/mods | $T/pages
+EXPECT_EXIT | 0 | pages-build-with-changed-table
+RUN | grep | -c | -w | -F | 8,6 | $T/pages/moon/cells.txt
+EXPECT_OUT_IS | 60 | NEGATIVE-changed-radius-changes-the-desk
+EXPECT_OUT_LACKS | 50 | NEGATIVE-the-old-50-no-longer-holds
+ENV | HOUSE | $HOUSE
 
 CASE | refused
 SCRATCH |
-RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/planet_ball_op.+x | formula | pluto
+RUN | gcc | -std=gnu11 | -O2 | -o | $T/planet_ball_op.+x | $HOUSE/&.widgits/_shared-lib/harness/ops/planet_ball_op.c | -lm
+EXPECT_EXIT | 0 | planet-ball-op-compiles
+RUN | $T/planet_ball_op.+x | formula | pluto
 EXPECT_EXIT | 2 | NEGATIVE-an-unknown-body-is-refused
-RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/planet_ball_op.+x | formula | earth | 40
+RUN | $T/planet_ball_op.+x | formula | earth | 40
 EXPECT_EXIT | 2 | NEGATIVE-a-body-cannot-pick-its-own-radius

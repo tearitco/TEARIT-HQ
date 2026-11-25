@@ -55,12 +55,28 @@ static int fog_on(const char *edit) {
     return ln[0] != '0';
 }
 
-static void publish(const char *feed, int on, const char *msg, const char *op, const char *ledger, const char *dir, const char *edit) {
-    char tmp[1600];
-    FILE *f;
-    const char *fl = fog_on(edit) ? "Fog on" : "Fog off";
-    snprintf(tmp, sizeof tmp, "%s.tmp", feed);
+/* Write buf to path only when the bytes differ from what is on disk (temp + rename as before). */
+static void put_if_changed(const char *path, const char *buf, size_t n) {
+    char tmp[1700];
+    FILE *f = fopen(path, "r");
+    if (f) {
+        char cur[8192]; size_t got = fread(cur, 1, sizeof cur, f);
+        int more = fgetc(f) != EOF;
+        fclose(f);
+        if (!more && got == n && memcmp(cur, buf, n) == 0) return;
+    }
+    snprintf(tmp, sizeof tmp, "%s.tmp", path);
     f = fopen(tmp, "w");
+    if (!f) return;
+    fwrite(buf, 1, n, f);
+    fclose(f);
+    rename(tmp, path);
+}
+
+static void publish(const char *feed, int on, const char *msg, const char *op, const char *ledger, const char *dir, const char *edit) {
+    char *mb = NULL; size_t ml = 0;
+    FILE *f = open_memstream(&mb, &ml);
+    const char *fl = fog_on(edit) ? "Fog on" : "Fog off";
     if (!f) return;
     if (!on) fputs("gm_on=\ngm_pop=\ngmbar_on=\n", f);
     else {
@@ -79,17 +95,17 @@ static void publish(const char *feed, int on, const char *msg, const char *op, c
         fprintf(f, "gmbar_8_label=%s\ngmbar_8_act='%s' life '%s'\n", rl, op, ledger);
     }
     fclose(f);
-    rename(tmp, feed);
+    put_if_changed(feed, mb, ml);
+    free(mb);
 }
 
 /* The left stamp row already exists. Its list is stamps_ui.txt. */
 static void stamps(const char *edit, int on, const char *op, const char *ledger, const char *dir) {
-    char path[1000], tmp[1100];
-    FILE *f;
+    char path[1000];
+    char *mb = NULL; size_t ml = 0;
+    FILE *f = open_memstream(&mb, &ml);
     const char *fl = fog_on(edit) ? "Fog on" : "Fog off";
     snprintf(path, sizeof path, "%s/state/stamps_ui.txt", edit);
-    snprintf(tmp, sizeof tmp, "%s.tmp", path);
-    f = fopen(tmp, "w");
     if (!f) return;
     if (!on) fputs("stamp_on=\nn_stamp=0\n", f);
     else {
@@ -106,7 +122,8 @@ static void stamps(const char *edit, int on, const char *op, const char *ledger,
         fprintf(f, "stamp_8_label=%s\nstamp_8_act='%s' life '%s'\n", rl, op, ledger);
     }
     fclose(f);
-    rename(tmp, path);
+    put_if_changed(path, mb, ml);
+    free(mb);
 }
 
 static void bars(const char *house, const char *book, const char *edit, const char *mode) {
@@ -213,7 +230,7 @@ int main(int argc, char **argv) {
     stamps(edit, 1, op, ledger, deskdir);
     publish(feed, 1, "Tearit map", op, ledger, deskdir, edit);
     { const char *ow = getenv("GAME_OWNER_PID"); long owner = ow ? atol(ow) : 0; long led_m = 0; int beat = 0;
-    if (!stat(ledger, &st)) led_m = (long)st.st_mtime;
+    if (!stat(ledger, &st)) led_m = (long)st.st_size;
     while (!stop_) {
         if (owner > 1 && kill((pid_t)owner, 0) != 0 && errno == ESRCH) break;
         if (!stat(act, &st) && st.st_size > cursor && running(sw)) {
@@ -232,7 +249,7 @@ int main(int argc, char **argv) {
             char *av[] = { op, "roam", ledger, ledger, NULL };
             run_op(av);
         }
-        if (!stat(ledger, &st) && (long)st.st_mtime != led_m) { led_m = (long)st.st_mtime; desk(op, ledger, deskdir); }
+        if (!stat(ledger, &st) && (long)st.st_size != led_m) { led_m = (long)st.st_size; desk(op, ledger, deskdir); }
         publish(feed, 1, "Tearit map", op, ledger, deskdir, edit);
         stamps(edit, 1, op, ledger, deskdir);
         usleep(250000);

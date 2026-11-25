@@ -33,11 +33,27 @@ static int running(const char *sw) {
     return r;
 }
 
-static void publish(const char *feed, int on, const char *op, const char *etopo, const char *ledger) {
-    char tmp[1600];
-    FILE *f;
-    snprintf(tmp, sizeof tmp, "%s.tmp", feed);
+/* Write buf to path only when the bytes differ from what is on disk (temp + rename as before). */
+static void put_if_changed(const char *path, const char *buf, size_t n) {
+    char tmp[1700];
+    FILE *f = fopen(path, "r");
+    if (f) {
+        char cur[8192]; size_t got = fread(cur, 1, sizeof cur, f);
+        int more = fgetc(f) != EOF;
+        fclose(f);
+        if (!more && got == n && memcmp(cur, buf, n) == 0) return;
+    }
+    snprintf(tmp, sizeof tmp, "%s.tmp", path);
     f = fopen(tmp, "w");
+    if (!f) return;
+    fwrite(buf, 1, n, f);
+    fclose(f);
+    rename(tmp, path);
+}
+
+static void publish(const char *feed, int on, const char *op, const char *etopo, const char *ledger) {
+    char *mb = NULL; size_t ml = 0;
+    FILE *f = open_memstream(&mb, &ml);
     if (!f) return;
     if (!on) fputs("gm_on=\ngm_pop=\ngmbar_on=\n", f);
     else {
@@ -49,15 +65,15 @@ static void publish(const char *feed, int on, const char *op, const char *etopo,
         fprintf(f, "gmbar_3_label=West\ngmbar_3_act='%s' step '%s' '%s' w\n", op, etopo, ledger);
     }
     fclose(f);
-    rename(tmp, feed);
+    put_if_changed(feed, mb, ml);
+    free(mb);
 }
 
 static void stamps(const char *edit, int on, const char *op, const char *etopo, const char *ledger) {
-    char path[1000], tmp[1100];
-    FILE *f;
+    char path[1000];
+    char *mb = NULL; size_t ml = 0;
+    FILE *f = open_memstream(&mb, &ml);
     snprintf(path, sizeof path, "%s/state/stamps_ui.txt", edit);
-    snprintf(tmp, sizeof tmp, "%s.tmp", path);
-    f = fopen(tmp, "w");
     if (!f) return;
     if (!on) fputs("stamp_on=\nn_stamp=0\n", f);
     else {
@@ -68,7 +84,8 @@ static void stamps(const char *edit, int on, const char *op, const char *etopo, 
         fprintf(f, "stamp_3_label=West\nstamp_3_act='%s' step '%s' '%s' w\n", op, etopo, ledger);
     }
     fclose(f);
-    rename(tmp, path);
+    put_if_changed(path, mb, ml);
+    free(mb);
 }
 
 static void bars(const char *house, const char *book, const char *edit, const char *mode) {
@@ -132,8 +149,8 @@ int main(int argc, char **argv) {
     if (argc < 4) { fprintf(stderr, "usage: earth_moth_driver <house> <book> <editor>\n"); return 2; }
     house = argv[1]; book = argv[2]; edit = argv[3];
     snprintf(op, sizeof op, "%s/ops/+x/earth_moth_op.+x", book);
-    snprintf(etopo, sizeof etopo, "/home/no/Desktop/github/work/NNEST-12.00/#.NNEST_ASSETS/rta-sources/earth-moth/ETOPO5.DAT");
-    snprintf(mine, sizeof mine, "/home/no/Desktop/github/work/NNEST-12.00/#.NNEST_ASSETS/mineclonia/mods");
+    snprintf(etopo, sizeof etopo, "%s/../../../#.NNEST_ASSETS/rta-sources/earth-moth/ETOPO5.DAT", house);
+    snprintf(mine, sizeof mine, "%s/../../../#.NNEST_ASSETS/mineclonia/mods", house);
     snprintf(sw, sizeof sw, "%s/state/world/switches.txt", edit);
     snprintf(feed, sizeof feed, "%s/state/game_ui.txt", edit);
     snprintf(ledger, sizeof ledger, "%s/state/ledger.txt", book);
@@ -162,7 +179,7 @@ int main(int argc, char **argv) {
         const char *ow = getenv("GAME_OWNER_PID");
         long owner = ow ? atol(ow) : 0;
         long led_m = 0;
-        if (!stat(ledger, &st)) led_m = (long)st.st_mtime;
+        if (!stat(ledger, &st)) led_m = (long)st.st_size;
         while (!stop_) {
             if (owner > 1 && kill((pid_t)owner, 0) != 0 && errno == ESRCH) break;
             if (!stat(act, &st) && (long)st.st_size > cursor && running(sw)) {
@@ -183,8 +200,8 @@ int main(int argc, char **argv) {
                 }
                 if (cursor > 65536 && truncate(act, 0) == 0) cursor = 0;
             } else if (!stat(act, &st) && (long)st.st_size < cursor) cursor = 0;
-            if (!stat(ledger, &st) && (long)st.st_mtime != led_m) {
-                led_m = (long)st.st_mtime;
+            if (!stat(ledger, &st) && (long)st.st_size != led_m) {
+                led_m = (long)st.st_size;
                 desk(op, etopo, mine, ledger, deskdir);
             }
             publish(feed, 1, op, etopo, ledger);
