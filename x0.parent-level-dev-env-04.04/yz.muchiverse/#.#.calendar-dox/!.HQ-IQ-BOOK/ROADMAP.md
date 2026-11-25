@@ -110,6 +110,8 @@ An orbit is not a cell. It is a row: which body, an altitude, an angle. The ship
 
 The same travel exists on the flat map before any globe. The owner wants a lot of space flight, and a 2D picture of it: black space cells on the map, satellites, and a flight to the Moon or Mars. Those are later rows, not a new generator. A space cell is a kind, the way water is a kind. A satellite is a row with a position. A flight is a row that leaves the land cells and enters the black cells, then a landing row that arrives on another body's seed. The 2D desk paints the black the same way it paints water. The 3D globe, when it exists, reads those same rows. Do not add the black cells or the satellites while the proof is still one flat chunk.
 
+**Fog (2026-11-25).** A cell is seen when it is the human start or a `MOVE`, or a 4-way neighbor of those. The desk paints the rest as tile 14 (`?`). An agent step does not clear fog. One land step changes the picture. Deleting `map.txt` and running `desk` again writes the same fog. Not on the open window. Not the black space of a later flight.
+
 **Place survives a rebuilt desk (2026-11-25).** `place` appends `PLACE` only on the cell you stand on, and only after `DIG`. A second place writes nothing. The dug mineral becomes tile 13 (`+`). Deleting `map.txt` and running `desk` again writes the same glyph. Not on the open window.
 
 **One agent step, no model (2026-11-25).** `agent` appends `AGENT` from `START | 1`. The pick is the first land neighbor that is not the human cell, in order east, south, west, north. Two empty ledgers get the same row. The desk paints tile 12 (`A`) on that cell when it is not already the city or the hungry pawn. Not fog, not 64 cells wide, not on the open window.

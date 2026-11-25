@@ -130,8 +130,27 @@ RUN | $T/tearit_map_op.+x | desk | $T/a.txt | $T/ag-before
 EXPECT_EXIT | 0 | desk before the agent
 RUN | $T/tearit_map_op.+x | desk | $T/a.txt | $T/ag-after | $T/ag.txt
 EXPECT_EXIT | 0 | desk after the agent
-RUN | cmp | -s | $T/ag-before/cells.txt | $T/ag-after/cells.txt
-EXPECT_EXIT | 1 | the agent cell changes the picture
+RUN | cmp | -s | $T/ag-before/events.txt | $T/ag-after/events.txt
+EXPECT_EXIT | 1 | the agent line moves
+RUN | $T/tearit_map_op.+x | desk | $T/a.txt | $T/fog0
+EXPECT_EXIT | 0 | fog covers an unwalked map
+EXPECT_OUT | fog= | a fog count is printed
+RUN | rm | -f | $T/fog-walk.txt
+EXPECT_EXIT | 0 | fog ledger cleared
+RUN | $T/tearit_map_op.+x | move | $T/a.txt | $T/fog-walk.txt | land
+EXPECT_EXIT | 0 | one step opens fog
+RUN | $T/tearit_map_op.+x | desk | $T/a.txt | $T/fog1 | $T/fog-walk.txt
+EXPECT_EXIT | 0 | desk after one step
+RUN | cmp | -s | $T/fog0/map.txt | $T/fog1/map.txt
+EXPECT_EXIT | 1 | the step reveals cells
+RUN | cp | $T/fog1/map.txt | $T/fog1.keep
+EXPECT_EXIT | 0 | fog glyph saved
+RUN | rm | -f | $T/fog1/map.txt
+EXPECT_EXIT | 0 | fog projection deleted
+RUN | $T/tearit_map_op.+x | desk | $T/a.txt | $T/fog1 | $T/fog-walk.txt
+EXPECT_EXIT | 0 | fog rebuilt
+RUN | cmp | -s | $T/fog1/map.txt | $T/fog1.keep
+EXPECT_EXIT | 0 | the same fog comes back
 RUN | rm | -f | $T/pl.txt
 EXPECT_EXIT | 0 | place ledger cleared
 RUN | $T/tearit_map_op.+x | place | $T/a.txt | $T/pl.txt

@@ -465,6 +465,17 @@ static int ledger_has_found(const char *ledger, int x, int y);
 static int ration_left(const char *map, const char *ledger, int *cap_out);
 static int where(const char *ledger, int sx, int sy, int *x, int *y);
 static void agent_at(const char *ledger, int sx, int sy, int *x, int *y);
+static void mark_seen(int *seen, int w, int h, int x, int y) {
+    const int dx[5] = { 0, 1, 0, -1, 0 };
+    const int dy[5] = { 0, 0, 1, 0, -1 };
+    int i;
+    for (i = 0; i < 5; i++) {
+        int xx = x + dx[i], yy = y + dy[i];
+        if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+        seen[yy * w + xx] = 1;
+    }
+}
+
 static int desk(const char *in, const char *dir, const char *ledger) {
     FILE *f = fopen(in, "r");
     char line[256], kind[32], path[512];
@@ -504,11 +515,28 @@ static int desk(const char *in, const char *dir, const char *ledger) {
     if (ledger && s2x >= 0) agent_at(ledger, s2x, s2y, &ax, &ay);
     if (ledger && ax >= 0 && ay >= 0 && ax < w && ay < h && g[ay * w + ax] != 10 && g[ay * w + ax] != 11)
         g[ay * w + ax] = 12;
+    {
+        int *seen = calloc((size_t)w * h, sizeof(int));
+        int fog = 0;
+        FILE *mv;
+        if (!seen) { free(g); return 5; }
+        mark_seen(seen, w, h, sx, sy);
+        if (ledger && (mv = fopen(ledger, "r"))) {
+            while (fgets(line, sizeof line, mv)) {
+                int a, b;
+                if (sscanf(line, "MOVE | %d | %d", &a, &b) == 2) mark_seen(seen, w, h, a, b);
+            }
+            fclose(mv);
+        }
+        for (i = 0; i < w * h; i++) if (!seen[i]) { g[i] = 14; fog++; }
+        free(seen);
+        printf("fog=%d\n", fog);
+    }
     if (mkdir(dir, 0755) != 0 && errno != EEXIST) { free(g); return 5; }
     snprintf(path, sizeof path, "%s/cells.txt", dir);
     f = fopen(path, "w");
     if (!f) { free(g); return 5; }
-    fprintf(f, "width=%d\nheight=%d\ntile_px=4\natlas_cols=1\natlas_tiles=14\ncells\n", w, h);
+    fprintf(f, "width=%d\nheight=%d\ntile_px=4\natlas_cols=1\natlas_tiles=15\ncells\n", w, h);
     for (y = 0; y < h; y++) {
         for (x = 0; x < w; x++) fprintf(f, "%s%d,0", x ? " " : "", g[y * w + x]);
         fputc('\n', f);
@@ -517,11 +545,11 @@ static int desk(const char *in, const char *dir, const char *ledger) {
     snprintf(path, sizeof path, "%s/cells.rgba", dir);
     f = fopen(path, "w");
     if (!f) { free(g); return 5; }
-    for (i = 0; i < 14; i++) {
+    for (i = 0; i < 15; i++) {
         int pxs;
-        unsigned char r = i < 9 ? rgb[i][0] : (i == 9 ? 180 : i == 10 ? 240 : i == 11 ? 90 : i == 12 ? 40 : 230);
-        unsigned char gg = i < 9 ? rgb[i][1] : (i == 9 ? 40 : i == 10 ? 200 : i == 11 ? 40 : i == 12 ? 80 : 230);
-        unsigned char b = i < 9 ? rgb[i][2] : (i == 9 ? 200 : i == 10 ? 40 : i == 11 ? 30 : i == 12 ? 220 : 210);
+        unsigned char r = i < 9 ? rgb[i][0] : (i == 9 ? 180 : i == 10 ? 240 : i == 11 ? 90 : i == 12 ? 40 : i == 13 ? 230 : 20);
+        unsigned char gg = i < 9 ? rgb[i][1] : (i == 9 ? 40 : i == 10 ? 200 : i == 11 ? 40 : i == 12 ? 80 : i == 13 ? 230 : 24);
+        unsigned char b = i < 9 ? rgb[i][2] : (i == 9 ? 200 : i == 10 ? 40 : i == 11 ? 30 : i == 12 ? 220 : i == 13 ? 210 : 32);
         for (pxs = 0; pxs < 16; pxs++) {
             fputc(r, f); fputc(gg, f); fputc(b, f); fputc(255, f);
         }
@@ -533,7 +561,7 @@ static int desk(const char *in, const char *dir, const char *ledger) {
     for (y = 0; y < h; y++) {
         for (x = 0; x < w; x++) {
             int k = g[y * w + x];
-            fputc(k == 9 ? '*' : k == 10 ? 'C' : k == 11 ? '@' : k == 12 ? 'A' : k == 13 ? '+' : glyph[k], f);
+            fputc(k == 9 ? '*' : k == 10 ? 'C' : k == 11 ? '@' : k == 12 ? 'A' : k == 13 ? '+' : k == 14 ? '?' : glyph[k], f);
         }
         fputc('\n', f);
     }
