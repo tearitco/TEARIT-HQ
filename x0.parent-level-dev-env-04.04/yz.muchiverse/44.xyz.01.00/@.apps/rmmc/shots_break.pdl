@@ -2,7 +2,7 @@
 SETUP | spawn 142 100
 SEAT | harness
 SHOT | k01-face   | harness | verb:face e  | 143 100 3 3.2 250 -10 | 2 | 300 | Asa faces east
-SHOT | k02-place1 | harness | verb:place   | 143 100 3 3.2 250 -10 | 2 | 300 | Place a dirt block in front of her
+SHOT | k02-place1 | harness | verb:place   | 143 100 3 3.2 250 -10 | 2 | 300 | Place a dirt block in front of him
 SHOT | k03-place2 | harness | verb:place   | 143 100 3 3.4 250 -8  | 2 | 300 | Place a second one on top: a pillar two blocks high
 SHOT | k04-swing1 | harness | verb:mine    | 143 100 4 3.4 250 -8  | 3 | 250 | First swing: cracks open on the top block
 SHOT | k05-break  | harness | verb:mine    | 143 100 4 3.4 250 -8  | 4 | 300 | Second swing: it breaks. The pillar is one block lower and the block drops as a small item

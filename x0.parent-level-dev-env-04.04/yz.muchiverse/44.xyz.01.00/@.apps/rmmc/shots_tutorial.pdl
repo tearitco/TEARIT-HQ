@@ -6,7 +6,7 @@ SHOT | t01-tour     | human | xkey:1 | asa 7 165 -10  | 2 | 300 | The window: me
 SHOT | t02-walk1    | human | xkey:Right                  | asa 5 165 -12 | 2 | 250 | Arrow keys walk Asa one cell | window
 SHOT | t03-walk2    | human | xkey:Right                  | asa 5 165 -12 | 2 | 250 | Press again: another step east | window
 SHOT | t04-jump     | human | xkey:space                  | asa 5 165 -12 | 2 | 250 | Space jumps | window
-SHOT | t05-place1   | human | xkey:g                      | asa 5 165 -12 | 2 | 250 | G places the picked block (dirt) in front of her | window
+SHOT | t05-place1   | human | xkey:g                      | asa 5 165 -12 | 2 | 250 | G places the picked block (dirt) in front of him | window
 SHOT | t06-place2   | human | xkey:g                      | asa 5 165 -12 | 2 | 250 | Place another on top | window
 SHOT | t07-swing1   | human | xkey:b                      | asa 5 165 -12 | 2 | 250 | B mines. The first swing only cracks the block | window
 SHOT | t08-break    | human | xkey:b                      | asa 5 165 -12 | 3 | 250 | The second swing breaks it: the pillar is lower and the block drops, then flies into the bag. See the count on the hotbar | window
@@ -20,7 +20,7 @@ SHOT | t15-place-tbl| human | xkey:g                      | asa 5 165 -12 | 2 | 
 SHOT | t16-log2     | human | xkey:0 5 g | asa 5 165 -12 | 2 | 250 | Back to page one: another log | window
 SHOT | t17-axe2     | human | xkey:9 b b         | asa 5 165 -12 | 3 | 250 | Two swings with the axe | window
 SHOT | t18-planks2  | human | xkey:0 4 c | asa 5 165 -12 | 2 | 250 | Craft the planks again | window
-SHOT | t19-pickaxe  | human | xkey:0 8 c | asa 5 165 -12 | 2 | 250 | With the table beside her, pick the pickaxe (8) and press C to craft it | window
+SHOT | t19-pickaxe  | human | xkey:0 8 c | asa 5 165 -12 | 2 | 250 | With the table beside him, pick the pickaxe (8) and press C to craft it | window
 SHOT | t20-stone    | human | xkey:2 g           | asa 5 165 -12 | 2 | 250 | Place a stone block | window
 SHOT | t21-hand     | human | xkey:b                      | asa 5 165 -12 | 2 | 250 | By hand, stone will not break: the sidebar says so | window
 SHOT | t22-pick     | human | xkey:8 b           | asa 5 165 -12 | 2 | 250 | With the pickaxe picked, the same key cracks it | window
