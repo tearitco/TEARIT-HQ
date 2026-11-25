@@ -344,7 +344,8 @@ static int step_op(const char *etopo, const char *ledger, const char *dir) {
     else if (!strcmp(dir, "n")) dy = -1;
     else { free(e); printf("fail dir\n"); return 2; }
     nx = x + dx; ny = y + dy;
-    if (!land_ok(e, nx, ny)) { free(e); printf("fail step\n"); return 4; }
+    /* A person walks the grass. Lava, oil, water, and a tree trunk refuse the step. */
+    if (!grass_open(e, nx, ny)) { free(e); printf("fail step\n"); return 4; }
     f = fopen(ledger, "a");
     if (!f) { free(e); return 5; }
     fprintf(f, "MOVE | %d | %d | %s\n", nx, ny, dir);

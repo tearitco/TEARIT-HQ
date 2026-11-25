@@ -1,0 +1,3 @@
+# Earth moth's bar. Same grammar as tearit-map. The list is stamps_ui.txt.
+# The bottom strip is the game-bar feed. Play shows this instead of the pets bar.
+BAR | moves | side_stamp | left | play | on | left | walk the grass
