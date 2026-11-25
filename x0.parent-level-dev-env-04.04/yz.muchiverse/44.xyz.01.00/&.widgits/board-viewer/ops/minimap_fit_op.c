@@ -2,6 +2,7 @@
  *   minimap_fit_op box <cells_w> <cells_h> <px_per_col> <max_px>
  *   minimap_fit_op dot <cam> <origin> <cells> <span_px> <cellpx>
  *   minimap_fit_op cell <px> <py> <box_x> <box_y> <box_w> <box_h> <cellpx> <wx0> <wy0> <ww> <wh> <page_w> <page_h>   (the page cell under a corner-map click)
+ *   minimap_fit_op topface <floor> <wall>      (which slot the corner map paints for a cell)
  *   minimap_fit_op tileavg <cells.rgba> <cols> <tile_px> <slot>      (the colour the corner map paints for that atlas slot)
  * Prints `box W H CELL`, `dot PX OUTSIDE`, `cell X Y` (`cell none`) or `tileavg R G B` (`tileavg none`). Exit 2 on a bad call.
  */
@@ -36,6 +37,7 @@ int main(int argc, char **argv) {
         if (bv_minimap_tile_avg(a, aw, ah, cols, tp, slot, &r, &g, &b)) printf("tileavg %d %d %d\n", r, g, b); else printf("tileavg none\n");
         free(a); return 0;
     }
+    if (argc == 4 && !strcmp(argv[1], "topface")) { printf("topface %d\n", bv_cell_top_slot(atoi(argv[2]), atoi(argv[3]))); return 0; }
     fprintf(stderr, "usage: minimap_fit_op box <w> <h> <px> <max> | dot <cam> <origin> <cells> <span> <cellpx> | tileavg <rgba> <cols> <tile_px> <slot>\n");
     return 2;
 }

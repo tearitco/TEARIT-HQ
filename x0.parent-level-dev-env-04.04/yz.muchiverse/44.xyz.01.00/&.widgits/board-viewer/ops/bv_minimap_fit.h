@@ -40,6 +40,16 @@ static int bv_minimap_dot(double cam, double origin, int cells, int span_px, int
     *px = (int)t;
     return outside;
 }
+/* Which of a cell's two slots is its TOP face on the corner map (2026-11-25): the floor when one is set, else the wall. A wall-only cell (snow, 2026-11-16)
+ * still uses its wall; a cell with a floor and a wall (Grok's earth desk puts stone in every wall slot) shows the floor, not the grey. 0 = empty cell.
+ * BV_TOPFACE_OLD is the mutant the harness uses to prove the check can fail (the old wall-first rule). */
+static int bv_cell_top_slot(int fl, int wl) {
+#ifdef BV_TOPFACE_OLD
+    return wl ? wl : fl;
+#else
+    return fl ? fl : wl;
+#endif
+}
 /* The colour of one cell on the corner map = the average colour of its tile in the page's atlas (2026-11-16, owner: "why dont i see snow on mini map?" on
  * ark-age and live). ad70266e2 had replaced the per-cell colours with three flat ones (water, wall, floor), so snow, roads and sand could not show.
  * A cell's floor or wall id IS the atlas slot (slot % cols, slot / cols, no -1; 0 = no tile). Only pixels with alpha >= 128 count, so a tile that is mostly

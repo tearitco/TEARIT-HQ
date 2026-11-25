@@ -2813,7 +2813,7 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
                 unsigned short fl = g_mk.cells[((size_t)by * (size_t)g_mk.w + (size_t)bx) * 2];
                 unsigned short wl = g_mk.cells[((size_t)by * (size_t)g_mk.w + (size_t)bx) * 2 + 1];
                 if (!fl && !wl) { r = 90; g = 150; b = 210; }
-                else if (s_mm_id == g_mk.id && (wl ? wl : fl) < 1024 && s_mm_has[wl ? wl : fl]) { int sl = wl ? wl : fl; r = s_mm_col[sl][0]; g = s_mm_col[sl][1]; b = s_mm_col[sl][2]; }
+                else if (s_mm_id == g_mk.id && bv_cell_top_slot(fl, wl) < 1024 && s_mm_has[bv_cell_top_slot(fl, wl)]) { int sl = bv_cell_top_slot(fl, wl); r = s_mm_col[sl][0]; g = s_mm_col[sl][1]; b = s_mm_col[sl][2]; }
                 else if (wl) { r = 150; g = 100; b = 60; }
                 else { r = 70; g = 160; b = 55; }
             } else if (!g_mm_col_top || g_mm_col_top[by][bx] < 0 || !g_mm_board3d) { r = 18; g = 18; b = 22; }

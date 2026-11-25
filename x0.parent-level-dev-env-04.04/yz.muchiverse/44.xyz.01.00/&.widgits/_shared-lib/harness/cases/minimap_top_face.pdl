@@ -1,0 +1,25 @@
+# Earth minimap was grey: the wall slot (stone) won over the floor. The top face is the floor when set, else the wall (2026-11-16 snow rule kept).
+RESULTS | ../results/minimap_top_face.txt
+ENV | LC_ALL | C
+CASE | top-face
+SCRATCH |
+RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -o | $T/mm.+x | $HOUSE/&.widgits/board-viewer/ops/minimap_fit_op.c
+EXPECT_EXIT | 0 | the-op-compiles
+RUN | $T/mm.+x | topface | 2 | 6
+EXPECT_OUT | topface 2 | grass-floor-over-a-stone-wall-shows-the-grass
+RUN | $T/mm.+x | topface | 0 | 5
+EXPECT_OUT | topface 5 | a-wall-only-cell-still-uses-its-wall-snow-rule
+RUN | $T/mm.+x | topface | 3 | 0
+EXPECT_OUT | topface 3 | a-floor-only-cell-uses-its-floor
+RUN | $T/mm.+x | topface | 0 | 0
+EXPECT_OUT | topface 0 | an-empty-cell-is-empty
+RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -DBV_TOPFACE_OLD | -o | $T/old.+x | $HOUSE/&.widgits/board-viewer/ops/minimap_fit_op.c
+EXPECT_EXIT | 0 | the-old-rule-mutant-compiles
+RUN | $T/old.+x | topface | 2 | 6
+EXPECT_OUT | topface 6 | NEGATIVE-the-old-wall-first-rule-gives-grey-stone-6
+COPY | &.widgits/board-viewer/ops/bv_render_3d.c | bv_render_3d.c
+RUN | /usr/bin/grep | -q | -F | bv_cell_top_slot(fl, wl) | bv_render_3d.c
+EXPECT_EXIT | 0 | the-renderer-calls-the-helper
+RUN | /usr/bin/grep | -q | -F | wl ? wl : fl | bv_render_3d.c
+EXPECT_EXIT | 1 | NEGATIVE-the-wall-first-expression-is-gone
+CLEAN |
