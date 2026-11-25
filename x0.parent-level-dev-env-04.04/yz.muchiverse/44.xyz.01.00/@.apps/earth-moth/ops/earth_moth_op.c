@@ -21,7 +21,7 @@
 #define ETW 4320
 #define ETH 2160
 
-enum { T_EMPTY = 0, T_LAVA = 1, T_OIL = 2, T_WATER = 3, T_GRASS = 4 };
+enum { T_EMPTY = 0, T_LAVA = 1, T_OIL = 2, T_WATER = 3, T_GRASS = 4, T_LEAVES = 5 };
 
 /* Mineclonia has no oil block. The oil shell uses the coal block, the darkest liquid-dark block in mcl_core. */
 static const char *SHELL_PNG[] = {
@@ -30,6 +30,7 @@ static const char *SHELL_PNG[] = {
     "ITEMS/mcl_core/textures/default_water_source_animated.png",
     "ITEMS/mcl_core/textures/mcl_core_grass_block_top.png"
 };
+static const char *LEAVES_PNG = "ITEMS/mcl_core/textures/default_leaves.png";
 
 static char hglyph(int h) {
     if (h < 1) h = 1;
@@ -173,6 +174,41 @@ static int spawn_of(const int16_t *e, int *sx, int *sy) {
     return best < (1 << 30) ? 0 : 4;
 }
 
+static int is_tree(int x, int y, int tile) {
+    return tile == T_GRASS && ((x * 7 + y * 3) % 9) == 0;
+}
+
+static int grass_open(const int16_t *e, int x, int y) {
+    int h, tile;
+    if (x < 0 || y < 0 || x >= N || y >= N) return 0;
+    tile = cell_of(e, x, y, NULL, NULL, &h);
+    return tile == T_GRASS && !is_tree(x, y, tile);
+}
+
+/* A grass cell that is not a tree, walking the ring so the seats are not stacked. */
+static int pick_grass(const int16_t *e, int n, int *x, int *y) {
+    int i, seen = 0;
+    for (i = 0; i < N * N; i++) {
+        int xx = i % N, yy = i / N;
+        if (!grass_open(e, xx, yy)) continue;
+        if (seen == n) { *x = xx; *y = yy; return 0; }
+        seen++;
+    }
+    return 4;
+}
+
+static void last_of(const char *ledger, const char *kind, int *x, int *y, int *have) {
+    FILE *f = fopen(ledger, "r");
+    char line[256], pat[64];
+    int a, b;
+    *have = 0;
+    if (!f) return;
+    snprintf(pat, sizeof pat, "%s | %%d | %%d", kind);
+    while (fgets(line, sizeof line, f))
+        if (sscanf(line, pat, &a, &b) == 2) { *x = a; *y = b; *have = 1; }
+    fclose(f);
+}
+
 static int land_ok(const int16_t *e, int x, int y) {
     int h, tile;
     if (x < 0 || y < 0 || x >= N || y >= N) return 0;
@@ -190,6 +226,23 @@ static int desk(const char *etopo, const char *mine, const char *ledger, const c
     if (mkdir(dir, 0755) != 0 && errno != EEXIST) { free(e); return 5; }
     spawn_of(e, &sx, &sy);
     where(ledger, sx, sy, &px, &py);
+    if (!grass_open(e, px, py) && !pick_grass(e, 0, &px, &py)) {
+        FILE *lf = fopen(ledger, "a");
+        if (lf) { fprintf(lf, "MOVE | %d | %d | grass\n", px, py); fclose(lf); }
+    }
+    {
+        const char *kinds[3] = { "CREEPER", "PIG", "COW" };
+        int k, ax, ay, have;
+        for (k = 0; k < 3; k++) {
+            last_of(ledger, kinds[k], &ax, &ay, &have);
+            if (have && grass_open(e, ax, ay)) continue;
+            if (pick_grass(e, 4 + k * 5, &ax, &ay)) continue;
+            {
+                FILE *lf = fopen(ledger, "a");
+                if (lf) { fprintf(lf, "%s | %d | %d\n", kinds[k], ax, ay); fclose(lf); }
+            }
+        }
+    }
     snprintf(path, sizeof path, "%s/cells.txt", dir);
     f = fopen(path, "w");
     if (!f) { free(e); return 5; }
@@ -197,6 +250,7 @@ static int desk(const char *etopo, const char *mine, const char *ledger, const c
     for (y = 0; y < N; y++) {
         for (x = 0; x < N; x++) {
             int h, tile = cell_of(e, x, y, NULL, NULL, &h);
+            if (is_tree(x, y, tile)) tile = T_LEAVES;
             fprintf(f, "%s%d,0", x ? " " : "", tile);
         }
         fputc('\n', f);
@@ -208,7 +262,8 @@ static int desk(const char *etopo, const char *mine, const char *ledger, const c
     /* Slot 0 empty, then lava, oil, water, grass. Pad to 8 tiles. */
     for (y = 0; y < 16 * 16; y++) { fputc(0, f); fputc(0, f); fputc(0, f); fputc(0, f); }
     for (x = 0; x < 4; x++) blit16(f, mine, SHELL_PNG[x]);
-    for (x = 5; x < 8; x++) for (y = 0; y < 16 * 16; y++) { fputc(0, f); fputc(0, f); fputc(0, f); fputc(0, f); }
+    blit16(f, mine, LEAVES_PNG);
+    for (x = 6; x < 8; x++) for (y = 0; y < 16 * 16; y++) { fputc(0, f); fputc(0, f); fputc(0, f); fputc(0, f); }
     fclose(f);
     snprintf(path, sizeof path, "%s/map.txt", dir);
     f = fopen(path, "w");
@@ -216,6 +271,7 @@ static int desk(const char *etopo, const char *mine, const char *ledger, const c
     for (y = 0; y < N; y++) {
         for (x = 0; x < N; x++) {
             int h, tile = cell_of(e, x, y, NULL, NULL, &h);
+            if (is_tree(x, y, tile)) h += 12;
             fputc(tile == T_EMPTY ? '.' : hglyph(h), f);
         }
         fputc('\n', f);
@@ -230,12 +286,20 @@ static int desk(const char *etopo, const char *mine, const char *ledger, const c
     snprintf(path, sizeof path, "%s/events.txt", dir);
     f = fopen(path, "w");
     if (!f) { free(e); return 5; }
-    /* Trees, the person, and the other seats are the next shells. Not drawn on these rings. */
-    (void)px; (void)py;
+    fprintf(f, "%d %d 210 170 120 block 0 2 1\n", px, py);
+    {
+        const char *kinds[3] = { "CREEPER", "PIG", "COW" };
+        const int col[3][3] = { {40, 140, 40}, {220, 150, 160}, {90, 60, 40} };
+        int k, ax, ay, have;
+        for (k = 0; k < 3; k++) {
+            last_of(ledger, kinds[k], &ax, &ay, &have);
+            if (have) fprintf(f, "%d %d %d %d %d block 0 2 1\n", ax, ay, col[k][0], col[k][1], col[k][2]);
+        }
+    }
     fclose(f);
     snprintf(path, sizeof path, "%s/view.pdl", dir);
     f = fopen(path, "w");
-    if (f) { fprintf(f, "start | %d %d\n", N / 2, N / 2); fclose(f); }
+    if (f) { fprintf(f, "start | %d %d\n", px, py); fclose(f); }
     snprintf(path, sizeof path, "%s/cells.marker", dir);
     {
         int restart = (stat(path, &ms) == 0 && ms.st_size >= 4096);
