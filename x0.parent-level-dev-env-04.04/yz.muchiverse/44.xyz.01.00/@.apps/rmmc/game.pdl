@@ -1,0 +1,8 @@
+# Play is still the shared driver. Break and place are not wired yet.
+GAME   | name        | rmmc
+GAME   | title       | RM sandbox
+GAME   | kind        | editor
+GAME   | ruleset     | default
+GAME   | driver      | {house}/&.widgits/_shared-lib/ops/+x/game_core.+x driver {house} {book} {editor}
+GAME   | clock       | pause
+GAME   | export      | {house}/&.widgits/_shared-lib/ops/+x/game_core.+x {book} {state} export {out}

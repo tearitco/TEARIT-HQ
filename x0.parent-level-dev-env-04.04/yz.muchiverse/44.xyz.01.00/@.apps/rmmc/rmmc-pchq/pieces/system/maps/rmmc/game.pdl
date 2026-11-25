@@ -1,0 +1,11 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+GAME         | type               | board-game
+GAME         | icon               | 
+GAME         | label              | RM sandbox
+GAME         | n_chunks           | 1
+GAME         | chunk_0_x          | 0
+GAME         | chunk_0_y          | 0
+GAME         | n_desks            | 1
+GAME         | desk_1_id          | rmmc-0000
+GAME         | desk_1_label       | rmmc-0000
