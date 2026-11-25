@@ -72,6 +72,23 @@ In the founder's draft wording (`14.biz/ELEVATOR-PITCH.md`, DRAFT): a plain-text
 | **Teario-Make/Play** (working name; a side-view platformer level editor + playable levels): level = `.pdl`, mechanics = event pages (in-process interpreter, 30 ticks a second), inputs-only ledger with exact replay, publish only after a verified clear; one shared core with a Make shell and a Play shell (two Toys windows for the prototype, joining into one), also inside rpg-edit; recursion (nested levels, depth 2) with a sanity test; data-hq exporter; milestones M0 to M15 | `building` (2026-11-09: the shared level format, Make (EDIT-rows ledger, level export with the fixture's sha256, publish refused without a verified clear) and Play (inputs-only run ledger, `verify_clear`) built and tested, cases `teario_make` 64 and `teario_play` 57; NO physics, interpreter, UI or Toys entries yet; D63) | `16.game/TEARIO-MAKE-PLAY-LEVEL-EDITOR-AND-PLATFORMER-PLAN-2026-11-09.md`, decision D60; owner request 2026-11-09 |
 | Owner decisions that gate polish: 3D `event_scale`, day/night from ledger rounds, neutral tile and card names, setup screen showing the play desk | `OWNER` | handoff section 6 |
 
+### 3.5 TEARITIZATION sprints (planned 2026-11-24)
+
+A Civ-SNES shape on events, a human plus agents, a seeded map, 2D and 3D from one desk. `civ-rpgce` is not the base. A sprint is one proof (a harness that can fail, plus a picture). Nothing in this table is `proven`. The near clip and the four-sprint and eight-sprint notes are in `XO/31.Nov/nov-24/grok-24/`. Design source: `16.game/TEARITIZATION-FORWARD-GUIDANCE-2026-11-23.md`.
+
+| Sprint | What you can open | Still absent |
+|---|---|---|
+| 1 | A 16×16 seed: water, land, one mineral mark, same bytes twice, 2D and 3D stills | Digging, units, cities |
+| 4 | Keys walk a 32×32 map, one city on grass, one dig of that mineral, eat/sleep and a ration count as rows | Tech, a second seat, a continent |
+| 8 | Two seats on about a 64-wide chunked map, fog, one agent move with no model, dig and place survive reload | Preset personalities, combat, a stored planet |
+| 16 | A few biomes, two agent presets that pick different legal moves, a ledger checkpoint, several cities, dig and place stable | A campaign, city stamps, combat |
+| 32 | A region you pan across in a camera window, water as a stock, one combat rule, one real-city stamp only after its parent cell exists | A whole country, laws, molecule zoom |
+| 64 | Several units with jobs, parts and a fuel count on a unit, fog gold and research stable, a series of clips rather than one trailer | Moon or Mars, imported CDDA/DF/Minecraft content |
+| 128 | A short campaign a person can finish: found, research, one conflict, end the turn, agents take seats. Geology is layers as rows | A planet file, a public "finished game" line |
+| 512 | The far aim only: seeded chunks at region and play scale, many seats, jobs, dig and place, geology one rung finer (a material, not an atom). Real cities are stamps. Laws only if ordered | A stored Earth, copied game text or code, a date |
+
+Big maps stay seed plus chunk address. The ledger stores edits. The board draws a window. Verify cost already seen on vox (slow past a few thousand rows) stops a sprint until a checkpoint exists. Blueprintz stays paused and the arena page stays unpublished until the owner says otherwise.
+
 ## 4. The three views
 
 ### Customers: what you can do, and what is coming
