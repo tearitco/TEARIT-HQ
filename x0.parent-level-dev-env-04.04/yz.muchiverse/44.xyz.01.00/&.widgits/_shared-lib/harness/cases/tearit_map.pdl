@@ -77,3 +77,12 @@ RUN | $T/tearit_map_op.+x | desk | $T/a.txt | $T/ore-after | $T/ore.txt
 EXPECT_EXIT | 0 | desk after dig
 RUN | cmp | -s | $T/ore-before/cells.txt | $T/ore-after/cells.txt
 EXPECT_EXIT | 1 | the dug cell changes the picture
+RUN | $T/tearit_map_op.+x | found | $T/a.txt | $T/city.txt
+EXPECT_EXIT | 0 | a city on the start cell
+EXPECT_OUT | found= | the city row
+RUN | $T/tearit_map_op.+x | found | $T/a.txt | $T/city.txt
+EXPECT_EXIT | 4 | a second city on that cell is refused
+RUN | $T/tearit_map_op.+x | found | $T/a.txt | $T/city2.txt
+EXPECT_EXIT | 0 | replay the city
+RUN | cmp | -s | $T/city.txt | $T/city2.txt
+EXPECT_EXIT | 0 | same city row

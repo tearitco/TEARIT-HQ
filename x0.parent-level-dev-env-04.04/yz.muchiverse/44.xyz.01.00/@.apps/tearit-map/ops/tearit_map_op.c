@@ -649,6 +649,36 @@ static int approach_mineral(const char *map, const char *ledger) {
     return 0;
 }
 
+static int ledger_has_found(const char *ledger, int x, int y) {
+    FILE *f = fopen(ledger, "r");
+    char line[256];
+    int a, b;
+    if (!f) return 0;
+    while (fgets(line, sizeof line, f)) {
+        if (sscanf(line, "FOUND | %d | %d", &a, &b) == 2 && a == x && b == y) { fclose(f); return 1; }
+    }
+    fclose(f);
+    return 0;
+}
+
+static int found_op(const char *map, const char *ledger) {
+    int *g, w, h, sx, sy, x, y, rc;
+    FILE *f;
+    rc = load_map(map, &g, &w, &h, &sx, &sy);
+    if (rc) return rc;
+    where(ledger, sx, sy, &x, &y);
+    if (!land(g[y * w + x]) || ledger_has_found(ledger, x, y)) {
+        free(g); printf("fail found\n"); return 4;
+    }
+    f = fopen(ledger, "a");
+    if (!f) { free(g); return 5; }
+    fprintf(f, "FOUND | %d | %d | %s\n", x, y, kname[g[y * w + x]]);
+    fclose(f);
+    printf("found=%d,%d\n", x, y);
+    free(g);
+    return 0;
+}
+
 static int dig_op(const char *map, const char *ledger) {
     int *g, w, h, sx, sy, x, y, mx, my, rc;
     FILE *f;
@@ -690,5 +720,6 @@ int main(int argc, char **argv) {
     if (!strcmp(argv[1], "move") && argc == 5) return move_op(argv[2], argv[3], argv[4]);
     if (!strcmp(argv[1], "approach") && argc == 4) return approach_mineral(argv[2], argv[3]);
     if (!strcmp(argv[1], "dig") && argc == 4) return dig_op(argv[2], argv[3]);
+    if (!strcmp(argv[1], "found") && argc == 4) return found_op(argv[2], argv[3]);
     return 2;
 }
