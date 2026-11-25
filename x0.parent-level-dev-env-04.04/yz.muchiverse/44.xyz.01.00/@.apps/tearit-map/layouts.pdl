@@ -1,0 +1,4 @@
+# layouts.pdl - tearit-map's bars. Same grammar as rpg-edit-hq/layouts.pdl.
+# Loaded first, in the left group, so this bar wins that slot while Play is on.
+# The list itself is state/stamps_ui.txt. The bottom strip is the game-bar feed.
+BAR | moves | side_stamp | left | play | on | left | walk and dig, in place of the pets bar

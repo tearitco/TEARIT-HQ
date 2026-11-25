@@ -1,5 +1,6 @@
 # What the editor's Play reads (petslike_core.c book_driver()). Same row shape as @.apps/snake/game.pdl.
-# No driver row yet. The shared game_core driver does not know this map's verbs, and deskopoly_driver is Teropoly's loop. Play stays a no-op until a driver calls tearit_map_op. The world clock is not turned on.
+# The driver is this book's loop only. The verbs are tearit_map_op. The world clock stays paused.
 GAME   | name        | tearit-map
 GAME   | title       | Tearit map
+GAME   | driver      | {book}/ops/+x/tearit_driver.+x {house} {book} {editor}
 GAME   | clock       | pause
