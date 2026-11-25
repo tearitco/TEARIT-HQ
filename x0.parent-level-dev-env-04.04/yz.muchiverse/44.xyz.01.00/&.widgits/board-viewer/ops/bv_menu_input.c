@@ -615,6 +615,7 @@ static int handle_one_key(int key) {
     int key_pan_forward = 'w', key_pan_back = 's', key_pan_left = 'a', key_pan_right = 'd';
     int key_cam_down = 'c', key_cam_up = 'v';
     int key_pov_1 = '1', key_pov_2 = '2', key_pov_3 = '3', key_pov_4 = '4';
+    int key_pov_1_alt = 0, key_pov_2_alt = 0;   /* optional extra keys for first and third person (KEY rows pov_mode_1_alt, pov_mode_2_alt): a game that owns the digits as GAMEKEYs (the rmmc hotbar) still needs a camera key, and a GAMEKEY is taken before the POV handler */
     /* REAL, NEW 2026-09-15, direct live request ("we wanted to add a
      * 5th [camera mode] for 'side scroll' (mario) type mode... key
      * '5' is already bound to reset_view_alt/file_menu below - Tab
@@ -682,6 +683,8 @@ static int handle_one_key(int key) {
         key_cam_up   = pdl_bind_int(kb_pdl_path, "KEY", "cam_height_up",   key_cam_up);
         key_pov_1 = pdl_bind_int(kb_pdl_path, "KEY", "pov_mode_1", key_pov_1);
         key_pov_2 = pdl_bind_int(kb_pdl_path, "KEY", "pov_mode_2", key_pov_2);
+        key_pov_1_alt = pdl_bind_int(kb_pdl_path, "KEY", "pov_mode_1_alt", 0);
+        key_pov_2_alt = pdl_bind_int(kb_pdl_path, "KEY", "pov_mode_2_alt", 0);
         key_pov_3 = pdl_bind_int(kb_pdl_path, "KEY", "pov_mode_3", key_pov_3);
         key_pov_4 = pdl_bind_int(kb_pdl_path, "KEY", "pov_mode_4", key_pov_4);
         key_pov_5 = pdl_bind_int(kb_pdl_path, "KEY", "pov_mode_5", key_pov_5);
@@ -711,6 +714,8 @@ static int handle_one_key(int key) {
         }
     }
 #endif
+    if (key_pov_1_alt > 0 && key == key_pov_1_alt) key = key_pov_1;   /* the alias keys act as 1 and 2 from here on (after the GAMEKEY check, so a possessed game still gets its own digits) */
+    if (key_pov_2_alt > 0 && key == key_pov_2_alt) key = key_pov_2;
     int dx = 0, dy = 0;
     if (key == ARROW_LEFT) dx = left_dx;
     else if (key == ARROW_RIGHT) dx = right_dx;
