@@ -24,3 +24,13 @@ CONVERT | skin_b_lo | 0.45
 CONVERT | skin_b_hi | 0.85
 CONVERT | body_torso_frac | 0.5
 CONVERT | chin_min_px | 3
+# Skin settings (2026-11-25, polish): how a Minecraft-style skin cell is sampled from the sprite (rig_from_charset_op writes <rig>.skin.csv). All optional; a file without them keeps the plain average.
+# skin_mode 1 = dominant colour of the cell (flat areas stay flat); skin_quant = bucket coarseness 3..6; skin_detail_frac / skin_detail_dist = a distinct minority (an eye, a mouth) wins when it covers that
+# fraction of the cell and differs by more than the distance; skin_outline_frac = a cell that is at least this fraction dark outline becomes outline (crisp edges, 0 = off); skin_darken = shade the side and bottom faces (0 = off).
+CONVERT | skin_mode | 1
+CONVERT | skin_quant | 4
+CONVERT | skin_detail_frac | 0.30
+CONVERT | skin_detail_dist | 90
+CONVERT | skin_outline_frac | 0.60
+CONVERT | skin_darken | 0.10
+CONVERT | skin_limb_rows | 1

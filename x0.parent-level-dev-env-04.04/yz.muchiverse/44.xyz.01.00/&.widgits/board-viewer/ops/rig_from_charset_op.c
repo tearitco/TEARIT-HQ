@@ -165,16 +165,56 @@ static int find_chin(int fw, int miny, int maxy) {
  * (outline pixels only when nothing else is there); a cell with no pixel takes the part's base colour. The renderer turns this into small voxel models (one box slot per limb, the box size is the scale). */
 static int g_frow, g_fh_;
 static void set_frame(int row, int by, int fh) { g_fy = by + row * fh; g_frow = row; g_fh_ = fh; }
+/* SKIN settings (OPTIONAL keys of rig_convert.pdl; a file without them keeps the plain average, which the first skin used). All tuning is DATA, never C:
+ *   skin_mode 0 | 1      0 = mean of the cell's pixels (soft, blurs eyes and outlines); 1 = DOMINANT colour: the most common colour bucket of the cell's pixels, so flat areas stay flat
+ *   skin_quant 3..6      bucket coarseness for the dominant colour (bits dropped per channel; higher = coarser, fewer distinct colours)
+ *   skin_detail_frac     0 = off; else a minority colour that covers at least this fraction of the cell's pixels and differs from the dominant by more than skin_detail_dist WINS (keeps an eye or a mouth that is a third of a cell)
+ *   skin_detail_dist     colour distance (sum of channel differences) a minority must exceed to count as detail
+ *   skin_outline_frac    0 = outline (very dark) pixels only count when nothing else is in the cell; else a cell whose opaque pixels are at least this fraction outline becomes the outline colour (crisp edges, a dark seam between limbs)
+ *   skin_limb_rows 0 | 1 1 = arms and legs get ONE colour per row across their width (no pixel flecks: a limb is only about 3 sprite pixels wide, so a cell would be one pixel plus its outline); torso and head stay per cell
+ *   skin_darken          0..1, multiplies every skin cell's brightness by (1 - value) on the SIDE faces L and R and the bottom D only, a cheap shading cue (0 = off) */
+typedef struct { int mode, quant; double detail_frac, detail_dist, outline_frac, darken; int limb_rows; } Skn;
+static Skn SK = { 0, 4, 0, 60, 0, 0, 0 };
+static void load_skin(const char *path) {
+    FILE *f = fopen(path, "r"); if (!f) return; char line[256];
+    while (fgets(line, sizeof line, f)) {
+        char a[16], key[64]; double v; if (sscanf(line, " %15[^| ] | %63[^| ] | %lf", a, key, &v) != 3 || strcmp(a, "CONVERT")) continue;
+        if (!strcmp(key, "skin_mode")) SK.mode = (int)v; else if (!strcmp(key, "skin_quant")) SK.quant = (int)v; else if (!strcmp(key, "skin_detail_frac")) SK.detail_frac = v;
+        else if (!strcmp(key, "skin_detail_dist")) SK.detail_dist = v; else if (!strcmp(key, "skin_outline_frac")) SK.outline_frac = v; else if (!strcmp(key, "skin_darken")) SK.darken = v; else if (!strcmp(key, "skin_limb_rows")) SK.limb_rows = (int)v; }
+    fclose(f);
+    if (SK.mode < 0 || SK.mode > 1) SK.mode = 0; if (SK.quant < 3 || SK.quant > 6) SK.quant = 4;
+    if (SK.detail_frac < 0 || SK.detail_frac > 1) SK.detail_frac = 0; if (SK.outline_frac < 0 || SK.outline_frac > 1) SK.outline_frac = 0; if (SK.darken < 0 || SK.darken > 0.8) SK.darken = 0; }
+static int qkey(const unsigned char *p) { int s = SK.quant; return ((p[0] >> s) << 16) | ((p[1] >> s) << 8) | (p[2] >> s); }
+static void cell_dom(int x0, int y0, int x1, int y1, const int base[3], int out[3]) {
+    enum { MAXP = 1024 }; int key[MAXP], rr[MAXP], gg[MAXP], bb[MAXP], n = 0, nout = 0, nopq = 0; long orr = 0, ogg = 0, obb = 0;
+    for (int y = y0; y < y1; y++) for (int x = x0; x < x1; x++) { const unsigned char *p = P(x, y); if (!opaque(p)) continue; nopq++;
+        if (outline(p)) { nout++; orr += p[0]; ogg += p[1]; obb += p[2]; continue; }
+        if (n < MAXP) { key[n] = qkey(p); rr[n] = p[0]; gg[n] = p[1]; bb[n] = p[2]; n++; } }
+    if (SK.outline_frac > 0 && nopq && (double)nout / nopq >= SK.outline_frac) { out[0] = (int)(orr / nout); out[1] = (int)(ogg / nout); out[2] = (int)(obb / nout); return; }
+    if (!n) { if (nout) { out[0] = (int)(orr / nout); out[1] = (int)(ogg / nout); out[2] = (int)(obb / nout); } else memcpy(out, base, 3 * sizeof(int)); return; }
+    int best = 0, bc = 0;                                              /* the most common bucket (ties: the first seen) */
+    for (int i = 0; i < n; i++) { int c = 0; for (int j = 0; j < n; j++) if (key[j] == key[i]) c++; if (c > bc) { bc = c; best = key[i]; } }
+    int pick = best, pc = bc;
+    if (SK.detail_frac > 0) {                                          /* a distinct minority covering enough of the cell is detail, not noise */
+        long mr = 0, mg = 0, mb = 0, mn = 0; for (int i = 0; i < n; i++) if (key[i] == best) { mr += rr[i]; mg += gg[i]; mb += bb[i]; mn++; }
+        int dr = (int)(mr / mn), dg = (int)(mg / mn), db = (int)(mb / mn), bestc = 0;
+        for (int i = 0; i < n; i++) { if (key[i] == best) continue; int c = 0; for (int j = 0; j < n; j++) if (key[j] == key[i]) c++;
+            int dist = abs(rr[i] - dr) + abs(gg[i] - dg) + abs(bb[i] - db);
+            if ((double)c / (n + nout) >= SK.detail_frac && dist > SK.detail_dist && c > bestc) { bestc = c; pick = key[i]; pc = c; } } }
+    long r = 0, g = 0, b = 0, m = 0; for (int i = 0; i < n; i++) if (key[i] == pick) { r += rr[i]; g += gg[i]; b += bb[i]; m++; } (void)pc;
+    out[0] = (int)(r / m); out[1] = (int)(g / m); out[2] = (int)(b / m); }
 static void cell_avg(int x0, int y0, int x1, int y1, const int base[3], int out[3]) {
+    if (SK.mode == 1) { cell_dom(x0, y0, x1, y1, base, out); return; }
     for (int pass = 0; pass < 2; pass++) { long r = 0, g = 0, b = 0, n = 0;
         for (int y = y0; y < y1; y++) for (int x = x0; x < x1; x++) { const unsigned char *p = P(x, y); if (!opaque(p) || (!pass && outline(p))) continue; r += p[0]; g += p[1]; b += p[2]; n++; }
         if (n) { out[0] = (int)(r / n); out[1] = (int)(g / n); out[2] = (int)(b / n); return; } }
     memcpy(out, base, 3 * sizeof(int)); }
 static void face_out(FILE *o, const char *part, char face, int w, int h, int x0, int y0, int x1, int y1, const int base[3]) {
     if (x1 <= x0) x1 = x0 + 1; if (y1 <= y0) y1 = y0 + 1;
+    int rowmode = SK.limb_rows && (part[1] == 'a' || part[1] == 'l');   /* rarm larm rleg lleg */
     for (int v = 0; v < h; v++) for (int u = 0; u < w; u++) {
-        int ax = x0 + u * (x1 - x0) / w, bx = x0 + (u + 1) * (x1 - x0) / w, ay = y0 + v * (y1 - y0) / h, by_ = y0 + (v + 1) * (y1 - y0) / h; if (bx <= ax) bx = ax + 1; if (by_ <= ay) by_ = ay + 1;
-        int c[3]; cell_avg(ax, ay, bx, by_, base, c); fprintf(o, "%s,%c,%d,%d,%d,%d,%d\n", part, face, u, v, c[0], c[1], c[2]); } }
+        int ax = x0 + u * (x1 - x0) / w, bx = x0 + (u + 1) * (x1 - x0) / w, ay = y0 + v * (y1 - y0) / h, by_ = y0 + (v + 1) * (y1 - y0) / h;  if (rowmode) { ax = x0; bx = x1; } if (bx <= ax) bx = ax + 1; if (by_ <= ay) by_ = ay + 1;
+        int c[3]; cell_avg(ax, ay, bx, by_, base, c); if (SK.darken > 0 && (face == 'L' || face == 'R' || face == 'D')) for (int q = 0; q < 3; q++) c[q] = (int)(c[q] * (1.0 - SK.darken)); fprintf(o, "%s,%c,%d,%d,%d,%d,%d\n", part, face, u, v, c[0], c[1], c[2]); } }
 static void flat_out(FILE *o, const char *part, char face, int w, int h, const int c[3]) { for (int v = 0; v < h; v++) for (int u = 0; u < w; u++) fprintf(o, "%s,%c,%d,%d,%d,%d,%d\n", part, face, u, v, c[0], c[1], c[2]); }
 int main(int argc, char **argv) {
     if (argc < 4 || argc > 5) { fprintf(stderr, "usage: rig_from_charset_op <charset.png> <char_index 0..7> <out_rig.pdl> [convert.pdl]\n"); return 2; }
@@ -184,6 +224,7 @@ int main(int argc, char **argv) {
     if (argc == 5) snprintf(cfgp, sizeof cfgp, "%s", argv[4]);
     else { char self[4096]; ssize_t n = readlink("/proc/self/exe", self, sizeof self - 1); if (n <= 0) return 5; self[n] = 0; snprintf(cfgp, sizeof cfgp, "%s/../../data/rig_convert.pdl", dirname(self)); }
     if (load_cfg(cfgp, &C)) { fprintf(stderr, "settings missing or incomplete: %s\n", cfgp); return 5; }
+    load_skin(cfgp);
     load_prof(cfgp);
     g_shift = C.shift;
     int w = 0, h = 0; unsigned char *img = load_png(argv[1], &w, &h);
