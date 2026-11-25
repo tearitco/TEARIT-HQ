@@ -85,9 +85,18 @@ A Civ-SNES shape on events, a human plus agents, a seeded map, 2D and 3D from on
 | 32 | A region you pan across in a camera window, water as a stock, one combat rule, one real-city stamp only after its parent cell exists | A whole country, laws, molecule zoom |
 | 64 | Several units with jobs, parts and a fuel count on a unit, fog gold and research stable, a series of clips rather than one trailer | Moon or Mars, imported CDDA/DF/Minecraft content |
 | 128 | A short campaign a person can finish: found, research, one conflict, end the turn, agents take seats. Geology is layers as rows | A planet file, a public "finished game" line |
-| 512 | The far aim only: seeded chunks at region and play scale, many seats, jobs, dig and place, geology one rung finer (a material, not an atom). Real cities are stamps. Laws only if ordered | A stored Earth, copied game text or code, a date |
+| 512 | The far aim of the game: seeded chunks at region and play scale, many seats, jobs, dig and place, geology one rung finer (a material, not an atom). Real cities are stamps. Laws only if ordered | Being online for strangers, a stored Earth, a date |
+| 1024 | The same game, reached from outside the house. See "Done and online" below. The sprint count does not finish the game by itself | A promise that 1024 proofs have been run |
 
-Big maps stay seed plus chunk address. The ledger stores edits. The board draws a window. Verify cost already seen on vox (slow past a few thousand rows) stops a sprint until a checkpoint exists. Blueprintz stays paused and the arena page stays unpublished until the owner says otherwise.
+**Done and online** is not sprint 1024. The game is done when a stranger can start a match, play a full session, and leave, and a second stranger can open the same chain and get the same result. Online means all of these are true at once:
+
+- The rules they run are the published pages and the ledger, and a harness they can re-run still fails when one expected byte is wrong.
+- The board, the 2D picture, and the web page are three views of that ledger. The web page is on the public site only after you say to publish it.
+- A person joins from a browser or from LyfeDesk, takes a seat, and plays with keys. An empty seat fills from the chain, as the arena already does for pets, not from a hidden roll.
+- Their edits (dig, found, build) are rows. Reloading does not invent a second world.
+- The clip, the how-to, and the site text match what that stranger just did. No "playable" line before that session exists.
+
+Sprint 1024 is only the stretch where that outside door is the proof. Sprint 512 can be a finished game on your machine and still be offline. The arena page on tearit-web is the small version of this door, and it stays unpublished until you decide.
 
 ## 4. The three views
 
