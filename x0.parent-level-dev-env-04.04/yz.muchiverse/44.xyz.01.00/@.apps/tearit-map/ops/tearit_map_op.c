@@ -739,7 +739,7 @@ static int desk(const char *in, const char *dir, const char *ledger) {
         bb = 40 + (40 * rat) / (cap > 0 ? cap : 1);
         fprintf(f, "%d %d %d %d %d block 0 2 1\n", px, py, rr, gg, bb);
     }
-    fprintf(f, "%d %d 180 80 200 block 0 2 1\n", mx, my);
+    if (!ledger_has_dig(ledger, mx, my)) fprintf(f, "%d %d 180 80 200 block 0 2 1\n", mx, my);
     if (ax >= 0 && ay >= 0) fprintf(f, "%d %d 40 80 220 block 0 2 1\n", ax, ay);
     fclose(f);
     snprintf(path, sizeof path, "%s/map.ppm", dir);
