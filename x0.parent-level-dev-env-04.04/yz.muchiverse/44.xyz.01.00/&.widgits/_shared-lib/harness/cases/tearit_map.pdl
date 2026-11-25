@@ -132,3 +132,30 @@ RUN | $T/tearit_map_op.+x | desk | $T/a.txt | $T/ag-after | $T/ag.txt
 EXPECT_EXIT | 0 | desk after the agent
 RUN | cmp | -s | $T/ag-before/cells.txt | $T/ag-after/cells.txt
 EXPECT_EXIT | 1 | the agent cell changes the picture
+RUN | rm | -f | $T/pl.txt
+EXPECT_EXIT | 0 | place ledger cleared
+RUN | $T/tearit_map_op.+x | place | $T/a.txt | $T/pl.txt
+EXPECT_EXIT | 4 | place before a dig is refused
+RUN | $T/tearit_map_op.+x | approach | $T/a.txt | $T/pl.txt
+EXPECT_EXIT | 0 | walk to the mineral for a place
+RUN | $T/tearit_map_op.+x | dig | $T/a.txt | $T/pl.txt
+EXPECT_EXIT | 0 | dig before place
+RUN | $T/tearit_map_op.+x | place | $T/a.txt | $T/pl.txt
+EXPECT_EXIT | 0 | place on the dug cell
+EXPECT_OUT | placed= | the place row was printed
+RUN | cp | $T/pl.txt | $T/pl.keep
+EXPECT_EXIT | 0 | place ledger saved
+RUN | $T/tearit_map_op.+x | place | $T/a.txt | $T/pl.txt
+EXPECT_EXIT | 4 | a second place is refused
+RUN | cmp | -s | $T/pl.txt | $T/pl.keep
+EXPECT_EXIT | 0 | a refused place writes nothing
+RUN | $T/tearit_map_op.+x | desk | $T/a.txt | $T/pl-desk | $T/pl.txt
+EXPECT_EXIT | 0 | desk of the placed cell
+RUN | cp | $T/pl-desk/map.txt | $T/pl-map.keep
+EXPECT_EXIT | 0 | glyph file saved
+RUN | rm | -f | $T/pl-desk/cells.txt | $T/pl-desk/cells.rgba | $T/pl-desk/map.txt
+EXPECT_EXIT | 0 | projection deleted
+RUN | $T/tearit_map_op.+x | desk | $T/a.txt | $T/pl-desk | $T/pl.txt
+EXPECT_EXIT | 0 | desk rebuilt from the ledger
+RUN | cmp | -s | $T/pl-desk/map.txt | $T/pl-map.keep
+EXPECT_EXIT | 0 | the placed glyph survives a rebuild

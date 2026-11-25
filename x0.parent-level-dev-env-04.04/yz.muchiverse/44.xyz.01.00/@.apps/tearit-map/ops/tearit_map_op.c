@@ -446,6 +446,21 @@ static int ledger_has_dig(const char *ledger, int x, int y) {
     return 0;
 }
 
+static int ledger_has_place(const char *ledger, int x, int y) {
+    FILE *f;
+    char line[256];
+    int a, b, placed = 0;
+    if (!ledger) return 0;
+    f = fopen(ledger, "r");
+    if (!f) return 0;
+    while (fgets(line, sizeof line, f)) {
+        if (sscanf(line, "DIG | %d | %d", &a, &b) == 2 && a == x && b == y) placed = 0;
+        else if (sscanf(line, "PLACE | %d | %d", &a, &b) == 2 && a == x && b == y) placed = 1;
+    }
+    fclose(f);
+    return placed;
+}
+
 static int ledger_has_found(const char *ledger, int x, int y);
 static int ration_left(const char *map, const char *ledger, int *cap_out);
 static int where(const char *ledger, int sx, int sy, int *x, int *y);
@@ -475,7 +490,7 @@ static int desk(const char *in, const char *dir, const char *ledger) {
     fclose(f);
     for (i = 0; i < w * h; i++) if (g[i] < 0) { free(g); return 4; }
     if (mx >= 0 && my >= 0 && mx < w && my < h) {
-        g[my * w + mx] = ledger_has_dig(ledger, mx, my) ? GRASS : 9;
+        g[my * w + mx] = ledger_has_place(ledger, mx, my) ? 13 : ledger_has_dig(ledger, mx, my) ? GRASS : 9;
     }
     if (ledger) {
         for (y = 0; y < h; y++) for (x = 0; x < w; x++)
@@ -493,7 +508,7 @@ static int desk(const char *in, const char *dir, const char *ledger) {
     snprintf(path, sizeof path, "%s/cells.txt", dir);
     f = fopen(path, "w");
     if (!f) { free(g); return 5; }
-    fprintf(f, "width=%d\nheight=%d\ntile_px=4\natlas_cols=1\natlas_tiles=13\ncells\n", w, h);
+    fprintf(f, "width=%d\nheight=%d\ntile_px=4\natlas_cols=1\natlas_tiles=14\ncells\n", w, h);
     for (y = 0; y < h; y++) {
         for (x = 0; x < w; x++) fprintf(f, "%s%d,0", x ? " " : "", g[y * w + x]);
         fputc('\n', f);
@@ -502,11 +517,11 @@ static int desk(const char *in, const char *dir, const char *ledger) {
     snprintf(path, sizeof path, "%s/cells.rgba", dir);
     f = fopen(path, "w");
     if (!f) { free(g); return 5; }
-    for (i = 0; i < 13; i++) {
+    for (i = 0; i < 14; i++) {
         int pxs;
-        unsigned char r = i < 9 ? rgb[i][0] : (i == 9 ? 180 : i == 10 ? 240 : i == 11 ? 90 : 40);
-        unsigned char gg = i < 9 ? rgb[i][1] : (i == 9 ? 40 : i == 10 ? 200 : i == 11 ? 40 : 80);
-        unsigned char b = i < 9 ? rgb[i][2] : (i == 9 ? 200 : i == 10 ? 40 : i == 11 ? 30 : 220);
+        unsigned char r = i < 9 ? rgb[i][0] : (i == 9 ? 180 : i == 10 ? 240 : i == 11 ? 90 : i == 12 ? 40 : 230);
+        unsigned char gg = i < 9 ? rgb[i][1] : (i == 9 ? 40 : i == 10 ? 200 : i == 11 ? 40 : i == 12 ? 80 : 230);
+        unsigned char b = i < 9 ? rgb[i][2] : (i == 9 ? 200 : i == 10 ? 40 : i == 11 ? 30 : i == 12 ? 220 : 210);
         for (pxs = 0; pxs < 16; pxs++) {
             fputc(r, f); fputc(gg, f); fputc(b, f); fputc(255, f);
         }
@@ -518,7 +533,7 @@ static int desk(const char *in, const char *dir, const char *ledger) {
     for (y = 0; y < h; y++) {
         for (x = 0; x < w; x++) {
             int k = g[y * w + x];
-            fputc(k == 9 ? '*' : k == 10 ? 'C' : k == 11 ? '@' : k == 12 ? 'A' : glyph[k], f);
+            fputc(k == 9 ? '*' : k == 10 ? 'C' : k == 11 ? '@' : k == 12 ? 'A' : k == 13 ? '+' : glyph[k], f);
         }
         fputc('\n', f);
     }
@@ -833,6 +848,24 @@ static int dig_op(const char *map, const char *ledger) {
     return 0;
 }
 
+static int place_op(const char *map, const char *ledger) {
+    int *g, w, h, sx, sy, x, y, rc;
+    FILE *f;
+    rc = load_map(map, &g, &w, &h, &sx, &sy);
+    if (rc) return rc;
+    where(ledger, sx, sy, &x, &y);
+    if (!land(g[y * w + x]) || !ledger_has_dig(ledger, x, y) || ledger_has_place(ledger, x, y)) {
+        free(g); printf("fail place\n"); return 4;
+    }
+    f = fopen(ledger, "a");
+    if (!f) { free(g); return 5; }
+    fprintf(f, "PLACE | %d | %d | block\n", x, y);
+    fclose(f);
+    printf("placed=%d,%d\n", x, y);
+    free(g);
+    return 0;
+}
+
 int main(int argc, char **argv) {
     unsigned long seed;
     int w, h;
@@ -855,6 +888,7 @@ int main(int argc, char **argv) {
     if (!strcmp(argv[1], "move") && argc == 5) return move_op(argv[2], argv[3], argv[4]);
     if (!strcmp(argv[1], "approach") && argc == 4) return approach_mineral(argv[2], argv[3]);
     if (!strcmp(argv[1], "dig") && argc == 4) return dig_op(argv[2], argv[3]);
+    if (!strcmp(argv[1], "place") && argc == 4) return place_op(argv[2], argv[3]);
     if (!strcmp(argv[1], "found") && argc == 4) return found_op(argv[2], argv[3]);
     if (!strcmp(argv[1], "eat") && argc == 4) return body_op(argv[2], argv[3], 1);
     if (!strcmp(argv[1], "sleep") && argc == 4) return body_op(argv[2], argv[3], 0);
