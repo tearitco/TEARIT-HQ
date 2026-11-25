@@ -6,6 +6,8 @@ GAME         | label              | Earth moth
 GAME         | n_chunks           | 1
 GAME         | chunk_0_x          | 0
 GAME         | chunk_0_y          | 0
-GAME         | n_desks            | 1
+GAME         | n_desks            | 2
 GAME         | desk_1_id          | earth
 GAME         | desk_1_label       | earth
+GAME         | desk_2_id          | backup
+GAME         | desk_2_label       | backup

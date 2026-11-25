@@ -591,12 +591,12 @@ static int maker_load_base(const char *root) {
             q = e;
             if (*q == ',') {      /* optional per-cell depth */
                 long dv = strtol(q + 1, &e, 10); q = e;
-                if (dv > 0 && dv <= 16) { g_mk.cdepth[(size_t)row * g_mk.w + x] = (unsigned char)dv; g_mk.cdepth_any = 1; if (dv > g_mk.zoff) g_mk.zoff = (int)dv; }
+                if (dv > 0 && dv <= 255) { g_mk.cdepth[(size_t)row * g_mk.w + x] = (unsigned char)dv; g_mk.cdepth_any = 1; if (dv > g_mk.zoff) g_mk.zoff = (int)dv; }
                 if (*q == ',') {      /* optional second run under the column: tile, depth, sink */
                     long us = strtol(q + 1, &e, 10); q = e; long ud = 0, uk = 0;
                     if (*q == ',') { ud = strtol(q + 1, &e, 10); q = e; }
                     if (*q == ',') { uk = strtol(q + 1, &e, 10); q = e; }
-                    if (us > 0 && ud > 0 && ud <= 16 && uk >= 0 && uk < ud) { size_t ci = (size_t)row * g_mk.w + x; g_mk.under[ci] = (unsigned short)us; g_mk.udep[ci] = (unsigned char)ud; g_mk.usink[ci] = (unsigned char)uk; g_mk.under_any = 1; if (ud > g_mk.zoff) g_mk.zoff = (int)ud; }
+                    if (us > 0 && ud > 0 && ud <= 255 && uk >= 0 && uk < ud) { size_t ci = (size_t)row * g_mk.w + x; g_mk.under[ci] = (unsigned short)us; g_mk.udep[ci] = (unsigned char)ud; g_mk.usink[ci] = (unsigned char)uk; g_mk.under_any = 1; if (ud > g_mk.zoff) g_mk.zoff = (int)ud; }
                 }
             }
             g_mk.cells[((size_t)row * g_mk.w + x) * 2 + 0] = (unsigned short)fl;
@@ -624,7 +624,7 @@ static int maker_load_base(const char *root) {
         snprintf(path, sizeof(path), "%s/map.txt", dir);
         f = fopen(path, "r");
         if (f) {
-            int row = 0; char mline[1024];
+            int row = 0; char mline[4096];
             while (row < g_mk.h && fgets(mline, sizeof mline, f)) {
                 for (int x = 0; x < g_mk.w && mline[x] && mline[x] != '\n'; x++) g_mk.glyph[row * g_mk.w + x] = mline[x];
                 row++;
@@ -644,9 +644,9 @@ static int maker_load_base(const char *root) {
             char g = *bar; char *bar2 = strchr(bar, '|');
             if (bar2 && g > 32 && g < 127) {
                 char *val = bar2 + 1; while (*val == ' ' || *val == '\t') val++;
-                if (is_depth) { int dv = atoi(val); if (dv > 0 && dv <= 16) { g_mk.depth[(unsigned char)g] = (unsigned char)dv; if (dv > g_mk.zoff) g_mk.zoff = dv; } }
+                if (is_depth) { int dv = atoi(val); if (dv > 0 && dv <= 255) { g_mk.depth[(unsigned char)g] = (unsigned char)dv; if (dv > g_mk.zoff) g_mk.zoff = dv; } }
                 else if (strncmp(val, "sprite", 6) == 0) g_mk.draw[(unsigned char)g] = 1;
-                else { int hv = atoi(val); if (hv > 0 && hv <= 64) g_mk.zh[(unsigned char)g] = (unsigned char)hv; else if (hv < 0 && hv >= -16) g_mk.zs[(unsigned char)g] = (unsigned char)(-hv); }
+                else { int hv = atoi(val); if (hv > 0 && hv <= 255) g_mk.zh[(unsigned char)g] = (unsigned char)hv; else if (hv < 0 && hv >= -255) g_mk.zs[(unsigned char)g] = (unsigned char)(-hv); }
             }
         }
         fclose(f);
@@ -940,7 +940,7 @@ static const char *terrain_asset_hex(char g) {
  * has_z_manifest() and the ORIGINAL single-slice 2D code below is left
  * completely untouched for that case, zero regression, zero shared
  * mutable state between the two paths. */
-#define MAX_VOXEL_Z 64
+#define MAX_VOXEL_Z 256  /* a column plus its underside. Was 64, which cut a sphere off at the floor. */
 static char g_voxel_air_glyph = '_'; /* real sentinel this project's own
     pc_generate_chunk.c writes for empty space - not yet legend-driven
     (a future terrain_legend.txt "is_air" column would be the real
@@ -3509,8 +3509,8 @@ static int render_one_frame(void) {
     if (!render_mode) { free(g_fbuf); g_fbuf = NULL; return 2; } /* 2D mode is chtpm_rgb_render's job */
 
     /* Real unified voxel grid - see load_voxel_chunk()'s own header
-     * comment for the full writeup. static: MAX_VOXEL_Z(64) *
-     * MAX_BOARD_DIM(128) * MAX_BOARD_DIM(128) = 1M chars, too big for
+     * comment for the full writeup. static: MAX_VOXEL_Z(256) *
+     * MAX_BOARD_DIM(256) * MAX_BOARD_DIM(256) is 16M chars, too big for
      * the stack. */
     static char board3d[MAX_VOXEL_Z][MAX_BOARD_DIM][MAX_BOARD_DIM];
     int board_w = 0, board_h = 0;

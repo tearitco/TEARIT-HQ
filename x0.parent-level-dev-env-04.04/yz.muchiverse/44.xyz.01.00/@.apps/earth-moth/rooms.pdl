@@ -1,2 +1,3 @@
 # Book earth-moth. Page id earth. The editor lists it from this row and from game.pdl.
 ROOM | earth | earth | 1 | 4 | over | 24 | 17 | 24 | interior
+ROOM | backup | backup | 1 | 4 | over | 24 | 17 | 24 | interior

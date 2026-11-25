@@ -1,8 +1,10 @@
-/* earth-moth: the round body is the molten core, Mineclonia lava, smaller than the page.
+/* earth-moth page earth: a full ball of the ETOPO world.
  * The desk is a projection. The ledger is the player and the animals.
  * Config (not a ledger): #.NNEST_ASSETS/rta-sources/earth-moth/ETOPO5.DAT
- * Page grid is a disc. Column height follows the sphere, so the body is round
- * in the board, not a flat square. Space outside the disc is an empty cell.
+ * Longitude runs across the disc and latitude runs up it, so Africa,
+ * the Americas, and Australia are on the face you walk. Column height
+ * and the hung underside are the same radius, so the body is a sphere.
+ * Page backup is the older ringed dome and is not written here.
  */
 #include <errno.h>
 #include <math.h>
@@ -13,31 +15,40 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#define N 72
-#define R_LAVA 12.0
-#define R_OIL 16.0
-#define R_WATER 20.0
-#define R_GRASS 24.0
+#define N 200
+#define R_BALL 92.0
 #define ETW 4320
 #define ETH 2160
 
-enum { T_EMPTY = 0, T_LAVA = 1, T_OIL = 2, T_WATER = 3, T_GRASS = 4, T_LEAVES = 5 };
+enum { T_EMPTY = 0, T_WATER = 1, T_GRASS = 2, T_SAND = 3, T_SNOW = 4, T_LEAVES = 5, T_STONE = 6, T_DIRT = 7 };
 
-/* Mineclonia has no oil block. The oil shell uses the coal block, the darkest liquid-dark block in mcl_core. */
-static const char *SHELL_PNG[] = {
-    "ITEMS/mcl_core/textures/default_lava_source_animated.png",
-    "ITEMS/mcl_core/textures/default_coal_block.png",
+static const char *TILE_PNG[] = {
     "ITEMS/mcl_core/textures/default_water_source_animated.png",
-    "ITEMS/mcl_core/textures/mcl_core_grass_block_top.png"
+    "ITEMS/mcl_core/textures/mcl_core_grass_block_top.png",
+    "ITEMS/mcl_core/textures/default_sand.png",
+    "ITEMS/mcl_core/textures/default_snow.png"
 };
 static const char *LEAVES_PNG = "ITEMS/mcl_core/textures/default_leaves.png";
+static const char *STONE_PNG = "ITEMS/mcl_core/textures/default_stone.png";
+static const char *DIRT_PNG = "ITEMS/mcl_core/textures/default_dirt.png";
+
+static int nglyph;
+static char gly[96];
+
+static void init_gly(void) {
+    int i;
+    if (nglyph) return;
+    for (i = 33; i < 127; i++) {
+        if (i == '|' || i == '.') continue;
+        gly[nglyph++] = (char)i;
+    }
+}
 
 static char hglyph(int h) {
+    init_gly();
     if (h < 1) h = 1;
-    if (h > 60) h = 60;
-    if (h <= 10) return (char)('0' + (h - 1));
-    if (h <= 36) return (char)('A' + (h - 11));
-    return (char)('a' + (h - 37));
+    if (h > nglyph) h = nglyph;
+    return gly[h - 1];
 }
 
 static int16_t *load_etopo(const char *path) {
@@ -128,25 +139,40 @@ static void blit16(FILE *o, const char *root, const char *rel) {
     free(im);
 }
 
-static int cell_of(const int16_t *e, int x, int y, int *lat_m, int *lon_m, int *hh) {
+/* Whole world on the disc. The upper height and the hung depth are the
+ * sphere radius at that cell, so the column is a chord of the ball. */
+static int cell_of(const int16_t *e, int x, int y, int *lat_m, int *lon_m, int *hh, int *dep) {
     double cx = (N - 1) / 2.0, cy = (N - 1) / 2.0;
     double dx = x - cx, dy = cy - y, dist, z, lat, lon;
-    int tile, h;
-    dist = sqrt(dx * dx + dy * dy);
-    if (dist > R_GRASS) { *hh = 0; return T_EMPTY; }
-    z = sqrt(1.0 - (dist / R_GRASS) * (dist / R_GRASS));
-    lat = asin(dy / R_GRASS) * 180.0 / M_PI;
-    lon = atan2(dx, R_GRASS * z) * 180.0 / M_PI;
-    (void)e;
+    int elev, tile, up, dn;
+    dist = hypot(dx, dy);
+    if (dist > R_BALL) { *hh = 0; if (dep) *dep = 0; return T_EMPTY; }
+    z = sqrt(1.0 - (dist / R_BALL) * (dist / R_BALL));
+    lon = (dx / R_BALL) * 180.0;
+    lat = (dy / R_BALL) * 90.0;
     if (lat_m) *lat_m = (int)lround(lat);
     if (lon_m) *lon_m = (int)lround(lon);
-    h = 4 + (int)(z * 18.0);
-    if (h > 60) h = 60;
-    if (dist <= R_LAVA) tile = T_LAVA;
-    else if (dist <= R_OIL) tile = T_OIL;
-    else if (dist <= R_WATER) tile = T_WATER;
-    else tile = T_GRASS;
-    *hh = h;
+    elev = elev_at(e, lat, lon);
+    up = (int)lround(z * R_BALL);
+    if (up < 1) up = 1;
+    dn = up;
+    if (elev <= 0) {
+        tile = T_WATER;
+        if (up > 6) up -= 5;
+    } else if (lat > 66.0 || lat < -58.0 || elev > 2200) {
+        tile = T_SNOW;
+        if (elev > 4500 && up < 250) up += 3;
+        else if (elev > 2200 && up < 250) up += 1;
+    } else if (elev < 80) {
+        tile = T_SAND;
+    } else {
+        tile = T_GRASS;
+    }
+    init_gly();
+    if (up > nglyph) up = nglyph;
+    if (dn > 255) dn = 255;
+    *hh = up;
+    if (dep) *dep = dn;
     return tile;
 }
 
@@ -161,38 +187,41 @@ static void where(const char *ledger, int sx, int sy, int *x, int *y) {
     fclose(f);
 }
 
+static int is_tree(int x, int y, int tile) {
+    return tile == T_GRASS && ((x * 13 + y * 7) % 67) == 0;
+}
+
+static int grass_open(const int16_t *e, int x, int y) {
+    int h, tile;
+    if (x < 0 || y < 0 || x >= N || y >= N) return 0;
+    tile = cell_of(e, x, y, NULL, NULL, &h, NULL);
+    return (tile == T_GRASS || tile == T_SAND || tile == T_SNOW) && !is_tree(x, y, tile);
+}
+
 static int spawn_of(const int16_t *e, int *sx, int *sy) {
     int x, y, best = 1 << 30;
     *sx = N / 2; *sy = N / 2;
     for (y = 0; y < N; y++) for (x = 0; x < N; x++) {
-        int lat, lon, h, tile = cell_of(e, x, y, &lat, &lon, &h);
+        int lat, lon, h, tile = cell_of(e, x, y, &lat, &lon, &h, NULL);
         int d;
-        if (tile == T_EMPTY) continue;
+        if (tile != T_GRASS && tile != T_SAND) continue;
+        if (is_tree(x, y, tile)) continue;
         d = abs(lat - 30) * 3 + abs(lon - 15);
         if (d < best) { best = d; *sx = x; *sy = y; }
     }
     return best < (1 << 30) ? 0 : 4;
 }
 
-static int is_tree(int x, int y, int tile) {
-    return tile == T_GRASS && ((x * 7 + y * 3) % 9) == 0;
-}
-
-static int grass_open(const int16_t *e, int x, int y) {
-    int h, tile;
-    if (x < 0 || y < 0 || x >= N || y >= N) return 0;
-    tile = cell_of(e, x, y, NULL, NULL, &h);
-    return tile == T_GRASS && !is_tree(x, y, tile);
-}
-
-/* A grass cell that is not a tree, walking the ring so the seats are not stacked. */
-static int pick_grass(const int16_t *e, int n, int *x, int *y) {
-    int i, seen = 0;
-    for (i = 0; i < N * N; i++) {
-        int xx = i % N, yy = i / N;
-        if (!grass_open(e, xx, yy)) continue;
-        if (seen == n) { *x = xx; *y = yy; return 0; }
-        seen++;
+static int pick_near(const int16_t *e, int cx, int cy, int n, int *ox, int *oy) {
+    int r, seen = 0;
+    for (r = 1; r < N; r++) {
+        int y, x;
+        for (y = cy - r; y <= cy + r; y++) for (x = cx - r; x <= cx + r; x++) {
+            if (abs(x - cx) != r && abs(y - cy) != r) continue;
+            if (!grass_open(e, x, y)) continue;
+            if (seen == n) { *ox = x; *oy = y; return 0; }
+            seen++;
+        }
     }
     return 4;
 }
@@ -210,10 +239,17 @@ static void last_of(const char *ledger, const char *kind, int *x, int *y, int *h
 }
 
 static int land_ok(const int16_t *e, int x, int y) {
-    int h, tile;
-    if (x < 0 || y < 0 || x >= N || y >= N) return 0;
-    tile = cell_of(e, x, y, NULL, NULL, &h);
-    return tile != T_EMPTY;
+    return grass_open(e, x, y);
+}
+
+static void probe(const int16_t *e, const char *name, double lat, double lon) {
+    double cx = (N - 1) / 2.0, cy = (N - 1) / 2.0;
+    int x = (int)lround(cx + (lon / 180.0) * R_BALL);
+    int y = (int)lround(cy - (lat / 90.0) * R_BALL);
+    int h, tile = cell_of(e, x, y, NULL, NULL, &h, NULL);
+    const char *tn = tile == T_WATER ? "water" : tile == T_GRASS ? "grass" :
+        tile == T_SAND ? "sand" : tile == T_SNOW ? "snow" : tile == T_EMPTY ? "empty" : "other";
+    printf("spot %s %d,%d %s h=%d\n", name, x, y, tn, h);
 }
 
 static int desk(const char *etopo, const char *mine, const char *ledger, const char *dir) {
@@ -221,14 +257,22 @@ static int desk(const char *etopo, const char *mine, const char *ledger, const c
     FILE *f;
     char path[1100];
     int x, y, sx = N / 2, sy = N / 2, px, py;
+    int nwater = 0, ngrass = 0, nsand = 0, nsnow = 0, ntree = 0;
     struct stat ms;
     if (!e) { printf("fail etopo\n"); return 5; }
+    init_gly();
     if (mkdir(dir, 0755) != 0 && errno != EEXIST) { free(e); return 5; }
     spawn_of(e, &sx, &sy);
     where(ledger, sx, sy, &px, &py);
-    if (!grass_open(e, px, py) && !pick_grass(e, 0, &px, &py)) {
-        FILE *lf = fopen(ledger, "a");
-        if (lf) { fprintf(lf, "MOVE | %d | %d | grass\n", px, py); fclose(lf); }
+    if (!grass_open(e, px, py)) {
+        px = sx; py = sy;
+        if (!grass_open(e, px, py) && pick_near(e, sx, sy, 0, &px, &py)) {
+            free(e); printf("fail land\n"); return 4;
+        }
+        {
+            FILE *lf = fopen(ledger, "a");
+            if (lf) { fprintf(lf, "MOVE | %d | %d | grass\n", px, py); fclose(lf); }
+        }
     }
     {
         const char *kinds[3] = { "CREEPER", "PIG", "COW" };
@@ -236,7 +280,7 @@ static int desk(const char *etopo, const char *mine, const char *ledger, const c
         for (k = 0; k < 3; k++) {
             last_of(ledger, kinds[k], &ax, &ay, &have);
             if (have && grass_open(e, ax, ay)) continue;
-            if (pick_grass(e, 4 + k * 5, &ax, &ay)) continue;
+            if (pick_near(e, px, py, 2 + k * 3, &ax, &ay)) continue;
             {
                 FILE *lf = fopen(ledger, "a");
                 if (lf) { fprintf(lf, "%s | %d | %d\n", kinds[k], ax, ay); fclose(lf); }
@@ -246,12 +290,21 @@ static int desk(const char *etopo, const char *mine, const char *ledger, const c
     snprintf(path, sizeof path, "%s/cells.txt", dir);
     f = fopen(path, "w");
     if (!f) { free(e); return 5; }
-    fprintf(f, "width=%d\nheight=%d\ntile_px=16\natlas_cols=8\natlas_tiles=8\ncells\n", N, N);
+    fprintf(f, "width=%d\nheight=%d\ntile_px=16\natlas_cols=8\natlas_tiles=8\nevent_lift=1\ncells\n", N, N);
     for (y = 0; y < N; y++) {
         for (x = 0; x < N; x++) {
-            int h, tile = cell_of(e, x, y, NULL, NULL, &h);
-            if (is_tree(x, y, tile)) tile = T_LEAVES;
-            fprintf(f, "%s%d,0", x ? " " : "", tile);
+            int h, dep = 0, tile = cell_of(e, x, y, NULL, NULL, &h, &dep);
+            if (tile == T_WATER) nwater++;
+            else if (tile == T_GRASS) ngrass++;
+            else if (tile == T_SAND) nsand++;
+            else if (tile == T_SNOW) nsnow++;
+            if (is_tree(x, y, tile)) { tile = T_LEAVES; ntree++; }
+            /* Floor slot is the surface. Wall slot is stone: one column is
+             * one solid run, so the Minecraft dirt band (the three cells
+             * under the surface) cannot be its own voxels. The formula
+             * verb prints that band. Sides read as the interior. */
+            if (tile == T_EMPTY) fprintf(f, "%s0,0", x ? " " : "");
+            else fprintf(f, "%s%d,%d,%d", x ? " " : "", tile, T_STONE, dep);
         }
         fputc('\n', f);
     }
@@ -259,20 +312,21 @@ static int desk(const char *etopo, const char *mine, const char *ledger, const c
     snprintf(path, sizeof path, "%s/cells.rgba", dir);
     f = fopen(path, "w");
     if (!f) { free(e); return 5; }
-    /* Slot 0 empty, then lava, oil, water, grass. Pad to 8 tiles. */
     for (y = 0; y < 16 * 16; y++) { fputc(0, f); fputc(0, f); fputc(0, f); fputc(0, f); }
-    for (x = 0; x < 4; x++) blit16(f, mine, SHELL_PNG[x]);
+    for (x = 0; x < 4; x++) blit16(f, mine, TILE_PNG[x]);
     blit16(f, mine, LEAVES_PNG);
-    for (x = 6; x < 8; x++) for (y = 0; y < 16 * 16; y++) { fputc(0, f); fputc(0, f); fputc(0, f); fputc(0, f); }
+    blit16(f, mine, STONE_PNG);
+    blit16(f, mine, DIRT_PNG);
     fclose(f);
     snprintf(path, sizeof path, "%s/map.txt", dir);
     f = fopen(path, "w");
     if (!f) { free(e); return 5; }
     for (y = 0; y < N; y++) {
         for (x = 0; x < N; x++) {
-            int h, tile = cell_of(e, x, y, NULL, NULL, &h);
-            if (is_tree(x, y, tile)) h += 12;
-            fputc(tile == T_EMPTY ? '.' : hglyph(h), f);
+            int h, tile = cell_of(e, x, y, NULL, NULL, &h, NULL);
+            if (tile == T_EMPTY) { fputc('.', f); continue; }
+            if (is_tree(x, y, tile) && h < nglyph) h += 8;
+            fputc(hglyph(h), f);
         }
         fputc('\n', f);
     }
@@ -281,7 +335,7 @@ static int desk(const char *etopo, const char *mine, const char *ledger, const c
     f = fopen(path, "w");
     if (!f) { free(e); return 5; }
     fputs("EXTRUDE | . | 1\n", f);
-    for (x = 1; x <= 60; x++) fprintf(f, "EXTRUDE | %c | %d\n", hglyph(x), x);
+    for (x = 1; x <= nglyph; x++) fprintf(f, "EXTRUDE | %c | %d\n", hglyph(x), x);
     fclose(f);
     snprintf(path, sizeof path, "%s/events.txt", dir);
     f = fopen(path, "w");
@@ -306,7 +360,14 @@ static int desk(const char *etopo, const char *mine, const char *ledger, const c
         f = fopen(path, restart ? "w" : "a");
         if (f) { fputc('1', f); fclose(f); }
     }
-    printf("desk=%s player=%d,%d spawn=%d,%d\n", dir, px, py, sx, sy);
+    printf("desk=%s player=%d,%d spawn=%d,%d water=%d grass=%d sand=%d snow=%d trees=%d\n",
+           dir, px, py, sx, sy, nwater, ngrass, nsand, nsnow, ntree);
+    probe(e, "africa", 5, 20);
+    probe(e, "samerica", -15, -60);
+    probe(e, "namerica", 40, -100);
+    probe(e, "australia", -25, 135);
+    probe(e, "pacific", 0, -160);
+    probe(e, "himalaya", 28, 87);
     free(e);
     return 0;
 }
@@ -344,7 +405,7 @@ static int step_op(const char *etopo, const char *ledger, const char *dir) {
     else if (!strcmp(dir, "n")) dy = -1;
     else { free(e); printf("fail dir\n"); return 2; }
     nx = x + dx; ny = y + dy;
-    /* A person walks the grass. Lava, oil, water, and a tree trunk refuse the step. */
+    /* Open land: grass, sand, or snow. Water and a tree refuse the step. */
     if (!grass_open(e, nx, ny)) { free(e); printf("fail step\n"); return 4; }
     f = fopen(ledger, "a");
     if (!f) { free(e); return 5; }
@@ -386,13 +447,37 @@ static int animals_op(const char *etopo, const char *ledger) {
     return 0;
 }
 
+/* Same chord as cell_of, and the chunk formula from pc_generate_chunk:
+ * z == surface is the tile, the next three are dirt, the rest is stone.
+ * A desk column cannot store that stack, so the wall slot is stone. */
+static int formula_op(void) {
+    double z = sqrt(1.0 - 0.0);
+    int up = (int)lround(z * R_BALL);
+    int surface = up;
+    printf("FORMULA chord R=92 center up=%d dn=%d\n", up, up);
+    printf("FORMULA outside dist>92 empty\n");
+    printf("FORMULA ocean elev<=0 water dip=5\n");
+    printf("FORMULA mc z==surface tile z>=surface-3 dirt else stone\n");
+    printf("FORMULA example surface=%d dirt=%d,%d,%d stone=%d\n",
+           surface, surface - 3, surface - 2, surface - 1, surface - 4);
+    printf("FORMULA slots floor=surface wall=stone\n");
+    printf("FORMULA atlas stone=%d dirt=%d\n", T_STONE, T_DIRT);
+    if (up != (int)R_BALL) { printf("fail chord\n"); return 4; }
+    return 0;
+}
+
 int main(int argc, char **argv) {
     const char *cmd = argc > 1 ? argv[1] : "";
+    if (!strcmp(cmd, "formula")) {
+        if (argc != 2) { fprintf(stderr, "fail formula\n"); return 2; }
+        return formula_op();
+    }
     if (argc >= 6 && !strcmp(cmd, "desk")) return desk(argv[2], argv[3], argv[4], argv[5]);
     if (argc >= 4 && !strcmp(cmd, "spawn")) return ensure_ledger(argv[2], argv[3]);
     if (argc >= 5 && !strcmp(cmd, "step")) return step_op(argv[2], argv[3], argv[4]);
     if (argc >= 4 && !strcmp(cmd, "animals")) return animals_op(argv[2], argv[3]);
-    fprintf(stderr, "usage: earth_moth_op desk <etopo> <mineclonia-mods> <ledger> <deskdir>\n"
+    fprintf(stderr, "usage: earth_moth_op formula\n"
+                    "       earth_moth_op desk <etopo> <mineclonia-mods> <ledger> <deskdir>\n"
                     "       earth_moth_op spawn <etopo> <ledger>\n"
                     "       earth_moth_op step <etopo> <ledger> n|e|s|w\n"
                     "       earth_moth_op animals <etopo> <ledger>\n");
