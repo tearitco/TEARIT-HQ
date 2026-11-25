@@ -4622,6 +4622,30 @@ static int render_one_frame(void) {
                 if (!strncmp(g_mk.ev[i].name, "item:", 5)) {      /* a DROPPED item (rmmc): a 0.28 cube in the block's colour hovering above the column top, bobbing on the wall clock; the projection writes it and takes it away when it is collected */
                     struct timespec it; clock_gettime(CLOCK_MONOTONIC, &it); float bob = 0.06f * sinf((float)(((long long)it.tv_sec * 1000 + it.tv_nsec / 1000000) % 1600) * 6.2831853f / 1600.f), hy = 1.0f + lift + 0.22f + bob;
                     ADDBOX(g_mk.ev[i].x + 0.33f, hy, g_mk.ev[i].y + 0.33f, g_mk.ev[i].x + 0.67f, hy + 0.34f, g_mk.ev[i].y + 0.67f, g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
+                } else if (!strncmp(g_mk.ev[i].name, "tree:", 5)) {      /* A TREE (rmmc): tree:<trunk>:<crown_r>:<crown_h>. A trunk box (wood brown) stands on the column top and a crown box in the event colour FLOATS on it: the crown spans crown_h blocks and
+                     * its lowest block is crown_h - 1 under the trunk top, so the trunk shows below the leaves (the old column tree had leaves from the ground up and the trunk poking out of the top). Radius 2 or more gets a one block cap. The numbers are TREE rows of biomes.pdl. */
+                    int tk = 5, cr = 1, ch = 3; sscanf(g_mk.ev[i].name + 5, "%d:%d:%d", &tk, &cr, &ch); if (tk < 1) tk = 1; if (tk > 16) tk = 16; if (cr < 0) cr = 0; if (cr > 4) cr = 4; if (ch < 1) ch = 1; if (ch > 8) ch = 8;
+                    float tx = (float)g_mk.ev[i].x, tz = (float)g_mk.ev[i].y, yb = 1.0f + lift, ytop = yb + (float)tk + 1.0f, ybot = ytop - (float)ch;
+                    ADDBOX(tx + 0.32f, yb, tz + 0.32f, tx + 0.68f, ytop - 0.5f, tz + 0.68f, 107, 79, 42, 0);
+                    /* LEAF TEXTURE: each crown box carries an 8x8x8 voxel model (one slot, the box size is the scale) of three leaf shades with about one voxel in ten missing, hashed from the tree's cell so no two crowns match. */
+                    #define LEAFMODEL(bn0) do { if (sc.box_n > (bn0) && sc.model_n < BV_GPU_MAX_MODEL) { int mm = sc.model_n++; memset(sc.model_vox[mm], 0, sizeof(sc.model_vox[mm])); \
+                        for (int lz = 0; lz < 8; lz++) for (int ly = 0; ly < 8; ly++) for (int lx = 0; lx < 8; lx++) { \
+                            unsigned hh = (unsigned)(lx * 73856093) ^ (unsigned)(ly * 19349663) ^ (unsigned)(lz * 83492791) ^ (unsigned)((g_mk.ev[i].x * 31 + g_mk.ev[i].y) * 2654435761u); hh ^= hh >> 13; hh *= 1274126177u; hh ^= hh >> 16; \
+                            int vv = (int)(hh % 100); if (vv < 10) continue; float sh = vv < 40 ? 0.74f : vv < 75 ? 1.0f : 1.22f; \
+                            unsigned char *pp = &sc.model_vox[mm][((lz * BV_GPU_MDL_DIM + ly) * BV_GPU_MDL_DIM + lx) * 4]; int c0 = (int)(g_mk.ev[i].r * sh), c1 = (int)(g_mk.ev[i].g * sh), c2 = (int)(g_mk.ev[i].b * sh); \
+                            pp[0] = (unsigned char)(c0 > 255 ? 255 : c0); pp[1] = (unsigned char)(c1 > 255 ? 255 : c1); pp[2] = (unsigned char)(c2 > 255 ? 255 : c2); pp[3] = 255; } \
+                        sc.model_dim[mm][0] = sc.model_dim[mm][1] = sc.model_dim[mm][2] = 8; sc.box[sc.box_n - 1].model = mm; } } while (0)
+                    int lb0 = sc.box_n;
+                    ADDBOX(tx - (float)cr, ybot, tz - (float)cr, tx + (float)cr + 1.0f, ytop, tz + (float)cr + 1.0f, g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0); LEAFMODEL(lb0);
+                    if (cr >= 2) { int lb1 = sc.box_n; ADDBOX(tx - (float)cr + 1.0f, ytop, tz - (float)cr + 1.0f, tx + (float)cr, ytop + 1.0f, tz + (float)cr, g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0); LEAFMODEL(lb1); }
+                    #undef LEAFMODEL
+                } else if (!strncmp(g_mk.ev[i].name, "chip:", 5)) {      /* BREAK CHIPS (rmmc): chip:<n> = n tiny cubes in the block's colour that fly out of the broken cell, rise, fall and shrink, in a 1.6 s loop on the wall clock (half the loop is the burst, half is calm); the projection writes it next to the item: event and takes it away with it */
+                    int nc = atoi(g_mk.ev[i].name + 5); if (nc < 1) nc = 1; if (nc > 12) nc = 12; struct timespec ct; clock_gettime(CLOCK_MONOTONIC, &ct);
+                    float ph = (float)(((long long)ct.tv_sec * 1000 + ct.tv_nsec / 1000000) % 1600) / 1600.f;
+                    if (ph < 0.5f) { float q = ph / 0.5f;
+                        for (int k = 0; k < nc; k++) { float ang = (float)k * 6.2831853f / (float)nc + (float)k * 0.7f, rad = (0.12f + 0.55f * q) * (0.8f + 0.12f * (float)(k % 3)), hgt = 0.15f + 1.7f * q * (1.0f - q) * (1.0f + 0.3f * (float)(k % 2)), sz = 0.07f * (1.0f - 0.5f * q);
+                            float cx = (float)g_mk.ev[i].x + 0.5f + cosf(ang) * rad, cz = (float)g_mk.ev[i].y + 0.5f + sinf(ang) * rad, cy = 1.0f + lift + 0.35f + hgt;
+                            ADDBOX(cx - sz, cy - sz, cz - sz, cx + sz, cy + sz, cz + sz, g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0); } }
                 } else if (!strncmp(g_mk.ev[i].name, "crack:", 6)) {      /* BREAK DAMAGE (rmmc): crack:<1..3> = dark slits down all four faces from the top edge, and lines across the top, more and longer with each stage (thin boxes a hair outside the block) */
                     int st = atoi(g_mk.ev[i].name + 6); if (st < 1) st = 1; if (st > 3) st = 3; float x0 = (float)g_mk.ev[i].x, z0 = (float)g_mk.ev[i].y, yt = 1.0f + lift, e = 0.015f, w = 0.07f;
                     unsigned char cr = g_mk.ev[i].r, cg = g_mk.ev[i].g, cb = g_mk.ev[i].b;
