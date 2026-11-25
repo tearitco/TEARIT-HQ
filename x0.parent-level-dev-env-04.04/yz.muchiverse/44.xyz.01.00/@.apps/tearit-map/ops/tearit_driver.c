@@ -33,9 +33,21 @@ static int run_op(char *const av[]) {
     return WIFEXITED(st) && WEXITSTATUS(st) == 0 ? 0 : 1;
 }
 
-static void publish(const char *feed, int on, const char *msg, const char *op, const char *ledger) {
-    char tmp[1400];
+static int fog_on(const char *edit) {
+    char p[1100], ln[8];
     FILE *f;
+    snprintf(p, sizeof p, "%s/state/games/tearit-map/fog.txt", edit);
+    f = fopen(p, "r");
+    if (!f) return 1;
+    if (!fgets(ln, sizeof ln, f)) { fclose(f); return 1; }
+    fclose(f);
+    return ln[0] != '0';
+}
+
+static void publish(const char *feed, int on, const char *msg, const char *op, const char *ledger, const char *dir, const char *edit) {
+    char tmp[1600];
+    FILE *f;
+    const char *fl = fog_on(edit) ? "Fog on" : "Fog off";
     snprintf(tmp, sizeof tmp, "%s.tmp", feed);
     f = fopen(tmp, "w");
     if (!f) return;
@@ -43,33 +55,36 @@ static void publish(const char *feed, int on, const char *msg, const char *op, c
     else {
         /* The board already draws this feed: gm_pop empty hides the centre popup, gmbar_on shows the bottom strip in its place. */
         fprintf(f, "gm_on=1\ngm_pid=%ld\ngm_pop=\ngmbar_on=1\n", (long)getpid());
-        fprintf(f, "gmbar_title=%s\ngmbar_n=5\n", msg && *msg ? msg : "Tearit map");
+        fprintf(f, "gmbar_title=%s\ngmbar_n=6\n", msg && *msg ? msg : "Tearit map");
         fprintf(f, "gmbar_0_label=North\ngmbar_0_act='%s' step '%s' '%s' n\n", op, ledger, ledger);
         fprintf(f, "gmbar_1_label=East\ngmbar_1_act='%s' step '%s' '%s' e\n", op, ledger, ledger);
         fprintf(f, "gmbar_2_label=South\ngmbar_2_act='%s' step '%s' '%s' s\n", op, ledger, ledger);
         fprintf(f, "gmbar_3_label=West\ngmbar_3_act='%s' step '%s' '%s' w\n", op, ledger, ledger);
         fprintf(f, "gmbar_4_label=Dig\ngmbar_4_act='%s' dig '%s' '%s'\n", op, ledger, ledger);
+        fprintf(f, "gmbar_5_label=%s\ngmbar_5_act='%s' fog '%s' '%s'\n", fl, op, ledger, dir);
     }
     fclose(f);
     rename(tmp, feed);
 }
 
 /* The left stamp row already exists. Its list is stamps_ui.txt. */
-static void stamps(const char *edit, int on, const char *op, const char *ledger) {
-    char path[1100], tmp[1100];
+static void stamps(const char *edit, int on, const char *op, const char *ledger, const char *dir) {
+    char path[1000], tmp[1100];
     FILE *f;
+    const char *fl = fog_on(edit) ? "Fog on" : "Fog off";
     snprintf(path, sizeof path, "%s/state/stamps_ui.txt", edit);
     snprintf(tmp, sizeof tmp, "%s.tmp", path);
     f = fopen(tmp, "w");
     if (!f) return;
     if (!on) fputs("stamp_on=\nn_stamp=0\n", f);
     else {
-        fputs("stamp_on=1\nn_stamp=5\n", f);
+        fputs("stamp_on=1\nn_stamp=6\n", f);
         fprintf(f, "stamp_0_label=North\nstamp_0_act='%s' step '%s' '%s' n\n", op, ledger, ledger);
         fprintf(f, "stamp_1_label=East\nstamp_1_act='%s' step '%s' '%s' e\n", op, ledger, ledger);
         fprintf(f, "stamp_2_label=South\nstamp_2_act='%s' step '%s' '%s' s\n", op, ledger, ledger);
         fprintf(f, "stamp_3_label=West\nstamp_3_act='%s' step '%s' '%s' w\n", op, ledger, ledger);
         fprintf(f, "stamp_4_label=Dig\nstamp_4_act='%s' dig '%s' '%s'\n", op, ledger, ledger);
+        fprintf(f, "stamp_5_label=%s\nstamp_5_act='%s' fog '%s' '%s'\n", fl, op, ledger, dir);
     }
     fclose(f);
     rename(tmp, path);
@@ -176,8 +191,8 @@ int main(int argc, char **argv) {
     bars(argv[1], book, edit, "play");
     hotbar_read(edit);
     hotbar(edit, "0");
-    stamps(edit, 1, op, ledger);
-    publish(feed, 1, "Tearit map", op, ledger);
+    stamps(edit, 1, op, ledger, deskdir);
+    publish(feed, 1, "Tearit map", op, ledger, deskdir, edit);
     { const char *ow = getenv("GAME_OWNER_PID"); long owner = ow ? atol(ow) : 0; long led_m = 0;
     if (!stat(ledger, &st)) led_m = (long)st.st_mtime;
     while (!stop_) {
@@ -195,14 +210,14 @@ int main(int argc, char **argv) {
             if (cursor > 65536 && truncate(act, 0) == 0) cursor = 0;
         } else if (!stat(act, &st) && st.st_size < cursor) cursor = 0;
         if (!stat(ledger, &st) && (long)st.st_mtime != led_m) { led_m = (long)st.st_mtime; desk(op, ledger, deskdir); }
-        publish(feed, 1, "Tearit map", op, ledger);
-        stamps(edit, 1, op, ledger);
+        publish(feed, 1, "Tearit map", op, ledger, deskdir, edit);
+        stamps(edit, 1, op, ledger, deskdir);
         usleep(250000);
     }
     bars(argv[1], book, edit, "edit");
     hotbar(edit, hb_was);
-    stamps(edit, 0, op, ledger);
+    stamps(edit, 0, op, ledger, deskdir);
     }
-    publish(feed, 0, "", op, ledger);
+    publish(feed, 0, "", op, ledger, deskdir, edit);
     return 0;
 }

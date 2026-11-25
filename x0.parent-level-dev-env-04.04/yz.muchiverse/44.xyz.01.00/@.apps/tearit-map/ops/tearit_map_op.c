@@ -577,6 +577,29 @@ static int count_rows(const char *ledger, const char *prefix) {
     return n;
 }
 
+/* Dev view only. fog.txt sits beside the game folder, never in the ledger. Missing or 1 draws the fog. 0 shows every cell. */
+static void fog_path(const char *ledger, char *out, size_t n) {
+    char tmp[1024];
+    char *s, *g;
+    snprintf(tmp, sizeof tmp, "%s", ledger ? ledger : "");
+    s = strrchr(tmp, '/');
+    if (s) *s = 0;
+    g = strrchr(tmp, '/');
+    if (g && !strcmp(g + 1, "game")) *g = 0;
+    snprintf(out, n, "%s/fog.txt", tmp);
+}
+static int fog_drawn(const char *ledger) {
+    char p[1100], ln[8];
+    FILE *f;
+    if (!ledger) return 1;
+    fog_path(ledger, p, sizeof p);
+    f = fopen(p, "r");
+    if (!f) return 1;
+    if (!fgets(ln, sizeof ln, f)) { fclose(f); return 1; }
+    fclose(f);
+    return ln[0] != '0';
+}
+
 static int desk(const char *in, const char *dir, const char *ledger) {
     FILE *f = fopen(in, "r");
     char line[256], kind[32], path[512];
@@ -620,7 +643,7 @@ static int desk(const char *in, const char *dir, const char *ledger) {
         g[ay * w + ax] = 12;
     {
         int *seen = calloc((size_t)w * h, sizeof(int));
-        int fog = 0;
+        int fog = 0, draw = fog_drawn(ledger);
         FILE *mv;
         if (!seen) { free(g); return 5; }
         mark_seen(seen, w, h, sx, sy);
@@ -631,15 +654,15 @@ static int desk(const char *in, const char *dir, const char *ledger) {
             }
             fclose(mv);
         }
-        if (py >= 0 && py < h && px >= 0 && px < w && seen[py * w + px] && ne < 8) {
+        if (py >= 0 && py < h && px >= 0 && px < w && (draw ? seen[py * w + px] : 1) && ne < 8) {
             snprintf(eid[ne], 16, "seat0"); snprintf(enam[ne], 16, "person"); snprintf(ehex[ne], 8, "1F9D1");
             exs[ne] = px; eys[ne] = py; ewhich[ne] = 0; ne++;
         }
-        if (ax >= 0 && ay >= 0 && ay < h && ax < w && seen[ay * w + ax] && ne < 8) {
+        if (ax >= 0 && ay >= 0 && ay < h && ax < w && (draw ? seen[ay * w + ax] : 1) && ne < 8) {
             snprintf(eid[ne], 16, "seat1"); snprintf(enam[ne], 16, "robot"); snprintf(ehex[ne], 8, "1F916");
             exs[ne] = ax; eys[ne] = ay; ewhich[ne] = 1; ne++;
         }
-        if (mx >= 0 && my >= 0 && my < h && mx < w && seen[my * w + mx] && !ledger_has_dig(ledger, mx, my) && !ledger_has_place(ledger, mx, my) && ne < 8) {
+        if (mx >= 0 && my >= 0 && my < h && mx < w && (draw ? seen[my * w + mx] : 1) && !ledger_has_dig(ledger, mx, my) && !ledger_has_place(ledger, mx, my) && ne < 8) {
             snprintf(eid[ne], 16, "mineral"); snprintf(enam[ne], 16, "gem"); snprintf(ehex[ne], 8, "1F48E");
             exs[ne] = mx; eys[ne] = my; ewhich[ne] = 3; ne++;
         }
@@ -649,7 +672,7 @@ static int desk(const char *in, const char *dir, const char *ledger) {
             int ncity = 0, a, b;
             if (cf) {
                 while (fgets(cl, sizeof cl, cf)) {
-                    if (sscanf(cl, "FOUND | %d | %d", &a, &b) == 2 && a >= 0 && b >= 0 && a < w && b < h && seen[b * w + a] && ne < 8) {
+                    if (sscanf(cl, "FOUND | %d | %d", &a, &b) == 2 && a >= 0 && b >= 0 && a < w && b < h && (draw ? seen[b * w + a] : 1) && ne < 8) {
                         snprintf(eid[ne], 16, "city%d", ncity); snprintf(enam[ne], 16, "castle"); snprintf(ehex[ne], 8, "1F3F0");
                         exs[ne] = a; eys[ne] = b; ewhich[ne] = 2; ne++; ncity++;
                     }
@@ -657,9 +680,9 @@ static int desk(const char *in, const char *dir, const char *ledger) {
                 fclose(cf);
             }
         }
-        for (i = 0; i < w * h; i++) if (!seen[i]) { g[i] = 14; fog++; }
+        for (i = 0; i < w * h; i++) if (!seen[i]) { fog++; if (draw) g[i] = 14; }
         free(seen);
-        printf("fog=%d cities=%d entities=%d\n", fog, count_rows(ledger, "FOUND |"), ne);
+        printf("fog=%d draw=%s cities=%d entities=%d\n", fog, draw ? "fog" : "all", count_rows(ledger, "FOUND |"), ne);
     }
     if (mkdir(dir, 0755) != 0 && errno != EEXIST) { free(g); return 5; }
     snprintf(path, sizeof path, "%s/cells.txt", dir);
@@ -1211,6 +1234,19 @@ static int place_op(const char *map, const char *ledger) {
     return 0;
 }
 
+static int fog_op(const char *ledger, const char *dir) {
+    char p[1100];
+    int on = fog_drawn(ledger);
+    FILE *f;
+    fog_path(ledger, p, sizeof p);
+    f = fopen(p, "w");
+    if (!f) return 5;
+    fprintf(f, "%d\n", on ? 0 : 1);
+    fclose(f);
+    printf("fog=%s\n", on ? "off" : "on");
+    return desk(ledger, dir, ledger);
+}
+
 int main(int argc, char **argv) {
     unsigned long seed;
     int w, h;
@@ -1244,5 +1280,6 @@ int main(int argc, char **argv) {
     if (!strcmp(argv[1], "sleep") && argc == 4) return body_op(argv[2], argv[3], 0);
     if (!strcmp(argv[1], "agent") && argc == 4) return agent_op(argv[2], argv[3], "near");
     if (!strcmp(argv[1], "agent") && argc == 5) return agent_op(argv[2], argv[3], argv[4]);
+    if (!strcmp(argv[1], "fog") && argc == 4) return fog_op(argv[2], argv[3]);
     return 2;
 }
