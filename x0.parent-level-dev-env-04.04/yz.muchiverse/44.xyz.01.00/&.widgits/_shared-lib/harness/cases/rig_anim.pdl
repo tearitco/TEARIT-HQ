@@ -1,0 +1,79 @@
+# Rig schema 2 (BOOK 16.game/TUTORIAL-HARNESS-ONBOARDING-GAMIFICATION-AND-NEAR-TERM-DRIVE-PLAN-2026-11-26.md sections 9 and 11, decision D140). Pure header bv_rig_anim.h + op rig_pose_op; no window, no engine.
+# Expected numbers are worked out by hand from the geometry (a part's box is [-pivot, size-pivot], the pivot is the part's origin), not copied from the op.
+RESULTS | ../results/rig_anim.txt
+ENV | LC_ALL | C
+CASE | rest-pose-tree-and-rotation-about-the-shoulder
+SCRATCH |
+COPY | &.widgits/board-viewer/ops/bv_rig_anim.h | bv_rig_anim.h
+COPY | &.widgits/board-viewer/ops/rig_pose_op.c | rig_pose_op.c
+RUN | /usr/bin/gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/pose | $T/rig_pose_op.c | -lm
+EXPECT_EXIT | 0 | the-evaluator-and-op-compile-alone-without-warnings-as-errors
+WRITE | rig.pdl | # a body, an arm hanging from the right shoulder, and a second arm held out sideways\nSCHEMA \p rig \p 2\nPART \p body \p - \p box \p 1 \p 0.5 0.75 0.25 \p 0.25 0 0.125 \p 0 0.75 0 \p 0 0 0 \p 1 1 1 \p 255 \p skin\nPART \p arm_r \p body \p box \p 1 \p 0.25 0.75 0.25 \p 0.125 0.75 0.125 \p 0.375 0.7 0 \p 0 0 0 \p 1 1 1 \p 255 \p skin\nPART \p arm_l \p body \p box \p 1 \p 0.25 0.75 0.25 \p 0.125 0.75 0.125 \p -0.375 0.7 0 \p 0 0 90 \p 1 1 1 \p 128 \p glass \p a-future-column-is-ignored\nWHATEVER \p a row type nobody knows yet\n
+RUN | $T/pose | $T/rig.pdl | - | 0
+EXPECT_EXIT | 0 | a-schema-2-file-poses
+EXPECT_OUT | schema=2 parts=3 anims=0 tracks=0 | the-three-parts-are-read-and-the-unknown-row-is-ignored
+EXPECT_OUT | part body pivot 0.000 0.750 0.000 aabb -0.250 0.750 -0.125 0.250 1.500 0.125 alpha 255 | the-body-box-is-its-size-around-its-pivot
+EXPECT_OUT | part arm_r pivot 0.375 1.450 0.000 aabb 0.250 0.700 -0.125 0.500 1.450 0.125 alpha 255 | the-child-arm-hangs-from-the-shoulder-in-the-parents-space
+EXPECT_OUT | part arm_l pivot -0.375 1.450 0.000 aabb -0.375 1.325 -0.125 0.375 1.575 0.125 alpha 128 | a-90-degree-roll-about-the-shoulder-swings-the-hanging-arm-out-sideways-and-the-alpha-is-kept
+CLEAN |
+CASE | animation-tracks-eases-loop-and-the-parent-carries-the-child
+SCRATCH |
+COPY | &.widgits/board-viewer/ops/bv_rig_anim.h | bv_rig_anim.h
+COPY | &.widgits/board-viewer/ops/rig_pose_op.c | rig_pose_op.c
+RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -o | $T/pose | $T/rig_pose_op.c | -lm
+EXPECT_EXIT | 0 | compiles
+WRITE | rig.pdl | SCHEMA \p rig \p 2\nPART \p body \p - \p box \p 1 \p 0.5 0.75 0.25 \p 0.25 0 0.125 \p 0 0.75 0 \p 0 0 0 \p 1 1 1 \p 255 \p skin\nPART \p arm_r \p body \p box \p 1 \p 0.25 0.75 0.25 \p 0.125 0.75 0.125 \p 0.375 0.7 0 \p 0 0 0 \p 1 1 1 \p 255 \p skin\nANIM \p lift \p 1000 \p 0\nTRACK \p lift \p body \p pos_y \p 0 \p 0.75 \p linear\nTRACK \p lift \p body \p pos_y \p 1000 \p 1.75 \p linear\nANIM \p swing \p 800 \p loop\nTRACK \p swing \p arm_r \p rot_z \p 0 \p 90 \p sine\nTRACK \p swing \p arm_r \p rot_z \p 400 \p -90 \p sine\n
+RUN | $T/pose | $T/rig.pdl | lift | 1000
+EXPECT_OUT | part body pivot 0.000 1.750 0.000 | the-body-rose-one-block-at-the-end-of-the-lift
+EXPECT_OUT | part arm_r pivot 0.375 2.450 0.000 aabb 0.250 1.700 -0.125 0.500 2.450 0.125 alpha 255 | the-arm-rose-with-its-parent-and-kept-its-offset
+RUN | $T/pose | $T/rig.pdl | lift | 500
+EXPECT_OUT | part body pivot 0.000 1.250 0.000 | linear-halfway-is-halfway
+RUN | $T/pose | $T/rig.pdl | lift | 5000
+EXPECT_OUT | part body pivot 0.000 1.750 0.000 | a-non-looping-animation-holds-its-last-key
+RUN | $T/pose | $T/rig.pdl | swing | 0
+EXPECT_OUT | part arm_r pivot 0.375 1.450 0.000 aabb 0.375 1.325 -0.125 1.125 1.575 0.125 | at-t-0-the-arm-is-rolled-90-and-points-out
+RUN | $T/pose | $T/rig.pdl | swing | 200
+EXPECT_OUT | part arm_r pivot 0.375 1.450 0.000 aabb 0.250 0.700 -0.125 0.500 1.450 0.125 | a-sine-ease-halfway-between-90-and-minus-90-is-0-the-arm-hangs
+RUN | $T/pose | $T/rig.pdl | swing | 400
+EXPECT_OUT | part arm_r pivot 0.375 1.450 0.000 aabb -0.375 1.325 -0.125 0.375 1.575 0.125 | at-400-the-arm-is-rolled-minus-90-and-points-across-the-body
+RUN | $T/pose | $T/rig.pdl | swing | 800
+EXPECT_OUT | part arm_r pivot 0.375 1.450 0.000 aabb 0.375 1.325 -0.125 1.125 1.575 0.125 | the-loop-wraps-at-the-length-back-to-the-first-key
+RUN | $T/pose | $T/rig.pdl | swing | 1000
+EXPECT_OUT | part arm_r pivot 0.375 1.450 0.000 aabb 0.250 0.700 -0.125 0.500 1.450 0.125 | t-1000-in-a-800-loop-is-t-200
+CLEAN |
+CASE | mutant-parents-ignored-must-be-caught-and-bad-input-is-refused
+SCRATCH |
+COPY | &.widgits/board-viewer/ops/bv_rig_anim.h | bv_rig_anim.h
+COPY | &.widgits/board-viewer/ops/rig_pose_op.c | rig_pose_op.c
+RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -o | $T/pose | $T/rig_pose_op.c | -lm
+EXPECT_EXIT | 0 | compiles
+RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -DBV_RIG_ANIM_MUTANT_NO_PARENT | -o | $T/mut | $T/rig_pose_op.c | -lm
+EXPECT_EXIT | 0 | the-mutant-compiles
+WRITE | rig.pdl | SCHEMA \p rig \p 2\nPART \p body \p - \p box \p 1 \p 0.5 0.75 0.25 \p 0.25 0 0.125 \p 0 0.75 0 \p 0 0 0 \p 1 1 1 \p 255 \p skin\nPART \p arm_r \p body \p box \p 1 \p 0.25 0.75 0.25 \p 0.125 0.75 0.125 \p 0.375 0.7 0 \p 0 0 0 \p 1 1 1 \p 255 \p skin\n
+RUN | $T/pose | $T/rig.pdl | - | 0
+EXPECT_OUT | part arm_r pivot 0.375 1.450 0.000 | the-real-evaluator-puts-the-arm-on-the-shoulder
+RUN | $T/mut | $T/rig.pdl | - | 0
+EXPECT_OUT_LACKS | part arm_r pivot 0.375 1.450 0.000 | MUTANT-with-parents-ignored-no-longer-puts-the-arm-on-the-shoulder-so-the-parent-check-would-be-red
+EXPECT_OUT | part arm_r pivot 0.375 0.700 0.000 | the-mutant-leaves-the-arm-at-its-own-offset-in-world-space
+WRITE | orphan.pdl | SCHEMA \p rig \p 2\nPART \p arm \p nobody \p box \p 1 \p 1 1 1 \p 0 0 0 \p 0 0 0 \p 0 0 0 \p 1 1 1 \p 255 \p skin\n
+RUN | $T/pose | $T/orphan.pdl | - | 0
+EXPECT_EXIT | 4 | NEGATIVE-a-part-naming-an-unknown-parent-is-refused-4
+WRITE | badanim.pdl | SCHEMA \p rig \p 2\nPART \p a \p - \p box \p 1 \p 1 1 1 \p 0 0 0 \p 0 0 0 \p 0 0 0 \p 1 1 1 \p 255 \p skin\nANIM \p w \p 800 \p loop\nTRACK \p w \p a \p rot_q \p 0 \p 1 \p linear\n
+RUN | $T/pose | $T/badanim.pdl | - | 0
+EXPECT_EXIT | 4 | NEGATIVE-a-track-on-an-unknown-channel-is-refused-4
+RUN | $T/pose | $T/rig.pdl | nosuch | 0
+EXPECT_EXIT | 3 | NEGATIVE-an-unknown-animation-is-refused-3
+RUN | $T/pose | $T/nofile.pdl | - | 0
+EXPECT_EXIT | 2 | NEGATIVE-a-missing-file-is-refused-2
+CLEAN |
+CASE | an-old-colour-only-rig-file-is-not-an-error
+SCRATCH |
+COPY | &.widgits/board-viewer/ops/bv_rig_anim.h | bv_rig_anim.h
+COPY | &.widgits/board-viewer/ops/rig_pose_op.c | rig_pose_op.c
+RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -o | $T/pose | $T/rig_pose_op.c | -lm
+EXPECT_EXIT | 0 | compiles
+COPY | @.apps/rmmc/rigs/rig_asa.pdl | rig_asa.pdl
+RUN | $T/pose | $T/rig_asa.pdl | - | 0
+EXPECT_EXIT | 0 | the-real-schema-1-asa-rig-loads
+EXPECT_OUT | schema=1 parts=0 anims=0 tracks=0 | and-has-nothing-to-pose-so-the-old-rigs-keep-working
+CLEAN |

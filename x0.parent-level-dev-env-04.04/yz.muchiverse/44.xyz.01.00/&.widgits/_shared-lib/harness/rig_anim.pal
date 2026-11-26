@@ -1,0 +1,4 @@
+# rig_anim.pal — rig schema 2: the node tree, tracks and the ONE evaluator (decision D140)
+exec ./ops/+x/harness_case_op.+x cases/rig_anim.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/rig_anim.pdl
+halt
