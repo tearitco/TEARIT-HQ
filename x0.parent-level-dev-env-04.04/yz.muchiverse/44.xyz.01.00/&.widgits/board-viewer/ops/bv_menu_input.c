@@ -752,7 +752,11 @@ static int handle_one_key(int key) {
 #endif
     if (key_pov_1_alt > 0 && key == key_pov_1_alt) key = key_pov_1;   /* the alias keys act as 1 and 2 from here on (after the GAMEKEY check, so a possessed game still gets its own digits) */
     if (key_pov_2_alt > 0 && key == key_pov_2_alt) key = key_pov_2;
-    if (key_release_alt > 0 && key == key_release_alt) key = key_possess;   /* a second RELEASE key (KEY possess_release_alt): '9' is the hotbar slot 9 of a game that lists it as a GAMEKEY, so it never got here while that game's token was possessed */
+    if (key_release_alt > 0 && key == key_release_alt) {      /* RELEASE ONLY (owner 2026-11-26, found by recording: the toggle jumped back to the last token when the key was handled twice): when nothing is possessed the key does nothing */
+        char xr[PATH_BUF], pr[64] = ""; snprintf(xr, sizeof(xr), "%s/pieces/xelector_01/state.txt", focused_project_root); read_kv_str(xr, "possessed_id", pr, sizeof(pr));
+        if (!pr[0] || !strcmp(pr, "none")) return 0;
+        key = key_possess;
+    }   /* a second RELEASE key (KEY possess_release_alt): '9' is the hotbar slot 9 of a game that lists it as a GAMEKEY, so it never got here while that game's token was possessed */
     /* NEXT / PREVIOUS possessable token (KEY possess_next / possess_prev, owner 2026-11-26 "[ and ]"): cycles possessed_id through the shown page's rig: rows of events.txt and puts the cursor on the token's cell. Not the ledger. */
     if (focused_project_root[0] && ((key_poss_next > 0 && key == key_poss_next) || (key_poss_prev > 0 && key == key_poss_prev))) {
         char xs0[PATH_BUF]; snprintf(xs0, sizeof(xs0), "%s/pieces/xelector_01/state.txt", focused_project_root);
