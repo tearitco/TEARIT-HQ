@@ -12,13 +12,13 @@ LINE | t09-log | Number keys pick a hotbar slot. Five is the log, and G places i
 LINE | t10-axe | Pick the axe with nine and swing. Trees need an axe. | 9で斧を選んで振ります。木には斧が必要です。
 LINE | t11-axe-break | The log breaks and drops. | 丸太が壊れて落ちます。
 LINE | t12-flip | The hotbar has pages. Zero flips to the next one. | ホットバーにはページがあります。0で次のページへ。
-LINE | t13-planks | Pick planks and press C to craft. One log makes four planks. | 板を選んでCで作ります。丸太一本から板が四枚できます。
-LINE | t14-table | Pick the crafting table and press C. Four planks make a table. | 作業台を選んでC。板四枚で作業台ができます。
+LINE | t13-planks | Pick planks and press M to craft. One log makes four planks. | 板を選んでMで作ります。丸太一本から板が四枚できます。
+LINE | t14-table | Pick the crafting table and press M. Four planks make a table. | 作業台を選んでM。板四枚で作業台ができます。
 LINE | t15-place-tbl | G places the table. | Gで作業台を置きます。
 LINE | t16-log2 | Back on page one for another log. | 最初のページに戻って、もう一本丸太を置きます。
 LINE | t17-axe2 | Two swings with the axe. | 斧で二回振ります。
 LINE | t18-planks2 | Craft the planks again. | もう一度、板を作ります。
-LINE | t19-pickaxe | With the table beside him, pick the pickaxe and press C to craft it. | 作業台のそばで、つるはしを選んでCを押すと作れます。
+LINE | t19-pickaxe | With the table beside him, pick the pickaxe and press M to craft it. | 作業台のそばで、つるはしを選んでCを押すと作れます。
 LINE | t20-stone | Place a stone block. | 石のブロックを置きます。
 LINE | t21-hand | By hand, stone will not break. The sidebar says so. | 素手では石は壊れません。サイドバーにもそう出ます。
 LINE | t22-pick | With the pickaxe picked, the same key cracks it. | つるはしを選ぶと、同じキーでひびが入ります。

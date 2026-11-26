@@ -9,8 +9,10 @@ KEYVERB | mine  | mine | -
 KEYVERB | place | place | -
 KEYVERB | craft | craft | -
 # RULE rows: poll_ms = how often the driver looks at the relay file; idle_after_ms = how long after the last key the pose goes back to idle (the ledger has no clock, so the DRIVER owns the expiry: it re-projects with --idle)
-RULE | poll_ms | 100
+RULE | poll_ms | 50
 RULE | idle_after_ms | 400
+# step_ms: the shortest time between two walk steps (a held arrow key repeats ~55 times a second); a press inside it is dropped, not queued. 120 = about 8 cells a second; 0 = every press steps (the old behaviour, a backlog builds)
+RULE | step_ms | 100
 KEYVERB | slot1 | pick | 1
 KEYVERB | slot2 | pick | 2
 KEYVERB | slot3 | pick | 3

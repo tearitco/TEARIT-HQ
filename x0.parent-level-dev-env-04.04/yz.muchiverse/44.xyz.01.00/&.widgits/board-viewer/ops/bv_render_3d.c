@@ -3627,10 +3627,6 @@ static int render_one_frame(void) {
     if (desk_page) {   /* one floor layer: the cursor stands in the air tile just above it (z = 1) */
         if (g_xelector_present) g_xelector_z = 1;
         if (g_hero_present) g_hero_z = 1;
-        /* a VOXEL desk (event_lift=1, rmmc): the cursor / controlled character stands ON the top of its cell's column, the same rule the map events use (lift = extrusion - 1), so the follow camera tracks the real floor height
-         * (owner 2026-11-26: the camera ignored the level and the character drifted to the frame edge in the low trench; the driver's sync_view wrote pos_z for the same reason, a stopgap this replaces) */
-        if (g_mk.evlift && g_mk.glyph && g_xelector_present && g_xelector_x >= 0 && g_xelector_y >= 0 && g_xelector_x < g_mk.w && g_xelector_y < g_mk.h) {
-            unsigned char gc = (unsigned char)g_mk.glyph[g_xelector_y * g_mk.w + g_xelector_x]; int gh = gc < 128 ? g_mk.zh[gc] : 0; g_xelector_z = gh > 1 ? gh : 1; }
     }
 
     /* Real hero phymoji model - "hero_humanoid" is today's real, fixed
@@ -3662,6 +3658,12 @@ static int render_one_frame(void) {
      * above that floor, which left it a tile too high. Saved pos_z
      * and the camera keys are not written. */
     int maker_ground = maker_load(focused_project_root);
+    if (desk_page) {      /* after maker_load: the map data of THIS frame (it was read one frame late before, and the camera then never got the floor height) */
+        /* a VOXEL desk (event_lift=1, rmmc): the cursor / controlled character stands ON the top of its cell's column, the same rule the map events use (lift = extrusion - 1), so the follow camera tracks the real floor height
+         * (owner 2026-11-26: the camera ignored the level and the character drifted to the frame edge in the low trench; the driver's sync_view wrote pos_z for the same reason, a stopgap this replaces) */
+        if (g_mk.evlift && g_mk.glyph && g_xelector_present && g_xelector_x >= 0 && g_xelector_y >= 0 && g_xelector_x < g_mk.w && g_xelector_y < g_mk.h) {
+            unsigned char gc = (unsigned char)g_mk.glyph[g_xelector_y * g_mk.w + g_xelector_x]; int gh = gc < 128 ? g_mk.zh[gc] : 0; g_xelector_z = gh > 1 ? gh : 1; }
+    }
     if (maker_ground) {
         g_hero_present = 0;
         if (g_xelector_present) {      /* the xelector's pos_z in levels relative to where it stands on the floor (board_manifest floor_z + 1 = 0): the camera anchor, the z / x lift and the outline all follow it like pc-hq's stack. It used to be forced to 0 here, so z / x moved pos_z and nothing on screen (and the lift below then read 0 - floor - 1 and sat at the bottom of the hung rock). */
@@ -4731,14 +4733,15 @@ static int render_one_frame(void) {
         }
         if (camera_mode == 2 && tp_collide > 0 && sc.grid) {      /* THIRD-PERSON SPRING ARM (owner 2026-10-28: "cam shouldn't start in floor"; found with scene_shot: the game's reported character height is not a world level (here -8), so eye = that + tp_height
              * landed INSIDE a tall hull wall and every ray hit its inside face = one flat colour). Pull the eye along the line to the character until it is in air. */
-            double tgt[3] = { anchor_x - vox, 0.0, anchor_z - voy }, eyp[3] = { sc.eye[0], sc.eye[1], sc.eye[2] };
+            double zo = sc.maker ? (double)sc.zoff : 0.0;      /* a maker (desk) map: the grid floor is level zoff but the eye is floor-relative, so test the eye in GRID levels (it was tested 8 levels too low in the rmmc trench, read as "inside the wall", and the arm pulled the camera onto the character; owner 2026-11-26) */
+            double tgt[3] = { anchor_x - vox, 0.0, anchor_z - voy }, eyp[3] = { sc.eye[0], sc.eye[1] + zo, sc.eye[2] };
             int ft = bv_gpu_column_top(&sc, (int)floor(tgt[0]), (int)floor(tgt[2]));
             tgt[1] = ft >= 0 ? ft + 1.5 : eyp[1];
             double kept = bv_gpu_pull_in(&sc, tgt, eyp, 40);
             if (kept < 1.0) {
                 fprintf(stderr, "tp_collide: eye (%.2f,%.2f,%.2f) was inside a solid block; pulled to (%.2f,%.2f,%.2f), kept %.0f%% of the distance\n", sc.eye[0], sc.eye[1], sc.eye[2], eyp[0], eyp[1], eyp[2], kept * 100.0);
-                sc.eye[0] = (float)eyp[0]; sc.eye[1] = (float)eyp[1]; sc.eye[2] = (float)eyp[2];
-                cam.eye.x = eyp[0] + vox; cam.eye.y = eyp[1]; cam.eye.z = eyp[2] + voy;
+                sc.eye[0] = (float)eyp[0]; sc.eye[1] = (float)(eyp[1] - zo); sc.eye[2] = (float)eyp[2];
+                cam.eye.x = eyp[0] + vox; cam.eye.y = eyp[1] - zo; cam.eye.z = eyp[2] + voy;
             }
         }
         /* See-through cutaway (owner 2026-10-27: "make the wall in front of the camera where the character is highly translucent so we can

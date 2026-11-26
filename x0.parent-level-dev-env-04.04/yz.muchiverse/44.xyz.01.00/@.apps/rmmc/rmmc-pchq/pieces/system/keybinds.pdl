@@ -10,7 +10,7 @@ GAMEKEY      | down | 1003
 GAMEKEY      | jump | 32
 GAMEKEY      | mine | 98
 GAMEKEY      | place | 103
-GAMEKEY      | craft | 99
+GAMEKEY      | craft | 109   # m: craft (it was c, which is the engine camera key: c/v lower and raise the camera)
 GAMEKEY      | slot1 | 49
 GAMEKEY      | slot2 | 50
 GAMEKEY      | slot3 | 51

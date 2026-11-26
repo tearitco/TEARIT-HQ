@@ -31,12 +31,12 @@ static int split(char *line, char **f, int max) {
     for (int i = 0; i < n; i++) { char *e = f[i] + strlen(f[i]); while (e > f[i] && isspace((unsigned char)e[-1])) *--e = 0; }
     return n;
 }
-static struct { char name[24]; int code; } GK[32]; static int ngk; static struct { char name[24], verb[24], arg[16]; } KV[32]; static int nkv; static int poll_ms = 100, idle_ms = 400;
+static struct { char name[24]; int code; } GK[32]; static int ngk; static struct { char name[24], verb[24], arg[16]; } KV[32]; static int nkv; static int poll_ms = 100, idle_ms = 400, step_ms = 120;
 static int load_keys(const char *kb, const char *kv) { char l[300], *x[6]; FILE *f = fopen(kb, "r"); if (!f) return 2;
     while (fgets(l, sizeof l, f)) { int n = split(l, x, 6); if (n >= 3 && !strcmp(x[0], "GAMEKEY") && ngk < 32) { snprintf(GK[ngk].name, 24, "%s", x[1]); GK[ngk++].code = atoi(x[2]); } } fclose(f);
     f = fopen(kv, "r"); if (!f) return 2;
     while (fgets(l, sizeof l, f)) { int n = split(l, x, 6); if (n >= 4 && !strcmp(x[0], "KEYVERB") && nkv < 32) { snprintf(KV[nkv].name, 24, "%s", x[1]); snprintf(KV[nkv].verb, 24, "%s", x[2]); snprintf(KV[nkv].arg, 16, "%s", !strcmp(x[3], "-") ? "" : x[3]); nkv++; }
-        else if (n >= 3 && !strcmp(x[0], "RULE") && !strcmp(x[1], "poll_ms")) poll_ms = atoi(x[2]); else if (n >= 3 && !strcmp(x[0], "RULE") && !strcmp(x[1], "idle_after_ms")) idle_ms = atoi(x[2]); }
+        else if (n >= 3 && !strcmp(x[0], "RULE") && !strcmp(x[1], "poll_ms")) poll_ms = atoi(x[2]); else if (n >= 3 && !strcmp(x[0], "RULE") && !strcmp(x[1], "idle_after_ms")) idle_ms = atoi(x[2]); else if (n >= 3 && !strcmp(x[0], "RULE") && !strcmp(x[1], "step_ms")) step_ms = atoi(x[2]); }
     fclose(f); return ngk && nkv ? 0 : 2; }
 static int owner_gone(long pid) {   /* gone = no such process, or a zombie (dead but not yet reaped by its parent) */
     if (kill((pid_t)pid, 0) != 0) return 1;
@@ -108,9 +108,14 @@ static void sync_view(const char *pkg, const char *vop, const char *data, const 
             fclose(f); memcpy(buf, out, on); n = on;
         }
         if (poss && have && !same) { FILE *w = fopen(xp, "w"); if (w) { fwrite(buf, 1, n, w); fclose(w); } }
+        if (poss) {   /* the see-through cutaway (view_cut_on) aims at the cell this file names, and it wins over the selector: the game says where the controlled character is (bv_render_3d.c, cut_target.txt). A projection of the ledger position, rewritten only when it changes */
+            char cp[PATH_MAX + 160], want2[96], cur[96] = ""; snprintf(cp, sizeof cp, "%.4000s/pieces/system/cut_target.txt", pkg); snprintf(want2, sizeof want2, "x=%d\ny=%d\nroom=rmmc\n", ax, az);
+            FILE *cf = fopen(cp, "r"); if (cf) { size_t cn = fread(cur, 1, sizeof cur - 1, cf); cur[cn] = 0; fclose(cf); }
+            if (strcmp(cur, want2)) { cf = fopen(cp, "w"); if (cf) { fputs(want2, cf); fclose(cf); } } }
     }
     bump_view(pkg);
 }
+static long g_last_step = 0;      /* when the last walk step finished (RULE step_ms) */
 static const char *g_tut_led = NULL;      /* the ledger the tutorial op reads (set by main; the lesson progress is derived from it, never stored) */
 static int chrome_feed(char *fb, size_t cap, const char *book, const char *actor, const char *where, const char *seatn, const char *msg) {
     size_t n = 0; char p[PATH_MAX + 64], line[256], pick[64] = ""; char wh[64]; snprintf(wh, sizeof wh, "%.60s", where); { char *sp = strchr(wh, ' '); if (sp) *sp = 0; }      /* the bar line is only the position: the reason a key did nothing needs the room below it */ char nick[96]; if (!strcmp(seatn, "human")) { snprintf(nick, sizeof nick, "YOU CONTROL %s", actor); for (char *c = nick + 12; *c; c++) if (*c >= 'a' && *c <= 'z') *c -= 32; } else snprintf(nick, sizeof nick, "%s (not controlled)", actor);
@@ -197,11 +202,13 @@ int main(int argc, char **argv) {
                     last_key = now_ms(); last_feed = 0; continue; }
                 { char o2[100]; char *av[] = { vop, "seat", data, led, (char *)actor, NULL }; run_out(av, o2, sizeof o2); snprintf(seatn, sizeof seatn, "%s", strncmp(o2, "seat=", 5) ? "harness" : o2 + 5);
                   if (strcmp(seatn, "human")) { snprintf(msg, sizeof msg, "refused: the seat is %s, keys are ignored (exit 24)", seatn); if (!first_refusal) first_refusal = 24; if (once) { fprintf(stderr, "%s\n", msg); fclose(f); return 24; } continue; } }
+                if (!strcmp(KV[kv].verb, "walk") && step_ms > 0) {   /* a held key repeats 50-60 times a second and used to queue one step per repeat (the character kept walking after the key was let go). RULE step_ms (keys.pdl, 0 = off): a walk press inside the window of the last step is DROPPED, never queued (owner 2026-11-26) */
+                    long tn = now_ms(); if (g_last_step && tn - g_last_step < step_ms) continue; }      /* the window starts when the PREVIOUS step has FINISHED (a step takes ~200 ms, longer than the window): everything that queued behind it is dropped */
                 if (!strcmp(KV[kv].verb, "reset")) {   /* Home (owner 2026-11-26: a stuck player needs a way out): ONE press only asks, a second within 2 s runs the verb, so a stray tap never teleports the character */
                     static long reset_asked = 0; long tn = now_ms();
                     if (!reset_asked || tn - reset_asked > 2000) { reset_asked = tn; snprintf(msg, sizeof msg, "key %.20s: reset? press it again", gk); last_key = tn; last_feed = 0; continue; }
                     reset_asked = 0; }
-                int rc = rmmc_play_verb(house, book, KV[kv].verb, KV[kv].arg, "human", msg, sizeof msg); if (rc && !first_refusal) first_refusal = rc; { char kt[200]; const char *mm = msg; if (!strncmp(mm, "refused: refused: ", 18)) mm += 9; snprintf(kt, sizeof kt, "key %.20s: %.150s", gk, mm); { char *cut = strstr(kt, " (direct"); if (cut) *cut = 0; cut = strstr(kt, " ["); if (cut) *cut = 0; } snprintf(msg, sizeof msg, "%s", kt); }   /* the last key and what came of it, on screen (owner 2026-11-26: a silent key is a bug; the browser-style debug console replaces this later, plan section 15) */ last_key = now_ms(); idle_pending = 1; sync_view(pkg, vop, data, led, actor); }
+                int rc = rmmc_play_verb(house, book, KV[kv].verb, KV[kv].arg, "human", msg, sizeof msg); if (!strcmp(KV[kv].verb, "walk")) g_last_step = now_ms(); if (rc && !first_refusal) first_refusal = rc; { char kt[200]; const char *mm = msg; if (!strncmp(mm, "refused: refused: ", 18)) mm += 9; snprintf(kt, sizeof kt, "key %.20s: %.150s", gk, mm); { char *cut = strstr(kt, " (direct"); if (cut) *cut = 0; cut = strstr(kt, " ["); if (cut) *cut = 0; } snprintf(msg, sizeof msg, "%s", kt); }   /* the last key and what came of it, on screen (owner 2026-11-26: a silent key is a bug; the browser-style debug console replaces this later, plan section 15) */ last_key = now_ms(); idle_pending = 1; sync_view(pkg, vop, data, led, actor); }
             fclose(f); }
         if (last_key > last_feed || now_ms() - last_feed >= 2000) { last_feed = now_ms(); char o2[300]; char *av[] = { vop, "where", data, led, (char *)actor, NULL }; run_out(av, o2, sizeof o2); snprintf(where, sizeof where, "%s", o2[0] ? o2 : "not spawned"); char o3[100]; char *a3[] = { vop, "seat", data, led, (char *)actor, NULL }; run_out(a3, o3, sizeof o3); snprintf(seatn, sizeof seatn, "%s", strncmp(o3, "seat=", 5) ? "harness" : o3 + 5); { char ob[400]; char *ab[] = { vop, "bag", data, led, (char *)actor, NULL }; run_out(ab, ob, sizeof ob); snprintf(g_bag, sizeof g_bag, "%s", strncmp(ob, "bag=", 4) ? "" : ob + 4); }
         if (feed) { char fb[16384]; g_tut_led = led[0] ? led : NULL; int n = chrome_feed(fb, sizeof fb, book, actor, where, seatn, msg); put_if_changed(feed, fb, (size_t)n); } }
