@@ -1,0 +1,4 @@
+# joy_map.pal - the pad map (#.desktop/joystick_map.pdl) agrees with the key codes in keybinds.pdl, and the daemon wait stays timed only while held
+exec ./ops/+x/harness_case_op.+x cases/joy_map.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/joy_map.pdl
+halt

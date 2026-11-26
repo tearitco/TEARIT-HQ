@@ -1,0 +1,23 @@
+# joy_map (2026-11-26): the pad map and the key authority agree, and the daemon keeps its idle cost. Each mapped button sends a code that keybinds.pdl owns (jump 32, mine 98, place 103, craft 109), so changing a key without the pad map (or the reverse) fails here. WIRING only: a real press on a real pad is not proven by this case; the repeat was proven on a fake pad (FIFO) in the commit that added it.
+RESULTS | ../results/joy_map.txt
+CASE | pad-map-agrees-with-the-key-bindings
+SCRATCH
+EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | GAMEKEY      \p jump \p 32 | the key binding jump is code 32
+EXPECT_HAS | $HOUSE/#.desktop/joystick_map.pdl | BUTTON \p 0 \p 32 | pad button 0 sends 32 (jump)
+EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | GAMEKEY      \p mine \p 98 | the key binding mine is code 98
+EXPECT_HAS | $HOUSE/#.desktop/joystick_map.pdl | BUTTON \p 1 \p 98 | pad button 1 sends 98 (mine)
+EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | GAMEKEY      \p place \p 103 | the key binding place is code 103
+EXPECT_HAS | $HOUSE/#.desktop/joystick_map.pdl | BUTTON \p 2 \p 103 | pad button 2 sends 103 (place)
+EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | GAMEKEY      \p craft \p 109 | the key binding craft is code 109
+EXPECT_HAS | $HOUSE/#.desktop/joystick_map.pdl | BUTTON \p 3 \p 109 | pad button 3 sends 109 (craft)
+EXPECT_HAS | $HOUSE/#.desktop/joystick_map.pdl | REPEAT \p 120 \p 250 | the hold repeat is data in the map (rate and first delay)
+CASE | daemon-keeps-its-idle-cost
+SCRATCH
+EXPECT_HAS | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_joystick_daemon.c | poll(&pf, 1, held ? | the wait is timed only while a direction is held
+EXPECT_HAS | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_joystick_daemon.c | : -1) | otherwise poll blocks with no timeout (idle cost zero)
+EXPECT_HAS | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_joystick_daemon.c | load_repeat(house_root, &rep_rate, &rep_first) | the repeat numbers are read from the map when a direction is pressed
+CASE | controls-that-can-fail
+SCRATCH
+EXPECT_LACKS | $HOUSE/#.desktop/joystick_map.pdl | BUTTON \p 1 \p 99 | CONTROL: a wrong code for mine is not there, so the checks above can fail
+EXPECT_LACKS | $HOUSE/#.desktop/joystick_map.pdl | BUTTON \p 0 \p 98 | CONTROL: jump and mine are not swapped
+EXPECT_LACKS | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_joystick_daemon.c | poll(&pf, 1, 100) | CONTROL: a fixed timer (a busy wake while idle) is not there
