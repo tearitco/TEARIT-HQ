@@ -414,6 +414,7 @@ typedef struct {
     int rock;               /* cells.txt rock_slot=: atlas slot painted on the hung (negative z) blocks; 0 = the cell floor tile. */
     int nocard;             /* cells.txt furniture_cards=0: this desk is TERRAIN, a glyph of height 2 is a 2-high column, never a table card (the editor view.pdl event_draw=billboard turned every height-2 glyph of the rmmc island into a tile-less card over a black fill, seen 2026-11-25). */
     int evlift;             /* cells.txt event_lift=1 (D114, the voxel desk): a map event stands ON TOP of its column (the extrusion height of its map.txt glyph minus the floor level) instead of inside it. */
+    int side;               /* cells.txt axis=side: a row is the game's up. 3D draws that row as height over the column's ground, not as the next floor cell. */
     unsigned char depth[128]; /* DEPTH row: blocks hung BELOW the floor (negative z levels), the float depth of an island. */
     int zoff;               /* the deepest DEPTH in use: every grid level and every box is lifted by this so levels below the floor have a place. With DEPTH in use a cell with no floor and no wall tile has no block (the sky shows), so there is no separate hole key. */
     unsigned char draw[128]; /* 1 = EXTRUDE value "sprite": opaque pixels of the cell picture, same as a person. */
@@ -487,6 +488,11 @@ static void maker_read_parallax(const char *dir) {
 /* Map events (events.txt): x y r g b charset index direction pattern. Colour is the frame center; the charset name is for the 2D blit and the frame file lookup; the box uses r g b.
  * First 96 only. Re-read EVERY frame (the file is tiny): rpg-pet rewrites it as its monsters walk, and the old read-once-per-desk cache froze the sprites while the selector kept moving
  * (owner 2026-10-11: "the sprite stayed still but a blue block moved"). */
+#include "mk_side_place.h"
+/* A side-on level stores up as a row. mk_side_place is the one function (the harness compiles it alone). */
+static int mk_side_lift(int x, int row, int *depth_out) {
+    return mk_side_place(g_mk.side, g_mk.cells, g_mk.w, g_mk.h, x, row, depth_out);
+}
 /* D119 (2026-11-22): ONE snapshot of the shown desk's events.txt per frame. The driver rewrites that file atomically once per move; two reads in one frame (the xelector's token follow, then the drawn rows) could straddle the
  * write: the car drawn on the new cell, the HUD pos / outline on the old (RTA, one step behind). ev_snap_take() reads once before load_xelector(); desk_token_cell and maker_read_events both parse THIS copy. */
 static char *g_ev_snap = NULL; static size_t g_ev_snap_len = 0; static char g_ev_snap_path[4400] = "";
@@ -514,7 +520,9 @@ static void maker_read_events(const char *dir) {
             g_mk.ev[g_mk.ev_n].box[0] = x0; g_mk.ev[g_mk.ev_n].box[1] = y0; g_mk.ev[g_mk.ev_n].box[2] = z0;
             g_mk.ev[g_mk.ev_n].box[3] = x1; g_mk.ev[g_mk.ev_n].box[4] = y1; g_mk.ev[g_mk.ev_n].box[5] = z1;
         }
-        snprintf(g_mk.ev[g_mk.ev_n].name, sizeof(g_mk.ev[0].name), "%s", name); g_mk.ev_n++;
+        snprintf(g_mk.ev[g_mk.ev_n].name, sizeof(g_mk.ev[0].name), "%s", name);
+        if (g_mk.side) { int dep = y; g_mk.ev[g_mk.ev_n].y = dep; /* lift stored in the spare box slot when the row has no box */ if (!g_mk.ev[g_mk.ev_n].has) { int lift = mk_side_lift(x, y, &dep); g_mk.ev[g_mk.ev_n].y = dep; g_mk.ev[g_mk.ev_n].box[1] = (float)lift; g_mk.ev[g_mk.ev_n].has = 2; } }
+        g_mk.ev_n++;
     }
     fclose(f);
 }
@@ -570,7 +578,9 @@ static int maker_load_base(const char *root) {
             else if (strncmp(line, "atlas_cols=", 11) == 0) g_mk.cols = atoi(line + 11);
             else if (strncmp(line, "atlas_tiles=", 12) == 0) g_mk.tiles = atoi(line + 12);
             else if (strncmp(line, "rock_slot=", 10) == 0) g_mk.rock = atoi(line + 10);
+            else if (strncmp(line, "axis=side", 9) == 0) g_mk.side = 1;
             else if (strncmp(line, "event_lift=1", 12) == 0) g_mk.evlift = 1;
+            else if (strncmp(line, "furniture_cards=0", 17) == 0) g_mk.nocard = 1;
             else if (strncmp(line, "cells", 5) == 0) {
                 if (g_mk.w < 1 || g_mk.h < 1 || g_mk.w > 512 || g_mk.h > 512 || g_mk.cols < 1 || g_mk.tile_px < 1) { fclose(f); return 0; }
                 g_mk.cells = (unsigned short *)calloc((size_t)g_mk.w * (size_t)g_mk.h * 2, sizeof(unsigned short));
@@ -580,7 +590,6 @@ static int maker_load_base(const char *root) {
                 in_cells = 1;
             }
             continue;
-            else if (strncmp(line, "furniture_cards=0", 17) == 0) g_mk.nocard = 1;
         }
         if (row >= g_mk.h) break;
         const char *q = line;
@@ -2496,6 +2505,8 @@ static int g_mm_board_w = 0, g_mm_board_h = 0, g_mm_selx = 0, g_mm_sely = 0;
 static int g_mm_maker = 0;
 #include "bv_minimap_fit.h"
 #include "bv_piece_flag.h"
+#include "bv_rig.h"      /* box-limb rig: an event whose charset starts with rig: is six boxes (BOOK 16.game/BOX-LIMB-RIG-FOR-WALKING-CHARACTERS-2026-11-25.md) */
+#include "bv_rig_anim_draw.h"   /* schema-2 rig (PART/ANIM/TRACK/STATE rows in rig_<name>.pdl): the same pure evaluator rig_pose_op tests (decision D140, stage 1) */
 /* the CAMERA on the minimap (owner 2026-10-27: 'camera position should show on minimap (yellow) + view cone'): eye and the ground direction it looks along, in board cells; set with the other minimap data */
 static double g_mm_cam_x = 0, g_mm_cam_z = 0, g_mm_cam_dx = 0, g_mm_cam_dz = 0; static int g_mm_cam_ok = 0;
 /* Where the corner map was last painted, so a click on it can be turned back into a page cell (2026-11-17, owner: "when i click on mini map, it moves my cam / xelector there"). Set by bv_draw_minimap
@@ -2505,8 +2516,6 @@ static int g_mm_click = 0;      /* 1 while the click being handled landed on the
 static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int text_right_anchor, int text_block_h);
 /* The corner map is sized by the PAINTED page (g_mk.w x g_mk.h) when there is one, not by the 3D glyph board (<= 256). The full frame AND the click's HUD-only repaint (bv_repaint_hud_only)
  * must both call this: the repaint used the glyph-board size, so after any click the map turned square, cropped to the page's top-left and pinned the eye to the right edge
-#include "bv_rig.h"      /* box-limb rig: an event whose charset starts with rig: is six boxes (BOOK 16.game/BOX-LIMB-RIG-FOR-WALKING-CHARACTERS-2026-11-25.md) */
-#include "bv_rig_anim_draw.h"   /* schema-2 rig (PART/ANIM/TRACK/STATE rows in rig_<name>.pdl): the same pure evaluator rig_pose_op tests (decision D140, stage 1) */
  * (owner 2026-11-16: "scale / crop is weird again"; reproduced with a scratch session, before/after in CENTROID-TEST-AND-LIVE). Pass the flag of the last full frame. */
 static void bv_mm_page_dims(int maker_ground) {
     g_mm_maker = 0;
@@ -2854,15 +2863,6 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
         bv_fill_rect(cx, cy, cx + dot, cy + dot, r, g, b);
     }
 
-    /* xelector (the board's own targeting cursor, distinct from the
-     * hero/player and from bv_draw_hud's plain "pos" selector) - cyan,
-     * full cell so it's easy to find even off the player. */
-    if (g_xelector_present && g_xelector_x >= wx0 && g_xelector_x < wx0 + ww &&
-        g_xelector_y >= wy0 && g_xelector_y < wy0 + wh) {
-        int cx0 = 0, cy0 = 0; bv_minimap_dot((double)g_xelector_x, (double)wx0, ww, mm_w, cellpx, &cx0); bv_minimap_dot((double)g_xelector_y, (double)wy0, wh, mm_h, cellpx, &cy0);
-        int cx = mm_x + cx0, cy = mm_y + cy0, cw = cellpx > 0 ? cellpx : 3;
-        bv_fill_rect(cx, cy, cx + cw, cy + cw, 80, 220, 255);
-    }
     /* RIG TOKENS (2026-11-26, owner: "add ava to the level and mini map so i can easily find and posses her"): every rig:<name> event row of the shown desk is a 5 px marker in ITS OWN row colour (the r g b of its events.txt
      * line: data, so each character is findable at a glance) with a dark outline, above the faint generic dots. The same events the game drives and the keys [ and ] cycle through. */
     for (int ri = 0; ri < g_mk.ev_n; ri++) {
@@ -2874,6 +2874,15 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
         bv_fill_rect(mx, my, mx + 5, my + 5, g_mk.ev[ri].r, g_mk.ev[ri].g, g_mk.ev[ri].b);
     }
 
+    /* xelector (the board's own targeting cursor, distinct from the
+     * hero/player and from bv_draw_hud's plain "pos" selector) - cyan,
+     * full cell so it's easy to find even off the player. */
+    if (g_xelector_present && g_xelector_x >= wx0 && g_xelector_x < wx0 + ww &&
+        g_xelector_y >= wy0 && g_xelector_y < wy0 + wh) {
+        int cx0 = 0, cy0 = 0; bv_minimap_dot((double)g_xelector_x, (double)wx0, ww, mm_w, cellpx, &cx0); bv_minimap_dot((double)g_xelector_y, (double)wy0, wh, mm_h, cellpx, &cy0);
+        int cx = mm_x + cx0, cy = mm_y + cy0, cw = cellpx > 0 ? cellpx : 3;
+        bv_fill_rect(cx, cy, cx + cw, cy + cw, 80, 220, 255);
+    }
 
     /* the desk's own edge when the map is bigger than it, and the voxel pieces (asteroids, other ships) as boxes in their average colour, lightened so they read on the dark space */
     if (ww != g_mm_board_w || wh != g_mm_board_h || wx0 != 0 || wy0 != 0) {
@@ -3618,6 +3627,10 @@ static int render_one_frame(void) {
     if (desk_page) {   /* one floor layer: the cursor stands in the air tile just above it (z = 1) */
         if (g_xelector_present) g_xelector_z = 1;
         if (g_hero_present) g_hero_z = 1;
+        /* a VOXEL desk (event_lift=1, rmmc): the cursor / controlled character stands ON the top of its cell's column, the same rule the map events use (lift = extrusion - 1), so the follow camera tracks the real floor height
+         * (owner 2026-11-26: the camera ignored the level and the character drifted to the frame edge in the low trench; the driver's sync_view wrote pos_z for the same reason, a stopgap this replaces) */
+        if (g_mk.evlift && g_mk.glyph && g_xelector_present && g_xelector_x >= 0 && g_xelector_y >= 0 && g_xelector_x < g_mk.w && g_xelector_y < g_mk.h) {
+            unsigned char gc = (unsigned char)g_mk.glyph[g_xelector_y * g_mk.w + g_xelector_x]; int gh = gc < 128 ? g_mk.zh[gc] : 0; g_xelector_z = gh > 1 ? gh : 1; }
     }
 
     /* Real hero phymoji model - "hero_humanoid" is today's real, fixed
@@ -4248,7 +4261,7 @@ static int render_one_frame(void) {
                         else if (zg < 128 && g_mk.zh[zg] > 1) h = g_mk.zh[zg];
                     }
                     size_t src = ((size_t)my * g_mk.w + (size_t)mx) * 2;
-                    if (h <= 1 && !sprite && my >= 0 && my < g_mk.h && mx >= 0 && mx < g_mk.w && g_mk.cells[src + 1]) h = 3;
+                    if (h <= 1 && !sprite && my >= 0 && my < g_mk.h && mx >= 0 && mx < g_mk.w && g_mk.cells[src + 1] && !g_mk.evlift) h = 3;   /* a voxel desk (event_lift=1, rmmc) has a side tile on EVERY column: the painted-desk "wall tile = 3 high" rule made every 1-high cell 3 high, and the game logic (level +1) buried the character 2 levels deep in it (owner 2026-11-26, Asa invisible in the dirt trench) */
                     if (h > MAX_VOXEL_Z - g_mk.zoff) h = MAX_VOXEL_Z - g_mk.zoff;
                     if (h + g_mk.zoff > z_count) z_count = h + g_mk.zoff;
                 }
@@ -4266,7 +4279,7 @@ static int render_one_frame(void) {
                         else if (BSPR(mx, my)) sprite = 1;
                         else if (zg < 128 && g_mk.zh[zg] > 1) h = g_mk.zh[zg];
                     }
-                    if (h <= 1 && !sprite && my >= 0 && my < g_mk.h && mx >= 0 && mx < g_mk.w && g_mk.cells[src + 1]) h = 3;
+                    if (h <= 1 && !sprite && my >= 0 && my < g_mk.h && mx >= 0 && mx < g_mk.w && g_mk.cells[src + 1] && !g_mk.evlift) h = 3;   /* a voxel desk (event_lift=1, rmmc) has a side tile on EVERY column: the painted-desk "wall tile = 3 high" rule made every 1-high cell 3 high, and the game logic (level +1) buried the character 2 levels deep in it (owner 2026-11-26, Asa invisible in the dirt trench) */
                     {   /* holes have no block; DEPTH hangs blocks below the floor level (level zoff) */
                         int zo = g_mk.zoff, lo = zo, hi = zo + h, hole = 0;
                         if (g_mk.glyph && mx >= 0 && my >= 0 && mx < g_mk.w && my < g_mk.h) {
@@ -4350,6 +4363,8 @@ static int render_one_frame(void) {
             if (sc.maker) {
                 /* z / x move the selector in levels: the floor (board_manifest floor_z + 1) is where it stands, each level down goes into the hung rock (the grid is lifted by zoff, so that is room for zoff levels) */
                 double mdz = (double)g_xelector_z;      /* already relative to the floor (see maker_ground above) and clamped to the hung depth */
+                double xey = g_xelector_y;
+                if (g_mk.side) { int dep = 0; mdz += mk_side_lift(g_xelector_x, g_xelector_y, &dep); xey = dep; }
                 char xlv[PATH_BUF]; snprintf(xlv, sizeof(xlv), "%s/pieces/system/view.pdl", focused_project_root); XelLook xl3 = xel_look_3d(xlv);      /* bolder while free, lighter while controlling (xelector_look.c) */
                 if (xel_look_controlling(g_xelector_possessed_id)) ADDWIRE(g_xelector_x+0.02, 1.0+mdz, xey+0.02, g_xelector_x+0.98, 1.05+mdz, xey+0.98, xl3.r, xl3.g, xl3.b);      /* controlling someone: only a flat ring round their FEET, in the control colour (owner 2026-11-26: "just the bottom, xelecting yellow highlighting their feet") */
                 else ADDWIRE(g_xelector_x+0.15, 1.0+mdz, xey+0.15, g_xelector_x+0.85, 2.6+mdz, xey+0.85, xl3.r, xl3.g, xl3.b);
@@ -4619,7 +4634,7 @@ static int render_one_frame(void) {
                     ADDBOX(g_mk.ev[i].x + 0.08f, 1.0f, g_mk.ev[i].y + 0.45f,
                            g_mk.ev[i].x + 0.92f, 2.95f, g_mk.ev[i].y + 0.55f,
                            g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
-                } else if (!strcmp(g_mk.ev[i].name, "window") && g_mk.ev[i].has) {
+                } else if (!strcmp(g_mk.ev[i].name, "window") && g_mk.ev[i].has == 1) {
                     /* Box is the cell corner plus the FACE row. dir is only which way it looks out. The wall cubes stay. */
                     float *b = g_mk.ev[i].box;
                     ADDBOX(g_mk.ev[i].x + b[0], b[1], g_mk.ev[i].y + b[2],
@@ -4631,7 +4646,7 @@ static int render_one_frame(void) {
                            g_mk.ev[i].x + 1.0f, 4.10f, g_mk.ev[i].y + 1.0f,
                            g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
                 } else {
-                float lift = 0.f;
+                float lift = (g_mk.ev[i].has == 2) ? g_mk.ev[i].box[1] : 0.f;
                 if (g_mk.evlift && g_mk.glyph && g_mk.ev[i].x >= 0 && g_mk.ev[i].y >= 0 && g_mk.ev[i].x < g_mk.w && g_mk.ev[i].y < g_mk.h) { int gh = g_mk.zh[(unsigned char)g_mk.glyph[g_mk.ev[i].y * g_mk.w + g_mk.ev[i].x]]; if (gh > 1) lift = (float)(gh - 1); }   /* D114: stand on the column top */
                 if (bv_rig_is(g_mk.ev[i].name)) {      /* box-limb rig: 6 boxes, colours from rig_<name>.pdl beside the desk, pose from dir / pat and a 140 ms step of the wall clock */
                     float rb[BV_RIG_MAX][6]; unsigned char rc[12][3]; int rci[BV_RIG_MAX], rmask = 0, rfb[3] = { g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b }; struct timespec rt; clock_gettime(CLOCK_MONOTONIC, &rt);
@@ -4708,7 +4723,7 @@ static int render_one_frame(void) {
                 hm = GPU_ADD_MODEL(g_hero_phymoji, hero_phymoji_count,
                                    hero_phymoji_max_lx, hero_phymoji_max_ly, hero_phymoji_max_lz);
             double hs = 0.9;
-            if (sc.maker) ADDBOX(g_hero_x+0.15, 1.0, g_hero_y+0.15, g_hero_x+0.85, 2.6, g_hero_y+0.85, 200,90,60, 0);      /* same box as a map event sprite */
+            if (sc.maker) { double hy = g_hero_y, base = 1.0; if (g_mk.side) { int dep = 0; base += mk_side_lift(g_hero_x, g_hero_y, &dep); hy = dep; } ADDBOX(g_hero_x+0.15, base, hy+0.15, g_hero_x+0.85, base + 1.6, hy+0.85, 200,90,60, 0); }      /* same box as a map event sprite; a side level lifts it onto the ground column */
             else
             ADDBOX(g_hero_x+0.5-hs/2.0, g_hero_z+0.0, g_hero_y+0.5-hs/2.0,
                    g_hero_x+0.5+hs/2.0, g_hero_z+hs,  g_hero_y+0.5+hs/2.0, 200,90,60, 0);
