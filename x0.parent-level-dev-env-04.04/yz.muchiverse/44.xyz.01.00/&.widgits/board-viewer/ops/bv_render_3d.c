@@ -3713,8 +3713,9 @@ static int render_one_frame(void) {
     /* Default cam_pan_x/y to the SELECTOR's own position (matches
      * where the 2D view actually starts) - see &.widgits/
      * view-vs-muta.md, real user-caught bug, fixed 2026-08-02. */
-    int cam_pan_x = read_kv_int(state_path, "cam_pan_x", selector_x);
-    int cam_pan_y = read_kv_int(state_path, "cam_pan_y", selector_y);
+    int pan_dflt_follow = maker_ground && (camera_mode == 1 || camera_mode == 2);      /* owner 2026-11-26: in the follow modes the pan is an OFFSET from the cursor, so a fresh session starts it at 0; defaulting it to the cursor cell made the camera drift away by the distance the cursor had moved since the first frame */
+    int cam_pan_x = read_kv_int(state_path, "cam_pan_x", pan_dflt_follow ? 0 : selector_x);
+    int cam_pan_y = read_kv_int(state_path, "cam_pan_y", pan_dflt_follow ? 0 : selector_y);
     int cam_pan_z = read_kv_int(state_path, "cam_pan_z", 0);
     /* FREE CAMERA BASE (owner 2026-10-27: "arrows move the xelector, not the camera ... same for 3D"): in mode 3 the camera used to sit at selector_x/y + pan, so every arrow press moved the camera. bv_menu_input.c now writes cam_base_x/z (the
      * camera's own anchor cell) the first time an arrow moves the xelector in mode 3, and pans it only when the xelector would leave the view. Without those keys mode 3 behaves exactly as before. */
@@ -4350,7 +4351,8 @@ static int render_one_frame(void) {
                 /* z / x move the selector in levels: the floor (board_manifest floor_z + 1) is where it stands, each level down goes into the hung rock (the grid is lifted by zoff, so that is room for zoff levels) */
                 double mdz = (double)g_xelector_z;      /* already relative to the floor (see maker_ground above) and clamped to the hung depth */
                 char xlv[PATH_BUF]; snprintf(xlv, sizeof(xlv), "%s/pieces/system/view.pdl", focused_project_root); XelLook xl3 = xel_look_3d(xlv);      /* bolder while free, lighter while controlling (xelector_look.c) */
-                ADDWIRE(g_xelector_x+0.15, 1.0+mdz, g_xelector_y+0.15, g_xelector_x+0.85, 2.6+mdz, g_xelector_y+0.85, xl3.r, xl3.g, xl3.b);
+                if (xel_look_controlling(g_xelector_possessed_id)) ADDWIRE(g_xelector_x+0.02, 1.0+mdz, xey+0.02, g_xelector_x+0.98, 1.05+mdz, xey+0.98, xl3.r, xl3.g, xl3.b);      /* controlling someone: only a flat ring round their FEET, in the control colour (owner 2026-11-26: "just the bottom, xelecting yellow highlighting their feet") */
+                else ADDWIRE(g_xelector_x+0.15, 1.0+mdz, xey+0.15, g_xelector_x+0.85, 2.6+mdz, xey+0.85, xl3.r, xl3.g, xl3.b);
             }      /* event voxels, orange, while In: is off (see MakerAtlas.hot_n); the same lifted box space as the selector above */
             if (sc.maker && g_mk.hot_n > 0) {
                 char gp[PATH_BUF]; snprintf(gp, sizeof(gp), "%s/pieces/display/active_gui_is_typing.txt", project_root);
