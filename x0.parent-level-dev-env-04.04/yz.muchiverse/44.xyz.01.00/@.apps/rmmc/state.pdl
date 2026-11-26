@@ -19,4 +19,5 @@ FILE | EDIT state/game_ui.txt (the --feed path) | PROJECTION | rmmc_driver write
 FILE | hotbar.pdl (beside this book) | CONFIG | a human | - (the Minecraft hotbar slots: item, label, sprite)
 FILE | hotbar/*-bgr.png (beside this book) | CONFIG | cut from the atlas of rmmc-0001 (ffmpeg, see hotbar.pdl) | regenerate with the ffmpeg line in hotbar.pdl
 FILE | play/pick.txt (beside this book) | PREFERENCE | rmmc_pick_op writes the picked block (the hotbar click); it changes no outcome | deleted any time
+FILE | play/tutorial.txt (beside this book) | PREFERENCE | rmmc_tutorial_op writes lesson=<id> and offset=<ledger bytes at start>: only WHERE the lesson started; the progress is always derived from the ledger | deleted any time (the tutorial is off; Tutorial: stop does it)
 FILE | EDIT state/games/rmmc/game/ledger_alpha.txt | LEDGER | the rmmc-alpha page ledger (a copy of ledger.txt made 2026-11-25, then its own); chosen by desks.pdl; same rows as ledger.txt | none

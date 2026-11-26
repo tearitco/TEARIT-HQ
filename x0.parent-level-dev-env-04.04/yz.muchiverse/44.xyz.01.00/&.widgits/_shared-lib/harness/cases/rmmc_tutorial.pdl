@@ -1,0 +1,43 @@
+# rmmc_tutorial (2026-11-26): the in-game tutorial op (@.apps/rmmc/ops/rmmc_tutorial_op.c, lesson data @.apps/rmmc/tutorial.pdl). The PROGRESS is derived from the LEDGER from the start offset and never stored; only the start offset is kept (play/tutorial.txt).
+# Each EXPECT that something advances has a control that must NOT advance (a wrong key, an event out of order, another actor).
+RESULTS | ../results/rmmc_tutorial.txt
+CASE | lesson-progress-is-read-from-the-ledger-in-order
+SCRATCH
+MKDIR | book/play
+MKDIR | book/ops/+x
+COPY | @.apps/rmmc/tutorial.pdl | book/tutorial.pdl
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/book/ops/+x/rmmc_tutorial_op.+x | $HOUSE/@.apps/rmmc/ops/rmmc_tutorial_op.c
+EXPECT_EXIT | 0 | the op compiles with no error
+WRITE | led.txt | SEAT | asa | harness\nMOVE | asa | 142 | 6 | 100\nTURN | 1 | move\n
+RUN | $T/book/ops/+x/rmmc_tutorial_op.+x | status | $T/book | $T/led.txt
+EXPECT_OUT_IS | off | no start row: the tutorial is off
+RUN | $T/book/ops/+x/rmmc_tutorial_op.+x | start | $T/book | $T/led.txt | lesson1
+EXPECT_OUT | started lesson1 | start stores the lesson and the ledger offset
+RUN | $T/book/ops/+x/rmmc_tutorial_op.+x | status | $T/book | $T/led.txt
+EXPECT_OUT | id=take | the seat is the harness: step 1 waits for the player to take control
+WRITE | led.txt | SEAT | asa | harness\nMOVE | asa | 142 | 6 | 100\nTURN | 1 | move\nSEAT | asa | human\nMOVE | asa | 143 | 6 | 100\nMOVE | asa | 144 | 6 | 100\nMOVE | asa | 145 | 6 | 100\n
+RUN | $T/book/ops/+x/rmmc_tutorial_op.+x | status | $T/book | $T/led.txt
+EXPECT_OUT | id=walk short=arrows have=3 need=5 | seat human passes step 1, three walked cells count 3 of 5
+WRITE | led.txt | SEAT | asa | harness\nMOVE | asa | 142 | 6 | 100\nTURN | 1 | move\nSEAT | asa | human\nMOVE | asa | 143 | 6 | 100\nMOVE | asa | 144 | 6 | 100\nMOVE | asa | 145 | 6 | 100\nMOVE | ava | 9 | 6 | 9\nMOVE | ava | 10 | 6 | 9\nMOVE | asa | 145 | 7 | 100\nMOVE | asa | 145 | 6 | 100\n
+RUN | $T/book/ops/+x/rmmc_tutorial_op.+x | status | $T/book | $T/led.txt
+EXPECT_OUT | id=walk short=arrows have=3 need=5 | CONTROL: another actor's moves and a hop do not count as steps
+WRITE | led.txt | SEAT | asa | harness\nMOVE | asa | 142 | 6 | 100\nTURN | 1 | move\nSEAT | asa | human\nMOVE | asa | 143 | 6 | 100\nMOVE | asa | 144 | 6 | 100\nMOVE | asa | 145 | 6 | 100\nMOVE | asa | 146 | 6 | 100\nMOVE | asa | 147 | 6 | 100\nMOVE | asa | 147 | 7 | 100\nMOVE | asa | 147 | 6 | 100\nMINE | asa | 148 | 6 | 100 | dirt\n
+RUN | $T/book/ops/+x/rmmc_tutorial_op.+x | status | $T/book | $T/led.txt
+EXPECT_OUT | id=pick | five steps, a hop and a mine in order reach the hotbar step
+WRITE | book/play/pick.txt | axe\n
+RUN | $T/book/ops/+x/rmmc_tutorial_op.+x | status | $T/book | $T/led.txt
+EXPECT_OUT | id=pick | CONTROL: the axe is picked, the pick step waits
+WRITE | book/play/pick.txt | dirt\n
+RUN | $T/book/ops/+x/rmmc_tutorial_op.+x | status | $T/book | $T/led.txt
+EXPECT_OUT | id=place | dirt picked: the place step is next
+WRITE | led.txt | SEAT | asa | harness\nMOVE | asa | 142 | 6 | 100\nTURN | 1 | move\nSEAT | asa | human\nMOVE | asa | 143 | 6 | 100\nMOVE | asa | 144 | 6 | 100\nMOVE | asa | 145 | 6 | 100\nMOVE | asa | 146 | 6 | 100\nMOVE | asa | 147 | 6 | 100\nMOVE | asa | 147 | 7 | 100\nMOVE | asa | 147 | 6 | 100\nMINE | asa | 148 | 6 | 100 | dirt\nRESET | asa | spawn\n
+RUN | $T/book/ops/+x/rmmc_tutorial_op.+x | status | $T/book | $T/led.txt
+EXPECT_OUT | id=place | CONTROL: a RESET before the place step does not skip it (steps are in order)
+WRITE | led.txt | SEAT | asa | harness\nMOVE | asa | 142 | 6 | 100\nTURN | 1 | move\nSEAT | asa | human\nMOVE | asa | 143 | 6 | 100\nMOVE | asa | 144 | 6 | 100\nMOVE | asa | 145 | 6 | 100\nMOVE | asa | 146 | 6 | 100\nMOVE | asa | 147 | 6 | 100\nMOVE | asa | 147 | 7 | 100\nMOVE | asa | 147 | 6 | 100\nMINE | asa | 148 | 6 | 100 | dirt\nPLACE | asa | dirt | 148 | 6 | 100\nRESET | asa | spawn\n
+RUN | $T/book/ops/+x/rmmc_tutorial_op.+x | status | $T/book | $T/led.txt
+EXPECT_OUT | done=7/7 lesson=lesson1 | place then reset finishes the lesson
+RUN | $T/book/ops/+x/rmmc_tutorial_op.+x | stop | $T/book
+RUN | $T/book/ops/+x/rmmc_tutorial_op.+x | status | $T/book | $T/led.txt
+EXPECT_OUT_IS | off | stop deletes the preference: the tutorial is off and the ledger is untouched
+EXPECT_NOFILE | book/play/tutorial.txt | the only stored thing is gone
+CLEAN

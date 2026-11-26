@@ -1,0 +1,15 @@
+# tutorial.pdl - the in-game tutorial of the rmmc book, as DATA (owner 2026-11-26: "tutorials can be like the tools harness"; plan 16.game/TUTORIAL-HARNESS-ONBOARDING-GAMIFICATION-AND-NEAR-TERM-DRIVE-PLAN-2026-11-26.md).
+# A lesson is a list of steps; the checker op (ops/rmmc_tutorial_op.c) reads the LEDGER from the row where the lesson was started and decides which step the player is on. Nothing here changes the game, and the progress is never stored:
+# it is derived from the ledger every time (no ghost data). Only the START point (a byte offset) is kept, as a PREFERENCE in play/tutorial.txt.
+# LESSON | id | title
+# STEP   | id | short (left bar, <= 18 chars) | goal (the sentence a narrator says) | check kind | need
+#   check kinds:  seat_human  the last SEAT row of Asa says human (nothing to do if you already are)    moves N  N MOVE rows that change the column or row     jump  a MOVE that gains one level on the same cell
+#                 mine N      N MINE rows by Asa    place N  N PLACE rows by Asa    reset  a RESET row    picked <item>  the hotbar choice (play/pick.txt, a preference) is that item: a state like seat_human, passed at once if it already is
+LESSON | lesson1 | Drive Asa
+STEP | take  | press ]            | Press the right bracket key to take control of Asa.                  | seat_human | 1
+STEP | walk  | arrows            | Walk with the arrow keys. Five steps.                                  | moves      | 5
+STEP | jump  | space: jump       | Press the space bar to jump up one block.                              | jump       | 1
+STEP | mine  | B: mine           | Press B to swing the pickaxe. The second swing breaks the block.      | mine       | 1
+STEP | pick  | 1: pick dirt       | Press the number one to pick dirt in the hotbar.                      | picked     | dirt
+STEP | place | G: place          | Press G to place the block you picked, in front of Asa.               | place      | 1
+STEP | reset | Home x2: back     | Stuck? Press Home twice to go back to the start.                      | reset      | 1

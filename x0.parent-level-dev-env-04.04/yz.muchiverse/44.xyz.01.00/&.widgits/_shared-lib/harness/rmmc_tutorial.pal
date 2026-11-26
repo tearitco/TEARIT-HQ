@@ -1,0 +1,4 @@
+# rmmc_tutorial.pal - the in-game tutorial op reads its progress from the ledger, in order, and stores only the start offset
+exec ./ops/+x/harness_case_op.+x cases/rmmc_tutorial.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/rmmc_tutorial.pdl
+halt

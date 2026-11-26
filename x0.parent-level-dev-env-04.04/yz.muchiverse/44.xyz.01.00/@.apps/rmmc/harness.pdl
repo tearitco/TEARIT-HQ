@@ -1,0 +1,6 @@
+# harness.pdl - the rmmc book's own tools (2026-11-26). The TUTORIAL rows start and stop the in-game lesson (tutorial.pdl; ops/rmmc_tutorial_op.c). Picking "Tutorial" only stores where the lesson starts in the ledger (play/tutorial.txt, a
+# preference); the lesson itself is read from the ledger, so Stop never changes the game. The ledger path below is the one of the page rmmc-0001 (desks.pdl); a lesson on another page needs its own row.
+# HARNESS | id | page | kind | label | target | args | writes | confirm | note      (grammar: the header of &.widgits/_shared-lib/ops/harness_menu_op.c)
+HARNESS | tut_lesson1 | * | ACTION | Tutorial: drive Asa | @.apps/rmmc/ops/+x/rmmc_tutorial_op.+x | start ${APP} ${HOUSE}/@.apps/rpg-edit-hq/state/games/rmmc/game/ledger.txt lesson1 | - | no | starts lesson 1: the left bar shows each step; Tutorial: stop ends it
+HARNESS | tut_stop | * | ACTION | Tutorial: stop | @.apps/rmmc/ops/+x/rmmc_tutorial_op.+x | stop ${APP} | - | no | ends the lesson (deletes play/tutorial.txt); the game is untouched
+HARNESS | tut_check | * | CASE | check tutorial | rmmc_tutorial | - | - | no | the tutorial op: progress read from the ledger in order, controls that must not advance
