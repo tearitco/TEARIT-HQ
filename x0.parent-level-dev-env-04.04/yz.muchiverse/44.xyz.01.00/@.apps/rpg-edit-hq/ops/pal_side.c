@@ -186,20 +186,29 @@ int main(int argc, char **argv) {
         if (argc > 4 && argv[3][0] && argv[4][0]) { snprintf(bl, sizeof bl, "%s", argv[3]); snprintf(pl, sizeof pl, "%s", argv[4]); }   /* the projector passes the ids: ui.txt may not be written yet this tick */
         snprintf(hop, sizeof hop, "%s/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x", house);
         snprintf(hrows, sizeof hrows, "%s/@.apps/rpg-edit-hq/board/state/harness_rows.txt", house);
-        int nhr = 0;
+        int nhr = 0, ntut = 0;
         if (access(hop, X_OK) == 0) {
             pid_t c = fork();
             if (c == 0) { int nul = open("/dev/null", O_RDWR); if (nul >= 0) { dup2(nul, 0); dup2(nul, 1); dup2(nul, 2); } execl(hop, hop, "list", house, bl[0] ? bl : "-", pl[0] ? pl : "-", hrows, (char *)NULL); _exit(127); }
             if (c > 0) { int st; waitpid(c, &st, 0); }
             FILE *hf = fopen(hrows, "r");
-            if (hf) { char ln[300]; while (nhr < 24 && fgets(ln, sizeof ln, hf)) { char *t = strchr(ln, '\t'); if (!t) continue; *t++ = 0; char *nl = strchr(t, '\n'); if (nl) *nl = 0;
-                            char kk[40], ll[40]; snprintf(kk, sizeof kk, "tbhar_%d_key", nhr); snprintf(ll, sizeof ll, "tbhar_%d_label", nhr); kv_set(palp, ll, ln); kv_set(palp, kk, t); nhr++; } fclose(hf); }
+            if (hf) {   /* same split as the general path below: tut_ rows go to the Tutorial tab (tut_N_label / tut_N_key / n_tut), the rest to Tools without an empty group header */
+                static char HL[48][300], HK[48][200]; int hn = 0; char ln[300];
+                while (hn < 48 && fgets(ln, sizeof ln, hf)) { char *t = strchr(ln, '\t'); if (!t) continue; *t++ = 0; char *nl = strchr(t, '\n'); if (nl) *nl = 0; snprintf(HL[hn], sizeof HL[hn], "%s", ln); snprintf(HK[hn], sizeof HK[hn], "%s", t); hn++; }
+                fclose(hf);
+                for (int i = 0; i < hn; i++) {
+                    char kk[40], ll[40];
+                    if (!strncmp(HK[i], "tut_", 4)) { if (ntut < 12) { snprintf(kk, sizeof kk, "tut_%d_key", ntut); snprintf(ll, sizeof ll, "tut_%d_label", ntut); kv_set(palp, ll, HL[i]); kv_set(palp, kk, HK[i]); ntut++; } continue; }
+                    if (!strcmp(HK[i], "-")) { int j = i + 1; while (j < hn && !strncmp(HK[j], "tut_", 4)) j++; if (j >= hn || !strcmp(HK[j], "-")) continue; }
+                    if (nhr < 24) { snprintf(kk, sizeof kk, "tbhar_%d_key", nhr); snprintf(ll, sizeof ll, "tbhar_%d_label", nhr); kv_set(palp, ll, HL[i]); kv_set(palp, kk, HK[i]); nhr++; } } }
         }
         for (int i = nhr; i < 24; i++) {      /* blank the rows left over from the previous page, so a shorter list does not keep old entries */
             char kk[40], ll[40], v[64] = ""; snprintf(kk, sizeof kk, "tbhar_%d_key", i); snprintf(ll, sizeof ll, "tbhar_%d_label", i);
             kv_get(palp, kk, v, sizeof v); if (!v[0]) break; kv_set(palp, kk, ""); kv_set(palp, ll, "");
         }
         char ns[16]; snprintf(ns, sizeof ns, "%d", nhr); kv_set(palp, "n_tbhar", ns); kv_set(palp, "harness_pending", "");
+        for (int i = ntut; i < 12; i++) { char kk[40], ll[40], v[64] = ""; snprintf(kk, sizeof kk, "tut_%d_key", i); snprintf(ll, sizeof ll, "tut_%d_label", i); kv_get(palp, kk, v, sizeof v); if (!v[0]) break; kv_set(palp, kk, ""); kv_set(palp, ll, ""); }      /* blank the lesson rows of the previous book */
+        { char nt[16]; snprintf(nt, sizeof nt, "%d", ntut); kv_set(palp, "n_tut", nt); }
         printf("HARNESS-ROWS %d\n", nhr);
         return 0;
     }
@@ -405,8 +414,15 @@ int main(int argc, char **argv) {
                 if (c == 0) { int nul = open("/dev/null", O_RDWR); if (nul >= 0) { dup2(nul, 0); dup2(nul, 1); dup2(nul, 2); } execl(hop, hop, "list", house, bl[0] ? bl : "-", pl[0] ? pl : "-", hrows, (char *)NULL); _exit(127); }
                 if (c > 0) { int st; waitpid(c, &st, 0); }
                 FILE *hf = fopen(hrows, "r");
-                if (hf) { char ln[300]; while (nhr < 24 && fgets(ln, sizeof ln, hf)) { char *t = strchr(ln, '\t'); if (!t) continue; *t++ = 0; char *nl = strchr(t, '\n'); if (nl) *nl = 0;
-                                fprintf(o, "tbhar_%d_label=%s\ntbhar_%d_key=%s\n", nhr, ln, nhr, t); nhr++; } fclose(hf); }
+                if (hf) {   /* the Tutorial tab (owner 2026-11-26: "tutorials is a good idea ... try it in rpg-edit"): rows whose id starts with tut_ (a book's lessons: start, stop, check) are listed in their OWN menu, tut_N_label / tut_N_key / n_tut; the Tools tab keeps the rest and drops a group header that would be left empty */
+                    static char HL[48][300], HK[48][200]; int hn = 0; char ln[300];
+                    while (hn < 48 && fgets(ln, sizeof ln, hf)) { char *t = strchr(ln, '\t'); if (!t) continue; *t++ = 0; char *nl = strchr(t, '\n'); if (nl) *nl = 0; snprintf(HL[hn], sizeof HL[hn], "%s", ln); snprintf(HK[hn], sizeof HK[hn], "%s", t); hn++; }
+                    fclose(hf); int ntut = 0;
+                    for (int i = 0; i < hn; i++) {
+                        if (!strncmp(HK[i], "tut_", 4)) { if (ntut < 12) { fprintf(o, "tut_%d_label=%s\ntut_%d_key=%s\n", ntut, HL[i], ntut, HK[i]); ntut++; } continue; }
+                        if (!strcmp(HK[i], "-")) { int j = i + 1; while (j < hn && !strncmp(HK[j], "tut_", 4)) j++; if (j >= hn || !strcmp(HK[j], "-")) continue; }      /* a group header with nothing under it */
+                        if (nhr < 24) { fprintf(o, "tbhar_%d_label=%s\ntbhar_%d_key=%s\n", nhr, HL[i], nhr, HK[i]); nhr++; } }
+                    fprintf(o, "n_tut=%d\n", ntut); }
             }
             fprintf(o, "n_tbhar=%d\n", nhr);
         }

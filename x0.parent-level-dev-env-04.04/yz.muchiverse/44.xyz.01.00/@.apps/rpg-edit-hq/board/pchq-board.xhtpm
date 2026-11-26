@@ -13,6 +13,8 @@
       <tab id="tb-pals" class="pchq-tb" label="Pals ▾" onclick="ACTIVATE" target_id="tb-pals"/>
       <tab id="tb-palettes" class="pchq-tb" label="palettes ▾" onclick="ACTIVATE" target_id="tb-palettes"/>
       <tab id="tb-harness" class="pchq-tb" label="Tools ▾" onclick="ACTIVATE" target_id="tb-harness" show="${n_tbhar}"/>
+      <!-- 2026-11-26 (owner: "tutorials is a good idea ... try it in rpg-edit"): the TUTORIAL tab, its own menu like Tools: the lesson rows of the open book (harness rows whose id starts with tut_: start, stop, check), listed by pal_side (tut_N_label, tut_N_key); hidden when the book has none -->
+      <tab id="tb-tutorial" class="pchq-tb" label="Tutorial ▾" onclick="ACTIVATE" target_id="tb-tutorial" show="${n_tut}"/>
       <tab id="tb-chat" class="pchq-tb" label="${chat_mode_label} ▾" onclick="ACTIVATE" target_id="tb-chat"/>
       <tab id="tb-shop" class="pchq-tb" label="Shop ▾" onclick="ACTIVATE" target_id="tb-shop"/>
       <!-- 2026-11-04: the ledger (coin) shop, the owner's ONE released caller: ONE tab with 7 item rows (a dropdown that would run off the screen scrolls, so keep it short); picking an item opens the popup below; hidden unless books/shop/RELEASE exists (n_lshop=0) -->
@@ -43,6 +45,10 @@
         <item id="hz${tbhar.#}" class="pchq-menu-row dropdown-child" target_id="tb-harness" label="${tbhar.label}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/pal_side.+x' '${HOUSE}' hpick ${tbhar.key}"/>
       </repeat>
       <item id="hz-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-harness" label="- cancel -" action="void"/>
+      <repeat count="${n_tut}" bind="tut">
+        <item id="tu${tut.#}" class="pchq-menu-row dropdown-child" target_id="tb-tutorial" label="${tut.label}" action="'${HOUSE}/@.apps/rpg-edit-hq/ops/+x/pal_side.+x' '${HOUSE}' hpick ${tut.key}"/>
+      </repeat>
+      <item id="tu-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-tutorial" label="- cancel -" action="void"/>
       <repeat count="${n_file_opts}" bind="f">
         <item id="fo-${f.#}" class="pchq-menu-row dropdown-child ${f.active}" target_id="tb-book" label="${f.label}" action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' '${f.verb}' '${f.arg}'"/>
       </repeat>
