@@ -81,6 +81,15 @@ static void bump_view(const char *pkg) {
     if (m) { fputc('.', m); fclose(m); }
 }
 /* STOPGAP (owner 2026-11-26, removal: when the engine's token follow, D118, also carries the token's LEVEL): a followed token moves the cursor's cell but not its level, so the third-person camera hung about 14 blocks above Asa and showed only grass. The driver tells the board its actor's level: floor_z of the board manifest + (ledger height - heightmap shift), written to the xelector's pos_z ONLY while that actor is the possessed one, then the redraw nudge. */
+/* held.txt: the first-person arm's input (bv_render_3d.c bv_draw_hand). A PROJECTION of the game, rewritten after every key verb: item = the picked item (play/pick.txt), swing = CLOCK_MONOTONIC ms of the last
+ * mine or place press (the engine runs the 300 ms swing from it), kind = which. Deleting it hides the arm. Same clock as the engine's, so the two processes agree. */
+static long g_swing_ms = 0; static char g_swing_kind[8] = "";
+static void held_write(const char *pkg, const char *book, const char *actor, const char *verb, int rc) {
+    (void)rc; if (!strcmp(verb, "mine") || !strcmp(verb, "place")) {      /* the arm swings on every press, hit or miss, like Minecraft (the hotbar count and the ledger say whether it worked) */ struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); g_swing_ms = t.tv_sec * 1000L + t.tv_nsec / 1000000L; snprintf(g_swing_kind, sizeof g_swing_kind, "%s", verb); }
+    char pp[PATH_MAX + 64], item[64] = ""; snprintf(pp, sizeof pp, "%.4000s/play/pick.txt", book); FILE *f = fopen(pp, "r"); if (f) { if (fgets(item, sizeof item, f)) item[strcspn(item, "\r\n")] = 0; fclose(f); }
+    char skin[24] = "249,193,157", slv[24] = "64,72,67"; { char rp[PATH_MAX + 80], l[200]; snprintf(rp, sizeof rp, "%.4000s/rigs/rig_%.40s.pdl", book, actor); FILE *rf = fopen(rp, "r"); while (rf && fgets(l, sizeof l, rf)) { int r, g, b; char k[16]; if (sscanf(l, " RIG | %15[^| ] | %d %d %d", k, &r, &g, &b) != 4) continue; if (!strcmp(k, "head")) snprintf(skin, sizeof skin, "%d,%d,%d", r, g, b); else if (!strcmp(k, "arm")) snprintf(slv, sizeof slv, "%d,%d,%d", r, g, b); } if (rf) fclose(rf); }      /* the rig file names the real colours: head = skin, arm = sleeve */
+    char hp[PATH_MAX + 64], want[300]; snprintf(hp, sizeof hp, "%.4000s/pieces/system/held.txt", pkg); snprintf(want, sizeof want, "item=%s\nswing=%ld\nkind=%s\nskin=%s\nsleeve=%s\n", item, g_swing_ms, g_swing_kind, skin, slv);
+    FILE *w = fopen(hp, "w"); if (w) { fputs(want, w); fclose(w); } }
 static void sync_view(const char *pkg, const char *vop, const char *data, const char *led, const char *actor) {
     if (!pkg || !pkg[0]) return;
     char p[PATH_MAX + 160], ln[300], o[200]; int floor_z = -1, shift = 0, ay = 0, ax, az;
@@ -208,13 +217,14 @@ int main(int argc, char **argv) {
                     static long reset_asked = 0; long tn = now_ms();
                     if (!reset_asked || tn - reset_asked > 2000) { reset_asked = tn; snprintf(msg, sizeof msg, "key %.20s: reset? press it again", gk); last_key = tn; last_feed = 0; continue; }
                     reset_asked = 0; }
-                int rc = rmmc_play_verb(house, book, KV[kv].verb, KV[kv].arg, "human", msg, sizeof msg); if (!strcmp(KV[kv].verb, "walk")) g_last_step = now_ms(); if (rc && !first_refusal) first_refusal = rc; { char kt[200]; const char *mm = msg; if (!strncmp(mm, "refused: refused: ", 18)) mm += 9; snprintf(kt, sizeof kt, "key %.20s: %.150s", gk, mm); { char *cut = strstr(kt, " (direct"); if (cut) *cut = 0; cut = strstr(kt, " ["); if (cut) *cut = 0; } snprintf(msg, sizeof msg, "%s", kt); }   /* the last key and what came of it, on screen (owner 2026-11-26: a silent key is a bug; the browser-style debug console replaces this later, plan section 15) */ last_key = now_ms(); idle_pending = 1; sync_view(pkg, vop, data, led, actor); }
+                int rc = rmmc_play_verb(house, book, KV[kv].verb, KV[kv].arg, "human", msg, sizeof msg); held_write(pkg, book, actor, KV[kv].verb, rc); if (!strcmp(KV[kv].verb, "walk")) g_last_step = now_ms(); if (rc && !first_refusal) first_refusal = rc; { char kt[200]; const char *mm = msg; if (!strncmp(mm, "refused: refused: ", 18)) mm += 9; snprintf(kt, sizeof kt, "key %.20s: %.150s", gk, mm); { char *cut = strstr(kt, " (direct"); if (cut) *cut = 0; cut = strstr(kt, " ["); if (cut) *cut = 0; } snprintf(msg, sizeof msg, "%s", kt); }   /* the last key and what came of it, on screen (owner 2026-11-26: a silent key is a bug; the browser-style debug console replaces this later, plan section 15) */ last_key = now_ms(); idle_pending = 1; sync_view(pkg, vop, data, led, actor); }
             fclose(f); }
         if (last_key > last_feed || now_ms() - last_feed >= 2000) { last_feed = now_ms(); char o2[300]; char *av[] = { vop, "where", data, led, (char *)actor, NULL }; run_out(av, o2, sizeof o2); snprintf(where, sizeof where, "%s", o2[0] ? o2 : "not spawned"); char o3[100]; char *a3[] = { vop, "seat", data, led, (char *)actor, NULL }; run_out(a3, o3, sizeof o3); snprintf(seatn, sizeof seatn, "%s", strncmp(o3, "seat=", 5) ? "harness" : o3 + 5); { char ob[400]; char *ab[] = { vop, "bag", data, led, (char *)actor, NULL }; run_out(ab, ob, sizeof ob); snprintf(g_bag, sizeof g_bag, "%s", strncmp(ob, "bag=", 4) ? "" : ob + 4); }
         if (feed) { char fb[16384]; g_tut_led = led[0] ? led : NULL; int n = chrome_feed(fb, sizeof fb, book, actor, where, seatn, msg); put_if_changed(feed, fb, (size_t)n); } }
         if (once) return first_refusal;
         if (idle_pending && now_ms() - last_key >= idle_ms) { char o2[200]; char *av[] = { pop, "project", seed, desk, led, pose, hm, "--idle", "--no-marker", NULL }; run_out(av, o2, sizeof o2); idle_pending = 0; }
         if (stop_ || (owner > 0 && owner_gone(owner))) return 0;
+        if (g_swing_ms && now_ms() - g_swing_ms <= 450) bump_view(pkg);      /* the engine only redraws on a change: nudge it every tick of a swing and once after, so the arm swings and comes back (about 8 nudges per press) */
         usleep((useconds_t)poll_ms * 1000);
     }
 }

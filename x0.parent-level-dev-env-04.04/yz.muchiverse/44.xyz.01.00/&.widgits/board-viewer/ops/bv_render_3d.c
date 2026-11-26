@@ -2714,6 +2714,69 @@ static void bv_fill_rect(int x0, int y0, int x1, int y1, unsigned char r, unsign
         }
 }
 
+/* First-person VIEW MODEL (owner 2026-11-26: "can't it just use the real arm"). Minecraft draws the hand in first person as its own small model fixed to the camera, because the body's arm hangs outside the
+ * view; so does this: Asa's right arm (the rig's 4x12x4 limb, sleeve colour from rig_<name>.pdl `arm`, hand = its `head` skin) as real 3D boxes in CAMERA space, rotated, perspective-projected with the engine's
+ * own focal length and face-lit (top light, front mid, side dark), painted over the finished frame in camera mode 1 only. The held item is built from the same boxes in the arm's frame: a tool = handle + head,
+ * anything else = a cube in the block's colour. Input: <root>/pieces/system/held.txt, a PROJECTION the game driver writes (item=, swing= CLOCK_MONOTONIC ms of the last mine/place press, skin=r,g,b, sleeve=r,g,b);
+ * no held.txt = no arm. A 300 ms swing tips the arm up and brings it toward the centre. A CPU rasteriser on purpose: boxes in the GPU scene are axis-aligned and cannot turn with the camera. */
+typedef struct { double x, y, z; } VmV;
+static VmV vm_add(VmV a, VmV b) { VmV r = { a.x + b.x, a.y + b.y, a.z + b.z }; return r; }
+static VmV vm_mul(VmV a, double k) { VmV r = { a.x * k, a.y * k, a.z * k }; return r; }
+static double vm_dot(VmV a, VmV b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+static VmV vm_cross(VmV a, VmV b) { VmV r = { a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x }; return r; }
+static VmV vm_norm(VmV a) { double l = sqrt(vm_dot(a, a)); if (l < 1e-9) l = 1; return vm_mul(a, 1.0 / l); }
+static void vm_poly(const double sx[4], const double sy[4], unsigned char r, unsigned char g, unsigned char b) {      /* a convex quad, one scanline at a time */
+    double y0 = sy[0], y1 = sy[0]; for (int i = 1; i < 4; i++) { if (sy[i] < y0) y0 = sy[i]; if (sy[i] > y1) y1 = sy[i]; }
+    for (int y = (int)floor(y0); y <= (int)ceil(y1); y++) { double xa = 1e9, xb = -1e9; double yy = y + 0.5;
+        for (int i = 0; i < 4; i++) { int j = (i + 1) & 3; double ya = sy[i], yb = sy[j]; if ((yy < ya && yy < yb) || (yy > ya && yy > yb) || ya == yb) continue;
+            double t = (yy - ya) / (yb - ya), x = sx[i] + (sx[j] - sx[i]) * t; if (x < xa) xa = x; if (x > xb) xb = x; }
+        if (xa <= xb) bv_fill_rect((int)floor(xa), y, (int)ceil(xb), y + 1, r, g, b); }
+}
+/* one box in the arm's frame: origin o, axes ax (right) ay (up) az (along the arm); extents u0..u1, v0..v1, w0..w1; the three faces that face the camera, lit from the upper left */
+static void vm_box(VmV o, VmV ax, VmV ay, VmV az, double u0, double u1, double v0, double v1, double w0, double w1, unsigned char r, unsigned char g, unsigned char b, double focal) {
+    VmV P[8]; for (int i = 0; i < 8; i++) { double u = (i & 1) ? u1 : u0, v = (i & 2) ? v1 : v0, w = (i & 4) ? w1 : w0; P[i] = vm_add(o, vm_add(vm_mul(ax, u), vm_add(vm_mul(ay, v), vm_mul(az, w)))); }
+    static const int F[6][4] = { {0,1,3,2}, {4,6,7,5}, {0,4,5,1}, {2,3,7,6}, {0,2,6,4}, {1,5,7,3} };      /* -w +w? by corner bits: w faces first, then v, then u */
+    const VmV N[6] = { vm_mul(az, -1), az, vm_mul(ay, -1), ay, vm_mul(ax, -1), ax }; const VmV L = vm_norm((VmV){ -0.35, 0.8, -0.45 });
+    for (int f = 0; f < 6; f++) { VmV c = { 0, 0, 0 }; for (int k = 0; k < 4; k++) c = vm_add(c, P[F[f][k]]); c = vm_mul(c, 0.25);
+        if (vm_dot(N[f], c) >= 0) continue;                       /* facing away from the eye at the origin */
+        double sx[4], sy[4]; int ok = 1; for (int k = 0; k < 4; k++) { VmV p = P[F[f][k]]; if (p.z < 0.06) { ok = 0; break; } sx[k] = g_fw * 0.5 + focal * p.x / p.z; sy[k] = g_fh * 0.5 - focal * p.y / p.z; }
+        if (!ok) continue;
+        double sh = 0.58 + 0.42 * (vm_dot(N[f], L) * 0.5 + 0.5); if (sh > 1.15) sh = 1.15;
+        int rr = (int)(r * sh), gg = (int)(g * sh), bb = (int)(b * sh); vm_poly(sx, sy, (unsigned char)(rr > 255 ? 255 : rr), (unsigned char)(gg > 255 ? 255 : gg), (unsigned char)(bb > 255 ? 255 : bb)); }
+}
+static void bv_hand_color(const char *it, unsigned char *r, unsigned char *g, unsigned char *b) {
+    static const struct { const char *n; unsigned char r, g, b; } T[] = { {"dirt",121,85,58}, {"grass",90,150,60}, {"stone",125,125,125}, {"cobble",110,110,110}, {"wood",110,85,50}, {"log",100,75,45},
+        {"plank",170,130,75}, {"sand",219,205,140}, {"water",60,90,200}, {"brick",150,80,70}, {"leaf",50,120,40} };
+    for (size_t i = 0; i < sizeof T / sizeof T[0]; i++) if (strstr(it, T[i].n)) { *r = T[i].r; *g = T[i].g; *b = T[i].b; return; }
+    unsigned h = 7; for (const char *p = it; *p; p++) h = h * 31 + (unsigned char)*p; *r = 90 + h % 120; *g = 90 + (h >> 8) % 120; *b = 90 + (h >> 16) % 120;
+}
+static void bv_draw_hand(const char *root) {
+    static char cached_root[PATH_BUF], item[48]; static long long swing = 0; static int have = 0, skin[3] = { 249, 193, 157 }, slv[3] = { 64, 72, 67 }; static struct timespec last;
+    struct timespec now; clock_gettime(CLOCK_MONOTONIC, &now); long long now_ms = (long long)now.tv_sec * 1000 + now.tv_nsec / 1000000;
+    long long since = (long long)(now.tv_sec - last.tv_sec) * 1000 + (now.tv_nsec - last.tv_nsec) / 1000000;
+    if (!g_fbuf || !root || !root[0]) return;
+    if (strcmp(cached_root, root) || since > 150 || since < 0) {
+        snprintf(cached_root, sizeof cached_root, "%s", root); last = now; have = 0; item[0] = 0; swing = 0;
+        char p[PATH_BUF], l[96]; snprintf(p, sizeof p, "%s/pieces/system/held.txt", root); FILE *f = fopen(p, "r");
+        if (f) { have = 1; while (fgets(l, sizeof l, f)) { l[strcspn(l, "\r\n")] = 0; if (!strncmp(l, "item=", 5)) snprintf(item, sizeof item, "%s", l + 5); else if (!strncmp(l, "swing=", 6)) swing = atoll(l + 6);
+                else if (!strncmp(l, "skin=", 5)) sscanf(l + 5, "%d,%d,%d", &skin[0], &skin[1], &skin[2]); else if (!strncmp(l, "sleeve=", 7)) sscanf(l + 7, "%d,%d,%d", &slv[0], &slv[1], &slv[2]); } fclose(f); }
+    }
+    if (!have) return;
+    double focal = (g_fh / 2.0) / tan(g_fov_deg * M_PI_LOCAL / 360.0);
+    double sw = 0; long long dt = now_ms - swing; if (swing > 0 && dt >= 0 && dt < 300) sw = sin(M_PI_LOCAL * (double)dt / 300.0);
+    /* the arm: its shoulder end low and right of the eye, pointing forward, a little up and in; the swing tips it up and toward the centre */
+    VmV az = vm_norm((VmV){ -0.30 - 0.45 * sw, 0.38 + 1.10 * sw, 1.0 }); VmV ax = vm_norm(vm_cross((VmV){ 0, 1, 0 }, az)); VmV ay = vm_cross(az, ax);
+    VmV o = { 0.46 - 0.30 * sw, -0.50 + 0.20 * sw, 0.38 + 0.14 * sw };
+    const double A = 0.115, LEN = 0.66;                           /* Minecraft's arm is 4 x 12 x 4: a quarter as wide as it is long (half width 0.115 here) */
+    vm_box(o, ax, ay, az, -A, A, -A, A, LEN * 0.52, LEN, (unsigned char)skin[0], (unsigned char)skin[1], (unsigned char)skin[2], focal);      /* the hand end: skin */
+    vm_box(o, ax, ay, az, -A, A, -A, A, 0.0, LEN * 0.52, (unsigned char)slv[0], (unsigned char)slv[1], (unsigned char)slv[2], focal);          /* the sleeve */
+    VmV hand = vm_add(o, vm_mul(az, LEN * 0.92)); int tool = strstr(item, "axe") || strstr(item, "shovel") || strstr(item, "pick") || strstr(item, "sword") || strstr(item, "hoe");
+    if (tool) { vm_box(hand, ax, ay, az, -0.03, 0.03, -0.03, 0.03, -0.05, 0.50, 120, 85, 45, focal);                                            /* the handle */
+        vm_box(hand, ax, ay, az, -0.02, 0.02, 0.05, 0.30, 0.40, 0.55, 165, 170, 175, focal); }                                                  /* the head, across the end of the handle */
+    else if (item[0]) { unsigned char r, g, b; bv_hand_color(item, &r, &g, &b); VmV top = vm_add(hand, vm_add(vm_mul(ay, 0.0), vm_mul(az, 0.0)));
+        vm_box(top, ax, ay, az, -0.15, 0.15, 0.115, 0.43, -0.05, 0.25, r, g, b, focal); }                                                      /* a block held on the hand */
+}
+
 /* Milestone C - 3D-view minimap (BV-HUD-TEXT-OVERLAY-AND-MINIMAP.md
  * §4b). Reuses render_one_frame()'s OWN col_top[][] empty-space-skip
  * precompute (mc-speed-algos.md) - no second scan, no new geometry.
@@ -5457,6 +5520,7 @@ static int render_one_frame(void) {
         g_mm_selx = selector_x; g_mm_sely = selector_y;
     }
     bv_draw_hud(focused_project_root, current_z, selector_x, selector_y);
+    if (camera_mode == 1) bv_draw_hand(focused_project_root);      /* first-person held item and arm (held.txt), after the HUD so it paints over the world only */
 
     size_t byte_count = (size_t)g_fw * (size_t)g_fh * 4;
 
