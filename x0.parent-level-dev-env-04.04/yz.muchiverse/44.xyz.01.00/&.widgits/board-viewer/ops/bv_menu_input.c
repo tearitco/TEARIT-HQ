@@ -345,6 +345,37 @@ static int desk_token_at(const char *root, int x, int y, char *out, size_t osz) 
 #endif
 }
 
+static void bump_screen_changed(const char *root);      /* defined further down */
+/* The game-driven tokens of the shown page (2026-11-26): the rig: rows of its events.txt, in file order (Asa, then Ava...). Returns how many were read (<= max). */
+static int desk_tokens(const char *root, char names[][48], int *tx, int *ty, int max) {
+#ifdef BV_NO_DESKPOSSESS
+    (void)root; (void)names; (void)tx; (void)ty; (void)max; return 0;
+#else
+    char wst[PATH_BUF], desk[64] = "", map_id[64] = "", ep[PATH_BUF], ln[160]; int n = 0;
+    snprintf(wst, sizeof(wst), "%s/pieces/world_01/state.txt", root);
+    read_kv_str(wst, "desk_id", desk, sizeof(desk)); read_kv_str(wst, "map_id", map_id, sizeof(map_id));
+    if (!desk[0] || !map_id[0] || strchr(desk, '/') || strchr(map_id, '/')) return 0;
+    snprintf(ep, sizeof(ep), "%s/%s/events.txt", bp_dir(root, map_id), desk);
+    FILE *f = fopen(ep, "r"); if (!f) return 0;
+    while (n < max && fgets(ln, sizeof(ln), f)) {
+        int ex, ey, r, g, b; char nm[48];
+        if (sscanf(ln, "%d %d %d %d %d %47s", &ex, &ey, &r, &g, &b, nm) == 6 && !strncmp(nm, "rig:", 4)) { snprintf(names[n], 48, "%s", nm); tx[n] = ex; ty[n] = ey; n++; }
+    }
+    fclose(f); return n;
+#endif
+}
+/* Possess the next (dir 1) or previous (dir -1) token after the current one (or after last_possessed_id, or from the start): possessed_id and last_possessed_id name it, the cursor goes to its cell. Returns 1 when one was taken. */
+static int possess_cycle(const char *root, const char *xs, const char *state_path, const char *project_root, int dir) {
+    char names[16][48]; int tx[16], ty[16]; int nt = desk_tokens(root, names, tx, ty, 16); if (nt <= 0) return 0;
+    char cur[64] = "", last[64] = ""; read_kv_str(xs, "possessed_id", cur, sizeof(cur)); read_kv_str(xs, "last_possessed_id", last, sizeof(last));
+    int idx = -1; for (int i = 0; i < nt; i++) if (!strcmp(cur, names[i])) idx = i; if (idx < 0) for (int i = 0; i < nt; i++) if (!strcmp(last, names[i])) idx = i;
+    int to = idx < 0 ? (dir > 0 ? 0 : nt - 1) : ((idx + dir + nt) % nt);
+    write_kv(xs, "possessed_id", names[to]); write_kv(xs, "last_possessed_id", names[to]);
+    write_kv_int(xs, "pos_x", tx[to]); write_kv_int(xs, "pos_y", ty[to]);
+    write_kv_int(state_path, "selector_x", tx[to]); write_kv_int(state_path, "selector_y", ty[to]);
+    bump_screen_changed(project_root); return 1;
+}
+
 static int clamp_int(int v, int lo, int hi) {
     if (v < lo) return lo;
     if (v > hi) return hi;
@@ -605,6 +636,7 @@ static int handle_one_key(int key) {
     int key_toggle_render_mode = '0';
     int key_possess = '9';
     int key_possess_commit = 13;    /* Enter - possess entity under the xlector (muta parity) */
+    int key_poss_next = 0, key_poss_prev = 0, key_release_alt = 0, poss_enter_any = 0;   /* 2026-11-26 optional rows, see the possess_cycle comment */
     int key_reset_xelector = '8';
     int key_z_down = 'z', key_z_up = 'x';
     int key_reset_view = 'f';
@@ -665,6 +697,10 @@ static int handle_one_key(int key) {
         key_toggle_render_mode = pdl_bind_int(kb_pdl_path, "KEY", "render_mode_toggle", key_toggle_render_mode);
         key_possess        = pdl_bind_int(kb_pdl_path, "KEY", "possess",         key_possess);
         key_possess_commit = pdl_bind_int(kb_pdl_path, "KEY", "possess_commit",  key_possess_commit);
+        key_poss_next = pdl_bind_int(kb_pdl_path, "KEY", "possess_next", key_poss_next);          /* optional rows: absent = 0 = off, the old behaviour */
+        key_poss_prev = pdl_bind_int(kb_pdl_path, "KEY", "possess_prev", key_poss_prev);
+        key_release_alt = pdl_bind_int(kb_pdl_path, "KEY", "possess_release_alt", key_release_alt);
+        poss_enter_any = pdl_bind_int(kb_pdl_path, "KEY", "possess_enter_anywhere", poss_enter_any);   /* 1: Enter with no entity under the cursor takes the next token */
         key_reset_xelector = pdl_bind_int(kb_pdl_path, "KEY", "reset_xelector",  key_reset_xelector);
         key_z_down = pdl_bind_int(kb_pdl_path, "KEY", "xelector_z_down", key_z_down);
         key_z_up   = pdl_bind_int(kb_pdl_path, "KEY", "xelector_z_up",   key_z_up);
@@ -716,6 +752,13 @@ static int handle_one_key(int key) {
 #endif
     if (key_pov_1_alt > 0 && key == key_pov_1_alt) key = key_pov_1;   /* the alias keys act as 1 and 2 from here on (after the GAMEKEY check, so a possessed game still gets its own digits) */
     if (key_pov_2_alt > 0 && key == key_pov_2_alt) key = key_pov_2;
+    if (key_release_alt > 0 && key == key_release_alt) key = key_possess;   /* a second RELEASE key (KEY possess_release_alt): '9' is the hotbar slot 9 of a game that lists it as a GAMEKEY, so it never got here while that game's token was possessed */
+    /* NEXT / PREVIOUS possessable token (KEY possess_next / possess_prev, owner 2026-11-26 "[ and ]"): cycles possessed_id through the shown page's rig: rows of events.txt and puts the cursor on the token's cell. Not the ledger. */
+    if (focused_project_root[0] && ((key_poss_next > 0 && key == key_poss_next) || (key_poss_prev > 0 && key == key_poss_prev))) {
+        char xs0[PATH_BUF]; snprintf(xs0, sizeof(xs0), "%s/pieces/xelector_01/state.txt", focused_project_root);
+        possess_cycle(focused_project_root, xs0, state_path, project_root, key == key_poss_next ? 1 : -1);
+        return 0;
+    }
     int dx = 0, dy = 0;
     if (key == ARROW_LEFT) dx = left_dx;
     else if (key == ARROW_RIGHT) dx = right_dx;
@@ -1138,6 +1181,8 @@ static int handle_one_key(int key) {
                 write_kv(xs, "possessed_id", tid);
                 write_kv(xs, "last_possessed_id", tid);
                 bump_screen_changed(project_root);
+            } else if (!possessing && poss_enter_any) {
+                possess_cycle(focused_project_root, xs, state_path, project_root, 1);      /* Enter with nothing under the cursor: the next token (KEY possess_enter_anywhere) */
             }
             return 0;
         }

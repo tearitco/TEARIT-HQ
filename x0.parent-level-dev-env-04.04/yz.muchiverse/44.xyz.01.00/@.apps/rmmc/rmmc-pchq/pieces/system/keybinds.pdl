@@ -24,3 +24,9 @@ GAMEKEY      | page | 48
 
 KEY          | pov_mode_1_alt     | 112       # 'p'  first person (Minecraft view) while the hotbar owns the digits
 KEY          | pov_mode_2_alt     | 111       # 'o'  third person
+
+# Possession keys (owner 2026-11-26, plan 16.game/TUTORIAL-HARNESS-...-2026-11-26.md section 10). All optional rows; delete one and that key stops existing.
+KEY          | possess_next            | 93     # ]  take the next rig: token on the page (Asa, Ava...)
+KEY          | possess_prev            | 91     # [  take the previous one
+KEY          | possess_release_alt     | 117    # u  release (the second release key; '9' is the engine's own but a hotbar slot in rmmc)
+KEY          | possess_enter_anywhere  | 1      # 1 = Enter with nothing under the cursor takes the next token; 0 = only Enter on its cell
