@@ -4,11 +4,11 @@
 # Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
 # Voices: MAXINE (en-GB-MaisieNeural), TOMO (ja-JP-NanamiNeural), RAHWEH (en-GB-RyanNeural), THE NARRATOR (en-GB-ThomasNeural)
 # Voice profiles: as in night_voices.pdl. The owner judges the voices by ear.
-# Topic: 2026-11-26, the long class the owner asked for ("usually the classes are too short"). How the Asa tutorial, the harness and the ledger connect to the AI pipeline: reinforcement learning on itself, a vocabulary and a bank of beneficial actions that grow, more NPCs, which of the house's words (attrition, TEARIT, Harnecient, tomom, hai) does which job, and how the physical testing fits. Then advanced mechanics: where the cdda ideas and the oxygen mechanic of rpg-space fit, what Asa could and could not do in the rpg-space level, what would be needed (ops, rows, plugs), and how a developer and a user would each go about it.
+# Topic: 2026-11-26, the long class the owner asked for ("usually the classes are too short"). How the Asa tutorial, the harness and the ledger connect to the AI pipeline: reinforcement learning on itself, a vocabulary and a bank of beneficial actions that grow, more NPCs, which of the house's words (attrition, TEARIT, Harnecient, tomom, hai) does which job, and how the physical testing fits. Then advanced mechanics: where the cdda ideas and the oxygen mechanic of rpg-space fit, what Asa could and could not do in the rpg-space level, what would be needed (ops, rows, plugs), and how a developer and a user would each go about it. The last part is a debate: six open decisions (the name Harnecient, router confidence, promotion, NPC banks, where oxygen lives, when a learned layer goes live), each with options, pros, cons and a proposal; the owner decides.
 # Long-form: RAN means run and the result seen, with the harness name or the session where it ran. DESIGN means written down, nothing runs. NOT PROVEN means nobody has shown it. READ means a file was opened and read. No unpublished lore is used.
 # Companion documents: NIGHT 30 (the attrition model), NIGHT 63 (Tearitization and the agent that learns your words), NIGHT 65; BOOK 17.ai META-STRATEGY-ATTRITION-HARNESS-TOOL-USE-AND-CHEAP-BUILDING-2026-11-22, HARNESS-AS-GAME-BRAIN, AI-ROADMAP-MICRO-AI-AND-IN-HOUSE-MODELS-2026-11-05; BOOK 16.game RMMC-TUTORIAL-FIRST-PERSON-DRIVE-HANDOFF-AND-ROADMAP-2026-11-26, PLUGS-AND-HARNZ-SPEC-2026-11-14, MINECRAFT-EVENTS-HANDOFF-FARMING-WATER-MOBS-DAYNIGHT-2026-11-22; decision log D92, D140 to D142.
 
-**THE NARRATOR:** Welcome to night sixty-six. The owner said the classes are too short, so tonight is long, and it has eight parts. One: the words, because this house has too many of them. Two: what the tutorial work added to the picture. Three: how the house would learn by itself, and how little of that exists. Four: more characters. Five: the physical testing. Six: advanced mechanics, with the oxygen of rpg-space as the worked example. Seven: how a developer and a user would each add one. Eight: what we would build first, and what the owner has to decide.
+**THE NARRATOR:** Welcome to night sixty-six. The owner said the classes are too short, so tonight is long, and it has nine parts. The ninth is a debate: the open decisions, each argued from both sides with its options, pros and cons. One: the words, because this house has too many of them. Two: what the tutorial work added to the picture. Three: how the house would learn by itself, and how little of that exists. Four: more characters. Five: the physical testing. Six: advanced mechanics, with the oxygen of rpg-space as the worked example. Seven: how a developer and a user would each add one. Eight: what we would build first, and what the owner has to decide.
 
 **MAXINE:** And I want the two hard questions answered at the end, not dodged. Could Asa stand in the rpg-space level? And do we really learn by ourselves, or is that a story?
 
@@ -232,7 +232,71 @@
 
 **TOMO:** Five. The describe loop on real watch records from rmmc, one fixed line, validator, human review. Six. Oxygen as a plug on the voxel ledger, health first. Seven. Per-actor weights, once there are several NPCs to need them.
 
-**RAHWEH:** Decisions for the owner, labelled OPEN. The name Harnecient. Softmax confidence in place of the gap rule. The promotion criteria, once real review entries pile up. Whether NPCs share a bank or each have one. Whether oxygen belongs in the voxel game at all, or stays a rpg-space feature. And the moment a learned layer is allowed to go live: only after it beats the hand seeds on goals it has not seen, with a human reviewing.
+**RAHWEH:** Six decisions are open, and they belong to the owner. A house rule for a debate: each side must say what it costs. So for each topic we give the question, the options, the best case for each, the price of each, and then a PROPOSAL, which is only a recommendation. The owner decides, and a decision becomes a row in the decision log.
+
+---
+
+**THE NARRATOR:** Part nine. The debates. Topic one: what does the name Harnecient mean?
+
+**MAXINE:** Option A. Harnecient names the router and judge layer: the harness, the bank, the router, the verdicts. The case for it: the house has no single name for that layer, and the doc that routes agents would finally have one word. The price: it is a folder name and a relay name already, so two meanings share one word, and old docs would need to be read with care.
+
+**TOMO:** Option B. Harnecient stays the name of the hai relay and the lab, nothing more. The case: it is what the words already mean in the files, so nothing has to change. The price: the router and judge layer keeps being called by a list of parts, which is exactly the confusion the owner's own question shows.
+
+**RAHWEH:** Option C. Keep it as the folder and lab name, and give the layer a plain new name, such as router and judge. The case: no overloaded word, and it is searchable. The price: one more name to teach. PROPOSAL: option C, because a product word should be chosen on purpose, not inherited by accident. OWNER DECIDES.
+
+---
+
+**THE NARRATOR:** Topic two: how should the router decide when to fire a route, and how confident is it?
+
+**MAXINE:** Option A, keep the gap rule: fire only when the best score beats the second by a margin, now zero point four five. The case: it is simple, inspectable, one number in a rule row, and it blocked every wrong route on forty test goals in both weight lanes. The price: that number was fitted to four wrong routes, it falls apart at a different scale, and about a fifth of the right routes were pushed to a fallback.
+
+**TOMO:** Option B, replace it with softmax confidence at a low temperature. The case, RAN in the lab: it was close to calibrated on three datasets, two fitted and one never fitted, with an error of about five to eight percent, and answers above zero point eight were right nine times in ten. A calibrated confidence is something a human can read and a threshold can use. The price: it adds a temperature to fit, it was measured on a small, authored set, and it needs the owner's yes.
+
+**RAHWEH:** Option C, both: softmax as the confidence, the gap as a veto for close races. The case: two independent checks agree before anything fires. The price: two rules to maintain and a worse chance of silence. PROPOSAL: B first in shadow, logging what it would have done next to the gap rule, then decide on real goals. NOT PROVEN on goals nobody wrote. OWNER DECIDES.
+
+---
+
+**THE NARRATOR:** Topic three: when does a learned edit become something the house believes?
+
+**MAXINE:** Option A, a human reviews every edit, forever. The case: it is the standing rule, nothing the model suggests can change behaviour without a person, and it cannot be gamed. The price: it is the real ceiling on how fast the house learns, and review is slow.
+
+**TOMO:** Option B, thresholds after enough evidence: a weight nudge inside a safe range is applied after, say, a set number of verified rows agree, and a human audits a sample. The case: it removes the bottleneck for the one kind of edit that has a validator. The price: the rule says auto-promotion is never built, so this means the owner overruling their own rule. And only one of the four edit types can even be validated today.
+
+**RAHWEH:** Option C, wait. Build the other three edit types and their validators first, let real review entries pile up, and design promotion rules from what that pile looks like. The case: promotion rules written now would be guesses. The price: nothing speeds up meanwhile. PROPOSAL: C, with A staying in force. The class said it in night thirty and it is still true. OWNER DECIDES.
+
+---
+
+**THE NARRATOR:** Topic four: do all the NPCs share one bank of learned actions, or does each have its own?
+
+**MAXINE:** Option A, one shared bank. The case: every NPC benefits from every verified row, learning is faster, and there is one authority. The price: characters become identical in behaviour, and one bad row spoils all of them.
+
+**TOMO:** Option B, a bank per actor. The case: personalities, and a mistake stays local. The price: each actor learns from far fewer rows, storage and checking multiply, and there is no shared knowledge.
+
+**RAHWEH:** Option C, layered: a shared base with a small set of per-actor changes on top. The house already has this shape, trunk and branch for shared data, decision eighty-seven, though the operation that builds it is not written. The case: shared learning with room for character, and one authority per fact. The price: it needs that operation, and a rule for which layer wins. PROPOSAL: C, and do not build per-actor weights until at least two NPCs actually need them. OWNER DECIDES.
+
+---
+
+**THE NARRATOR:** Topic five: where does oxygen live?
+
+**MAXINE:** Option A, in the voxel game, as a plug. The case: it makes Asa's world a survival world, the air comes from geometry, and every step is a row the verbs already write. The price: health must be built first, because the voxel game has none, and so must a fold that finds sealed rooms.
+
+**TOMO:** Option B, it stays in rpg-space. The case: it exists and works. The price: it is native C and a mutable state file, both against house rules, and Asa cannot use it without a second driver and a second engine.
+
+**RAHWEH:** Option C, one shared op that both games call. The case: one authority for the air rules, and it repays the old rpg-space debt. The price: the largest piece of work, and rpg-space would have to be changed to call it. PROPOSAL: A first, built as an op so that C stays possible, and rpg-space untouched until it matters. DESIGN, nothing built. OWNER DECIDES.
+
+---
+
+**THE NARRATOR:** Topic six: when may a learned layer go live?
+
+**MAXINE:** Option A, the current rule: only after it beats the hand seeds on goals it has not seen, and a human reviews the promotion. The case: it is a clear bar. The price: the held-out goals must come from people who never saw the answers, and today most do not.
+
+**TOMO:** Option B, shadow mode first. The layer runs beside the rules, logs what it would have done, and never acts. After a period the log shows whether it would have helped. The case: real evidence on real goals at no risk. The price: it needs the log to exist, and it costs a little compute for nothing visible.
+
+**RAHWEH:** Option C, never: rules only, and the model describes and nothing more. The case: simplest, fully predictable. The price: it gives up the attrition goal for that task, since the outside tier is never retired. PROPOSAL: B, then A as the gate to leave shadow mode. NOT PROVEN that any learned layer beats the seeds. OWNER DECIDES.
+
+---
+
+**THE NARRATOR:** That is six debates. The owner's answers go into the decision log, and the next class starts from them.
 
 **MAXINE:** And the thing to remember if you remember only one?
 
