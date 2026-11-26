@@ -34,11 +34,11 @@ if [ "$KEEP" != "1" ] && [ -x "$REG" ] && [ -n "$WPID" ] && [ -n "$DPID" ] && [ 
     "$REG" "$HOUSE" register "$DPID" owner "$WPID" daemon rpg-edit-hq rpg-edit-hq-daemon "$APP/ops/+x/rpg_edit_hq.+x $HOUSE $APP" >/dev/null 2>&1 || true
 fi
 # The joystick (owner 2026-11-26: "make sure it starts when rpg-edit starts, if plugged in"). The house already has the daemon (_.monads/_.livedesk-taskbar/ops/khtpm_joystick_daemon.c, arrows from the D-pad into the FOCUSED window's relay file) but nothing launched it, so the controller did nothing anywhere.
-# Started through the funnel like the daemon above, only when a /dev/input/js* exists (the daemon itself also exits quietly with no device), once (a registered live one is reused), and handed to the board window so closing the editor ends it.
+# Started through the funnel like the daemon above, ALWAYS, with or without a pad (v4 of the daemon waits in the kernel for a pad to appear and survives an unplug, 2026-11-26: it used to exit and stay dead after a re-plug), once (a registered live one is reused), and handed to the board window so closing the editor ends it.
 JSD="$HOUSE/_.monads/_.livedesk-taskbar/ops/+x/khtpm_joystick_daemon.+x"
 jreg() { [ -x "$REG" ] && "$REG" "$HOUSE" list 2>/dev/null | awk -F' [|] ' '$10 == "joystick-daemon" {print $2}' | tail -1; }
 JPID="$(jreg)"
-if [ -x "$JSD" ] && ls /dev/input/js* >/dev/null 2>&1 && { [ -z "$JPID" ] || [ ! -d "/proc/$JPID" ]; }; then
+if [ -x "$JSD" ] && { [ -z "$JPID" ] || [ ! -d "/proc/$JPID" ]; }; then
     KH_ROLE=daemon KH_APP=rpg-edit-hq sh "$FUNNEL" "$HOUSE" 0 joystick-daemon -- "$JSD" "$HOUSE" >/dev/null 2>&1; sleep 1; JPID="$(jreg)"
 fi
 if [ "$KEEP" != "1" ] && [ -x "$REG" ] && [ -n "$WPID" ] && [ -n "$JPID" ] && [ -d "/proc/$WPID" ] && [ -d "/proc/$JPID" ]; then

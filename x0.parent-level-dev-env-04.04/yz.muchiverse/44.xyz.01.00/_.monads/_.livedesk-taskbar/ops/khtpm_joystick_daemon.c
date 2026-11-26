@@ -51,6 +51,7 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <poll.h>
+#include <sys/inotify.h>
 #include <errno.h>
 
 typedef struct {
@@ -121,20 +122,23 @@ int main(int argc, char **argv) {
     const char *house_root = argv[1];
     const char *device = argc > 2 ? argv[2] : "/dev/input/js0";
 
+    /* v4 (owner 2026-11-26: "daemon has to restart on plugin or always run, right?"; the pad was unplugged and re-plugged twice that day and the daemon, which used to exit when the device went away, stayed dead both times): the daemon NEVER exits because the pad is missing or went away. One pass of the outer loop = one device session: open, read until the read fails (unplug), wait, open again. While the device is absent it BLOCKS in read() on an inotify watch of the device's folder (no timer, no wakeups, zero cpu); the watch is made BEFORE the first open, so a device that appears between a failed open and the wait is never missed. IN_ATTRIB is watched too: udev sets the permissions (the ACL) just after the node appears, and an open before that fails with EACCES. A FIFO as the device (the harness) works the same way: open blocks until a writer comes. */
+    int ifd = inotify_init1(IN_CLOEXEC);
+    if (ifd >= 0) { char dir[4096]; snprintf(dir, sizeof dir, "%s", device); char *sl = strrchr(dir, '/'); if (sl == dir) sl[1] = 0; else if (sl) *sl = 0; else snprintf(dir, sizeof dir, "."); inotify_add_watch(ifd, dir, IN_CREATE | IN_ATTRIB | IN_MOVED_TO | IN_DELETE); }
+    for (;;) {
     FILE *jf = fopen(device, "rb");
     if (!jf) {
-        /* No joystick plugged in - a real, non-fatal condition, not an
-         * error the launcher should treat as a crash (matches the
-         * design doc's own "don't hard-fail desktop boot" note). */
-        fprintf(stderr, "khtpm_joystick_daemon: no device at %s, exiting quietly\n", device);
-        return 0;
+        if (ifd < 0) { fprintf(stderr, "khtpm_joystick_daemon: no device at %s and no inotify, exiting\n", device); return 0; }
+        char nb[4096]; if (read(ifd, nb, sizeof nb) < 0 && errno != EINTR) return 0;      /* no pad: sleep in the kernel until something happens in the folder, then try again */
+        continue;
     }
     setvbuf(jf, NULL, _IONBF, 0);
 
     /* Real, small state machine per axis: last "zone" (neg/zero/pos)
      * with hysteresis, so a held axis emits ONE KEY_PRESSED on the
      * crossing, not a flood every event - same real problem/fix the
-     * TPMOS reference's own THRESHOLD/DEADZONE pair solves. */
+     * TPMOS reference's own THRESHOLD/DEADZONE pair solves. A new session
+     * starts at rest (a pad re-plugged with a direction held is not "held"). */
     int zone_x = 0, zone_y = 0; /* -1, 0, +1 */
 
     JsEvent ev;
@@ -180,5 +184,6 @@ int main(int argc, char **argv) {
          * the file header. */
     }
     fclose(jf);
-    return 0;
+    usleep(300000);      /* the session ended (unplug or read error): a short back-off so a half-dead node can never spin, then the outer loop waits for the pad again */
+    }
 }

@@ -21,3 +21,11 @@ SCRATCH
 EXPECT_LACKS | $HOUSE/#.desktop/joystick_map.pdl | BUTTON \p 1 \p 99 | CONTROL: a wrong code for mine is not there, so the checks above can fail
 EXPECT_LACKS | $HOUSE/#.desktop/joystick_map.pdl | BUTTON \p 0 \p 98 | CONTROL: jump and mine are not swapped
 EXPECT_LACKS | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_joystick_daemon.c | poll(&pf, 1, 100) | CONTROL: a fixed timer (a busy wake while idle) is not there
+CASE | daemon-survives-the-pad-going-away
+SCRATCH
+EXPECT_HAS | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_joystick_daemon.c | inotify_add_watch(ifd, dir, | the daemon watches the device folder (it sleeps in the kernel while the pad is absent)
+EXPECT_HAS | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_joystick_daemon.c | IN_CREATE \p IN_ATTRIB | a new node and the udev permission change both wake it
+EXPECT_HAS | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_joystick_daemon.c | usleep(300000); | a failed session backs off, so a half-dead node cannot spin
+EXPECT_HAS | $HOUSE/@.apps/rpg-edit-hq/board/open_board.sh | { [ -z "$JPID" ] \p\p [ ! -d "/proc/$JPID" ]; } | the launcher starts the daemon whenever none is alive
+EXPECT_LACKS | $HOUSE/_.monads/_.livedesk-taskbar/ops/khtpm_joystick_daemon.c | exiting quietly | CONTROL: the old quiet exit when no pad is plugged in is gone
+EXPECT_LACKS | $HOUSE/@.apps/rpg-edit-hq/board/open_board.sh | ls /dev/input/js* >/dev/null | CONTROL: the launcher no longer needs a pad plugged in at start
