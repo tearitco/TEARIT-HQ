@@ -193,3 +193,20 @@ A rotation angle is not a game fact. It is a pure function of three things: the 
 3. Stage 2: orientation in the GPU box record and the ray transform; offline seam-style test, identity-frame comparison, then a measured frame cost; owner approval before the live engine changes.
 4. Stage 3 only on request: analytic sphere/capsule/cylinder, real alpha.
 Gates: the owner sees each stage before the next starts. T01 "drive Asa" is not blocked by this; its captions and keys are separate.
+
+## 12. OWNER RULING 2026-11-26: effects tiers, "big machines and smol" (D141)
+
+Owner: "we will optimize for machines depending on their ability and be flexible; that's the one thing I would say when doing intense. Let's give fx to big machines and small. Doc that and go."
+
+**Rule:** no feature may assume a strong machine. Every costly effect (real rotation, many poses, alpha, analytic spheres, voxel resolution, shadows, particles such as break chips, animation step rate, actor count) has a **cheap form** and a **rich form**, chosen by DATA, per machine. The same rig and animation files run on both; only the tier changes how much of them is used. A weak machine must always still work (this one is weak and shares a browser: AGENTS.md "our programs run alongside normal user activity").
+
+**Shape (DESIGN, nothing built):**
+- `fx.pdl` rows: `TIER | name | description` and `FX | tier | key | value`. Two tiers to start, `small` and `big`; a third can be added later as rows, never as code. Example keys: `rig_rotation` (0 = stage-1 offset boxes, 1 = real oriented boxes), `rig_anim_steps` (poses per cycle), `voxel_res_max` (cap on a part's `res`: 8 / 16 / 32), `alpha` (0/1), `analytic_shapes` (0/1), `chips` (0/1 and count), `box_budget` (<= `BV_GPU_MAX_BOX`), `anim_hz` (update rate), `view_distance`.
+- **Which tier a machine uses is a PREFERENCE, not game state** (it never changes an outcome, so it never touches the ledger or the rules hash): a one-line file `fx_tier.txt` (user override, wins) and, when absent, an `fx_probe_op` that reads cores, load and the measured frame time of the last frames and writes a RECOMMENDATION row; it never changes a tier silently while a window is open and never exceeds the owner's choice. Frame-time based downgrade (a "frame guard") is a later, optional rule.
+- **Same truth on every tier:** the ledger, the rules and the replays are identical on `small` and `big`; only the drawing differs. Harness: the same ledger projected on both tiers gives the same event rows, and the tier file is the ONLY difference (a ghost-data check).
+- **Defaults:** `small` is the default until a probe or the owner says otherwise (safe on the weak machine); a missing `FX` key means the cheap value.
+- **Each stage names its tier behaviour:** stage 1 (offset boxes) is the `small` form of rotation; stage 2 (oriented boxes) is the `big` form and may be allowed on `small` after it is measured cheap. Stage 3 alpha and analytic shapes are `big` only until measured.
+- **Measuring:** a tier's cost is measured with a C op and written next to the producer's state (CPU pitfalls 30 to 32), on this machine with a browser open, before any tier is called cheap. No number is quoted that was not observed.
+- **Offload:** heavy tasks (video, builds, TTS) still go to the Mac/debil, one job at a time with the temperature checked; the tier system is for the RUNTIME picture, offload is for the production work.
+
+Applies to everything planned here: Ava's FSM and RL features (decision frequency per tier), mobs and day/night (entity count and update rate per tier), tutorial captions (cheap text only), and the survival roadmap.
