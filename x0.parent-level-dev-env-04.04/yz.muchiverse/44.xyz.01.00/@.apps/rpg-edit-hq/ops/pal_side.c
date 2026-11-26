@@ -62,6 +62,13 @@ static void kv_get(const char *path, const char *key, char *out, size_t n) {
     while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, key, kl) && ln[kl] == '=') { snprintf(out, n, "%s", ln + kl + 1); out[strcspn(out, "\r\n")] = 0; }
     fclose(f);
 }
+/* The Tools / Harness tab lists the rows of `@.apps/<book>/harness.pdl`, and <book> must be the book FOLDER id. The board label ("RM sandbox") is a display name and found no folder, so a book's own rows (the rmmc tutorial) never showed in the tab. The editor records the open book id in its own state/last_book.txt; use it when that book has a folder (owner 2026-11-26: "tutorials can be like the tools harness"). */
+static void prefer_book_id(const char *house, char *bl, size_t n) {
+    char lp[4300], id[80] = "", dp[4400]; snprintf(lp, sizeof lp, "%s/@.apps/rpg-edit-hq/state/last_book.txt", house); kv_get(lp, "book", id, sizeof id);
+    if (!id[0] || strchr(id, '/') || strstr(id, "..")) return;
+    snprintf(dp, sizeof dp, "%s/@.apps/%s", house, id);
+    if (access(dp, F_OK) == 0) snprintf(bl, n, "%s", id);
+}
 /* ---- palette levels (owner 2026-11-03: "in tiles there is a tile type screen for some palette types, look out for that") ----
  * list (0) -> tile type (1: the palette's directories, d_) -> sheet (2: RPG Maker A/B/C.., c_) -> tileset (3: s_) -> tiles (4). A level is shown only when it has MORE than one choice;
  * picking one calls the palette window's own verb (palettes_menu.sh set-<kind>-dir / -tab / -tileset|-mod, so the choice is the same state the LyfeDesk palette windows use), reruns the
@@ -175,6 +182,7 @@ int main(int argc, char **argv) {
         kv_get(ui, "book_label", bl, sizeof bl); kv_get(ui, "page_label", pl, sizeof pl);
         char *bc = strchr(bl, ':'); if (bc) memmove(bl, bc + 1, strlen(bc + 1) + 1);
         char *pc = strchr(pl, ':'); if (pc) memmove(pl, pc + 1, strlen(pc + 1) + 1);
+        prefer_book_id(house, bl, sizeof bl);
         if (argc > 4 && argv[3][0] && argv[4][0]) { snprintf(bl, sizeof bl, "%s", argv[3]); snprintf(pl, sizeof pl, "%s", argv[4]); }   /* the projector passes the ids: ui.txt may not be written yet this tick */
         snprintf(hop, sizeof hop, "%s/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x", house);
         snprintf(hrows, sizeof hrows, "%s/@.apps/rpg-edit-hq/board/state/harness_rows.txt", house);
@@ -205,6 +213,7 @@ int main(int argc, char **argv) {
         kv_get(ui, "book_label", bl, sizeof bl); kv_get(ui, "page_label", pl, sizeof pl);
         char *bc = strchr(bl, ':'); if (bc) memmove(bl, bc + 1, strlen(bc + 1) + 1);
         char *pc = strchr(pl, ':'); if (pc) memmove(pl, pc + 1, strlen(pc + 1) + 1);
+        prefer_book_id(house, bl, sizeof bl);
         snprintf(hop, sizeof hop, "%s/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x", house);
         kv_set(palp, "harness_sel", arg); kv_get(palp, "harness_pending", pend, sizeof pend);
         int confirmed = pend[0] && !strcmp(pend, arg), ri = -1;
@@ -387,6 +396,7 @@ int main(int argc, char **argv) {
             kv_get(ui, "book_label", bl, sizeof bl); kv_get(ui, "page_label", pl, sizeof pl);
             char *bc = strchr(bl, ':'); if (bc) memmove(bl, bc + 1, strlen(bc + 1) + 1);
             char *pc = strchr(pl, ':'); if (pc) memmove(pl, pc + 1, strlen(pc + 1) + 1);
+        prefer_book_id(house, bl, sizeof bl);
             snprintf(hop, sizeof hop, "%s/&.widgits/_shared-lib/ops/+x/harness_menu_op.+x", house);
             snprintf(hrows, sizeof hrows, "%s/@.apps/rpg-edit-hq/board/state/harness_rows.txt", house);
             int nhr = 0;
