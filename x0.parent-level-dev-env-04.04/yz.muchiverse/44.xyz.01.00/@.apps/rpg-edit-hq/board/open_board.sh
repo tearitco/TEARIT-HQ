@@ -33,6 +33,17 @@ fi
 if [ "$KEEP" != "1" ] && [ -x "$REG" ] && [ -n "$WPID" ] && [ -n "$DPID" ] && [ -d "/proc/$WPID" ] && [ -d "/proc/$DPID" ]; then
     "$REG" "$HOUSE" register "$DPID" owner "$WPID" daemon rpg-edit-hq rpg-edit-hq-daemon "$APP/ops/+x/rpg_edit_hq.+x $HOUSE $APP" >/dev/null 2>&1 || true
 fi
+# The joystick (owner 2026-11-26: "make sure it starts when rpg-edit starts, if plugged in"). The house already has the daemon (_.monads/_.livedesk-taskbar/ops/khtpm_joystick_daemon.c, arrows from the D-pad into the FOCUSED window's relay file) but nothing launched it, so the controller did nothing anywhere.
+# Started through the funnel like the daemon above, only when a /dev/input/js* exists (the daemon itself also exits quietly with no device), once (a registered live one is reused), and handed to the board window so closing the editor ends it.
+JSD="$HOUSE/_.monads/_.livedesk-taskbar/ops/+x/khtpm_joystick_daemon.+x"
+jreg() { [ -x "$REG" ] && "$REG" "$HOUSE" list 2>/dev/null | awk -F' [|] ' '$10 == "joystick-daemon" {print $2}' | tail -1; }
+JPID="$(jreg)"
+if [ -x "$JSD" ] && ls /dev/input/js* >/dev/null 2>&1 && { [ -z "$JPID" ] || [ ! -d "/proc/$JPID" ]; }; then
+    KH_ROLE=daemon KH_APP=rpg-edit-hq sh "$FUNNEL" "$HOUSE" 0 joystick-daemon -- "$JSD" "$HOUSE" >/dev/null 2>&1; sleep 1; JPID="$(jreg)"
+fi
+if [ "$KEEP" != "1" ] && [ -x "$REG" ] && [ -n "$WPID" ] && [ -n "$JPID" ] && [ -d "/proc/$WPID" ] && [ -d "/proc/$JPID" ]; then
+    "$REG" "$HOUSE" register "$JPID" owner "$WPID" daemon rpg-edit-hq joystick-daemon "$JSD $HOUSE" >/dev/null 2>&1 || true
+fi
 INBOX="$PCHQ_PKG/pieces/system/widget_cmds/inbox.txt"
 # Re-open where the owner WAS (2026-11-17, owner: "make sure the last book page opens"): nothing called edit_last.sh save since 2026-11-08, so state/last_book.txt was stale (deskopoly/board) and every relaunch
 # fell back to it. The page this editor had open is in its own persisted world_01/state.txt (map_id, desk_id); save it as the last book first. A page that no longer exists is refused by save and the older row is used.
