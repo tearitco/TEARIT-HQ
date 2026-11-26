@@ -96,6 +96,16 @@ static void append_key(const char *house_root, int code) {
     fclose(f);
 }
 
+/* v2 (owner 2026-11-26: "nothing is mapped to enter yet"): BUTTONS. Every button press is (1) remembered as one line in #.desktop/joystick_buttons_seen.txt, the LAST 16 only (a cap by construction, rewritten whole), so the owner can press a button at any time and an agent reads which number it was, and (2) turned into a key if #.desktop/joystick_map.pdl has a row `BUTTON | <number> | <key code>` (the file is read on every press, so a remap needs no restart; no row = no key, nothing is invented). Design: 08-roadmap/design-docs/JOYSTICK-INPUT-HOUSE-WIDE-DESIGN.md section 3. */
+static void note_button(const char *house_root, int n) {
+    char path[4096], tmp[4200], keep[16][32]; int cnt = 0;
+    snprintf(path, sizeof(path), "%s/#.desktop/joystick_buttons_seen.txt", house_root); snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+    FILE *f = fopen(path, "r"); if (f) { char l[64]; while (fgets(l, sizeof l, f)) { l[strcspn(l, "\r\n")] = 0; if (cnt == 15) { memmove(keep[0], keep[1], 15 * 32); cnt = 14; } snprintf(keep[cnt++], 32, "%.31s", l); } fclose(f); }
+    f = fopen(tmp, "w"); if (!f) return; for (int i = 0; i < cnt; i++) fprintf(f, "%s\n", keep[i]); fprintf(f, "button %d\n", n); fclose(f); rename(tmp, path); }
+static int mapped_code(const char *house_root, int n) {
+    char path[4096], l[256]; snprintf(path, sizeof(path), "%s/#.desktop/joystick_map.pdl", house_root); FILE *f = fopen(path, "r"); if (!f) return 0; int code = 0;
+    while (fgets(l, sizeof l, f)) { char *a = strtok(l, "|"), *b = strtok(NULL, "|"), *c = strtok(NULL, "|"); if (!a || !b || !c) continue; while (*a == ' ') a++; if (strncmp(a, "BUTTON", 6)) continue; if (atoi(b) == n && (b[strspn(b, " ")] >= '0' && b[strspn(b, " ")] <= '9')) { code = atoi(c); break; } }
+    fclose(f); return code; }
 int main(int argc, char **argv) {
     if (argc < 2) {
         fprintf(stderr, "usage: %s <house_root> [device]\n", argv[0]);
@@ -124,6 +134,7 @@ int main(int argc, char **argv) {
     while (fread(&ev, sizeof(ev), 1, jf) == 1) {
         if (ev.type & JS_EVENT_INIT) continue;
         unsigned char type = ev.type & ~JS_EVENT_INIT;
+        if (type == JS_EVENT_BUTTON) { if (ev.value == 1) { note_button(house_root, ev.number); int mc = mapped_code(house_root, ev.number); if (mc > 0) append_key(house_root, mc); } continue; }
         if (type != JS_EVENT_AXIS) continue;
         if (ev.number == 0) {
             int nz = zone_x;
