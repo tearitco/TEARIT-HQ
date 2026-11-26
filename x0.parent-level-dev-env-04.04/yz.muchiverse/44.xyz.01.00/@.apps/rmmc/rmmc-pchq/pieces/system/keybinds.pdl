@@ -21,6 +21,7 @@ GAMEKEY      | slot7 | 55
 GAMEKEY      | slot8 | 56
 GAMEKEY      | slot9 | 57
 GAMEKEY      | page | 48
+GAMEKEY      | reset | 65360   # Home: back to the spawn point (press twice; X key number of Home, the renderer forwards a key without a house code as its raw number)
 
 KEY          | pov_mode_1_alt     | 112       # 'p'  first person (Minecraft view) while the hotbar owns the digits
 KEY          | pov_mode_2_alt     | 111       # 'o'  third person

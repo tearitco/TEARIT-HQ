@@ -21,3 +21,4 @@ KEYVERB | slot7 | pick | 7
 KEYVERB | slot8 | pick | 8
 KEYVERB | slot9 | pick | 9
 KEYVERB | page | pick | page
+KEYVERB | reset | reset | -
