@@ -144,3 +144,52 @@ One authority: the rig file is the only place a part's geometry is stated, the s
 - **Captions:** English by default with a switch (Japanese one setting away); both live in the same STEP rows.
 - **Ava while unpossessed:** a small, customizable FSM (data-defined) that will also carry reinforcement-learning features later (rows in, harness verdict as the score; promotion human-reviewed per the meta strategy).
 - **Animation order: OPEN.** The owner wants to SEE the `.pdl` and understand how real rotation aligns with or deviates from the engine's principles, and whether anything hinders making more AAA-like games, including physics-style scaled simulation. Answer given in chat: the rows stay data and ops stay the rule owners; real rotation adds one orientation to the shared GPU box record (a bounded change to a shared path, needs owner OK and a measured frame cost); voxel/primitive scenes scale to Minecraft/Teardown class bounded by the box budget; mesh/skinned characters would need a different render path; physics fits as an op that WRITES pose channels (pos/rot/scale/alpha) into the same rows, so the renderer never needs to know.
+
+## 11. DECISION 2026-11-26: animation goes to real rotation (option B); stage 1 is only a stepping stone (D140)
+
+Owner: "b sounds like the option since this should evolve into a robust game engine, however does it respect our in-file truth and house design?" then "then that's what we must do now. explain all of that in the doc before we continue." This section is that explanation. Nothing below is built yet.
+
+### 11.1 The two options in plain words
+- **How the picture is made today:** a GPU raymarcher shoots a ray per pixel and asks which box it hits first. A box is two corners (min, max), so it is always lined up with the world axes. A skinned limb is a small grid of coloured cubes stretched to fit one box. There is no angle anywhere in a box description, which is why Asa's arm cannot tilt.
+- **A, stepped poses (the stepping stone):** a limb stays upright and moves in 6 to 8 small steps. Looks like a toy soldier; cheap; no shared-engine change. A tilt can be faked with 2 to 3 offset boxes per limb, but that eats the 128-box budget (`BV_GPU_MAX_BOX 128`), so A has a hard ceiling. A cannot do a head that tilts toward a target, a sword arc, a creeper lean, spider legs, an opening door.
+- **B, real rotation (chosen):** each box gets an orientation; the raymarcher rotates the ray into the box's local frame and tests the same axis-aligned box there. A voxel skin works the same way, so the grid rotates with the limb. Looks like Minecraft; costs more maths per box per pixel (NOT measured on this machine; the live GPU path was about 17 fps, so a slowdown would show there); touches a shared render path.
+- **Same data either way:** `rot_x/y/z` are in the `PART` rows from day one. In stage 1 the evaluator turns a 35 degree arm into the nearest offset boxes; in stage 2 the same row becomes a real rotation. Nothing is thrown away. The one thing that would break this is storing positions instead of angles in the file, which we do not do.
+
+### 11.2 Does B respect "in file truth" and the house design? (checked against the rules, a design conclusion, nothing run)
+A rotation angle is not a game fact. It is a pure function of three things: the rig rows, which animation the ledger says is playing, and the clock. A pure function of file truth is a **projection**, not ghost data: the same status as today's 140 ms wall-clock step.
+| House rule | B |
+|---|---|
+| One authority per fact | Yes if the rig `.pdl` is the only place a limb's geometry and angles are stated; the skin CSV only fills a `voxel` part's grid |
+| Ledger is the only state authority | Yes: the ledger and event rows say WHICH animation plays (`pat`, `STATE`); the angle at time t is derived, never stored as state; the rules hash is untouched |
+| No ghost data | Yes for time-driven animation. CAUTION physics: see 11.4 |
+| Every rule is an op, nothing hard-coded in the engine (D92) | Mostly: the evaluator is pure maths (rows in, transforms out); the renderer only draws what it is handed and holds no game rule |
+| No per-project code in shared files | Yes: orientation is generic; an unrotated box stays byte-identical |
+| Sharing C: text-include for pure code, never header plus link | Needs condition 1 below |
+| Marker-file change detection, capped runtime files | Yes: B adds no runtime file and no polling |
+| A harness that can fail | Yes if built as 11.3 |
+
+### 11.3 The four conditions (B is only accepted with all four)
+1. **One evaluator, not two.** The renderer and the test op `rig_pose_op` use the SAME pure C file, text-included into both (the house pattern for pure shared code). Two implementations would be two authorities and a test could pass while the screen drifts.
+2. **Identity by default.** A box with no orientation row renders exactly as before. A harness case compares frames against the current engine to prove it; the existing mutant `BV_RIG_MUTANT_LEGS_IN_PHASE` must still turn the walk check red.
+3. **Schema versioning, forward compatible.** `SCHEMA | rig | 2`; unknown columns are kept and ignored, so stage 3 (sphere, capsule, alpha) never breaks old files.
+4. **Physics writes through rows** (11.4).
+
+### 11.4 Cosmetic versus state (physics, ragdolls, vehicles)
+- **State** = anything that changes WHERE a thing is or what it can do (a pushed crate, a thrown item, a vehicle, a ragdoll that ends up on a cell). It must go through ledger rows, or be a deterministic fold of them, otherwise replay cannot reproduce it: that would be ghost data.
+- **Cosmetic** = purely visual (a swaying branch, a cape, a tail, breathing). It may stay a projection computed from rows plus the clock, never written back.
+- A scaled-simulation op may write pose channels into the same `TRACK`/channel format; the renderer never needs to know it is a simulation. That is why the data format matters more than the renderer.
+
+### 11.5 What B changes, honestly
+- The shared GPU box record gets an orientation field (a change to a shared path). Other boards use that path.
+- Open board sessions keep their old `bv_render_3d` copy until relaunched (known quirk), so an engine fix reaches an open window only through a NEW session.
+- Cost on this weak machine must be MEASURED, offline first (`bv_gpu_seam_test`-style tooling) before any live window; heavy builds go through `cpu_gate` and one at a time with the temperature checked.
+- Alpha (per-part transparency) is a separate, costlier job and stays off by default.
+- The 128-box budget is shared with trees, items, cracks and chips. Rotation adds no boxes, but more actors do: count and measure, never guess.
+- Not in this plan: skinned meshes/skeletal deformation (would be a different render path). Voxel and primitive scenes scale to Minecraft/Teardown class, bounded by the box budget.
+
+### 11.6 Revised order of work (replaces the animation lines in section 8)
+1. Data: `SCHEMA | rig | 2`, `PART`, `ANIM`, `TRACK`, `STATE` parser plus the pure evaluator file (condition 1), and op `rig_pose_op <rig> <anim> <t_ms>`; harness case first (a known pose, parent carries children, schema-1 files load unchanged, a sabotage that must fail).
+2. Stage 1 renderer path (offset boxes) so the owner can SEE the data format running.
+3. Stage 2: orientation in the GPU box record and the ray transform; offline seam-style test, identity-frame comparison, then a measured frame cost; owner approval before the live engine changes.
+4. Stage 3 only on request: analytic sphere/capsule/cylinder, real alpha.
+Gates: the owner sees each stage before the next starts. T01 "drive Asa" is not blocked by this; its captions and keys are separate.
