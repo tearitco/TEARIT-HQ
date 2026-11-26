@@ -1,0 +1,76 @@
+# rmmc_follow (2026-11-26): rmmc_driver --editor-pkg FOLLOWS the editor. The possessed rig:<actor> token of xelector_01 is the actor the keys drive; possession hands the seat to the human (a SEAT row) and release hands it back;
+# the open page (world_01 desk_id) picks the ledger through desks.pdl, and a page with no row is read and never written. The key relay is the file `<code> <ms>` (arrows 1000-1003, space 32), not a real window.
+RESULTS | ../results/rmmc_follow.txt
+CASE | possessing-ava-makes-her-the-actor-and-hands-her-the-seat
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_beat_op.+x | $T/h | $T/h/@.apps/rmmc/beats.pdl | 1
+EXPECT_OUT | beat 1: spawn 140 100 x1 ok | Asa is spawned by the harness seat
+RUN | sh | -c | printf "141 100 230 90 150 rig:ava 0 2 0\\n" >> $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed/events.txt
+EXPECT_EXIT | 0 | the scratch seed gains Ava's row, as the alpha page seed has it
+ENV | RMMC_ACTOR | ava
+ENV | GAME_ARG | 141 100
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_verb.+x | spawn
+ENV | RMMC_ACTOR |
+ENV | GAME_ARG |
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | where | $T/h/@.apps/rmmc/vox | $T/led.txt | ava
+EXPECT_OUT | at=141 | Ava is on the island at column 141
+MKDIR | pkg/pieces/xelector_01
+MKDIR | pkg/pieces/world_01
+WRITE | pkg/pieces/xelector_01/state.txt | entity_type=xelector\npossessed_id=rig:ava\n
+WRITE | pkg/pieces/world_01/state.txt | map_id=rmmc\ndesk_id=rmmc-0001\n
+WRITE | bp.txt | paused=1\n
+ENV | BLUEPRINTZ_DEBUG_FILE | $T/bp.txt
+WRITE | relay.txt | 1001 10\n
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --editor-pkg | $T/pkg
+EXPECT_EXIT | 0 | the key is accepted
+EXPECT_HAS | led.txt | SEAT \p ava \p human | possessing Ava wrote her seat row
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | where | $T/h/@.apps/rmmc/vox | $T/led.txt | ava
+EXPECT_OUT | at=142 | the Right arrow walked AVA one column east
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | where | $T/h/@.apps/rmmc/vox | $T/led.txt | asa
+EXPECT_OUT | at=140 | and Asa did not move
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | seat | $T/h/@.apps/rmmc/vox | $T/led.txt | asa
+EXPECT_OUT_IS | seat=harness | Asa keeps the harness seat
+WRITE | pkg/pieces/xelector_01/state.txt | entity_type=xelector\npossessed_id=none\n
+WRITE | relay2.txt | 1001 10\n
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay2.txt | --from-start | --once | --editor-pkg | $T/pkg
+EXPECT_EXIT | 24 | NEGATIVE-after-the-release-the-seat-is-the-harness-so-a-human-key-is-refused-24
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | seat | $T/h/@.apps/rmmc/vox | $T/led.txt | ava
+EXPECT_OUT_IS | seat=harness | releasing hands Ava's seat back to the harness (a SEAT row)
+CLEAN |
+CASE | a-page-with-no-desks-row-is-read-and-never-written
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+ENV | RMMC_LEDGER |
+ENV | RMMC_DESK |
+COPY | @.apps/rmmc/desks.pdl | h/@.apps/rmmc/desks.pdl
+MKDIR | pkg/pieces/xelector_01
+MKDIR | pkg/pieces/world_01
+WRITE | pkg/pieces/xelector_01/state.txt | entity_type=xelector\npossessed_id=rig:asa\n
+WRITE | pkg/pieces/world_01/state.txt | map_id=rmmc\ndesk_id=some-other-page\n
+WRITE | bp.txt | paused=1\n
+ENV | BLUEPRINTZ_DEBUG_FILE | $T/bp.txt
+WRITE | relay.txt | 1001 10\n32 20\n
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --editor-pkg | $T/pkg
+EXPECT_EXIT | 0 | the keys are dropped without an error
+EXPECT_NOFILE | h/@.apps/rpg-edit-hq/state/games/rmmc/game/ledger.txt | NEGATIVE-nothing-was-written-for-an-unmapped-page-no-default-ledger
+EXPECT_NOFILE | h/@.apps/rpg-edit-hq/state/games/rmmc/game/ledger_alpha.txt | and no other page's ledger either
+CLEAN |
+CASE | a-mapped-page-writes-to-its-own-ledger
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+ENV | RMMC_LEDGER |
+ENV | RMMC_DESK |
+COPY | @.apps/rmmc/desks.pdl | h/@.apps/rmmc/desks.pdl
+MKDIR | h/@.apps/rpg-edit-hq/state/games/rmmc/game
+MKDIR | pkg/pieces/xelector_01
+MKDIR | pkg/pieces/world_01
+WRITE | pkg/pieces/xelector_01/state.txt | entity_type=xelector\npossessed_id=rig:asa\n
+WRITE | pkg/pieces/world_01/state.txt | map_id=rmmc\ndesk_id=rmmc-alpha\n
+WRITE | bp.txt | paused=1\n
+ENV | BLUEPRINTZ_DEBUG_FILE | $T/bp.txt
+WRITE | relay.txt | 1001 10\n
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --editor-pkg | $T/pkg
+EXPECT_HAS | h/@.apps/rpg-edit-hq/state/games/rmmc/game/ledger_alpha.txt | SEAT \p asa \p human | rmmc-alpha has a row in desks.pdl: the seat row went to ledger_alpha.txt
+EXPECT_NOFILE | h/@.apps/rpg-edit-hq/state/games/rmmc/game/ledger.txt | and the live ledger.txt was not touched
+CLEAN |

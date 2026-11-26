@@ -8,6 +8,7 @@
  *   SCHEMA | rig | 2
  *   PART  | name | parent | shape | res | size x y z | pivot x y z | pos x y z | rot x y z | scale x y z | alpha | material
  *   ANIM  | name | length_ms | loop            (loop = 1 or the word loop)
+ *   STATE | pattern | anim | blend_ms           (the verb pattern of bv_rig.h: 0 idle, 1/2 walk, 3 jump, 4 mine, 5 place; blend_ms is parsed and NOT used yet)
  *   TRACK | anim | part | channel | t_ms | value | ease
  * parent: `-` = the actor root; a parent must be named by an EARLIER PART row (so there are no cycles by construction).
  * Geometry: the part's box is [-pivot, size-pivot] in the part's own space, so the pivot (the shoulder, the hip) is the part's origin; pos is where that pivot sits in the PARENT's space.
@@ -29,7 +30,8 @@
 typedef struct { char name[32]; int parent; char shape[16]; int res; float size[3], pivot[3], pos[3], rot[3], scale[3]; int alpha; char material[24]; } BvaPart;
 typedef struct { char name[32]; float length_ms; int loop; } BvaAnim;
 typedef struct { int anim, part, ch; float t, v; int ease; } BvaTrack;      /* ease: 0 linear 1 sine 2 step 3 ease_in 4 ease_out */
-typedef struct { int schema, nparts, nanims, ntracks; BvaPart part[BVA_MAX_PARTS]; BvaAnim anim[BVA_MAX_ANIMS]; BvaTrack track[BVA_MAX_TRACKS]; } BvaRig;
+typedef struct { int pattern, anim; float blend_ms; } BvaState;      /* STATE | pattern | anim | blend_ms: which animation a verb pattern plays (blend_ms is carried, not used yet) */
+typedef struct { int schema, nparts, nanims, ntracks; int nstates; BvaState state[16]; BvaPart part[BVA_MAX_PARTS]; BvaAnim anim[BVA_MAX_ANIMS]; BvaTrack track[BVA_MAX_TRACKS]; } BvaRig;
 typedef struct { float m[9]; float p[3]; float lo[3], hi[3]; float alpha; } BvaPose;   /* m row-major 3x3 world matrix, p world pivot, lo/hi the world AABB of the part's box */
 
 static const char *const bva_ch_name[BVA_NCH] = { "pos_x", "pos_y", "pos_z", "rot_x", "rot_y", "rot_z", "scale_x", "scale_y", "scale_z", "alpha" };
@@ -54,19 +56,26 @@ static int bva_parse(char *text, BvaRig *r) {
         ln++; if (*line == '#') continue; char *f[16]; int n = bva_split(line, f, 16);
         if (!strcmp(f[0], "SCHEMA") && n >= 3 && !strcmp(f[1], "rig")) r->schema = atoi(f[2]);
         else if (!strcmp(f[0], "PART")) {
-            if (n < 10 || r->nparts >= BVA_MAX_PARTS) return -ln; BvaPart *p = &r->part[r->nparts]; memset(p, 0, sizeof *p);
+            if (n < 10 || r->nparts >= BVA_MAX_PARTS) return -ln;
+            BvaPart *p = &r->part[r->nparts]; memset(p, 0, sizeof *p);
             snprintf(p->name, sizeof p->name, "%s", f[1]); if (!*p->name || bva_find_part(r, p->name) >= 0) return -ln;
             if (!strcmp(f[2], "-")) p->parent = -1; else { p->parent = bva_find_part(r, f[2]); if (p->parent < 0) return -ln; }
             snprintf(p->shape, sizeof p->shape, "%s", f[3]); p->res = atoi(f[4]); static const float one[3] = { 1, 1, 1 }, zero[3] = { 0, 0, 0 };
             if (!bva_triple(f[5], p->size, NULL) || !bva_triple(f[6], p->pivot, NULL) || !bva_triple(f[7], p->pos, NULL) || !bva_triple(f[8], p->rot, zero) || !bva_triple(f[9], p->scale, one)) return -ln;
             p->alpha = n > 10 ? atoi(f[10]) : 255; if (p->alpha < 0) p->alpha = 0; if (p->alpha > 255) p->alpha = 255; snprintf(p->material, sizeof p->material, "%s", n > 11 ? f[11] : "flat"); r->nparts++;
         } else if (!strcmp(f[0], "ANIM")) {
-            if (n < 3 || r->nanims >= BVA_MAX_ANIMS) return -ln; BvaAnim *a = &r->anim[r->nanims]; snprintf(a->name, sizeof a->name, "%s", f[1]); a->length_ms = (float)atof(f[2]); if (a->length_ms <= 0) return -ln;
+            if (n < 3 || r->nanims >= BVA_MAX_ANIMS) return -ln;
+            BvaAnim *a = &r->anim[r->nanims]; snprintf(a->name, sizeof a->name, "%s", f[1]); a->length_ms = (float)atof(f[2]); if (a->length_ms <= 0) return -ln;
             a->loop = n > 3 && (!strcmp(f[3], "loop") || atoi(f[3]) == 1); r->nanims++;
+        } else if (!strcmp(f[0], "STATE")) {
+            if (n < 3 || r->nstates >= 16) return -ln;
+            BvaState *s = &r->state[r->nstates]; s->pattern = atoi(f[1]); s->anim = bva_find_anim(r, f[2]); s->blend_ms = n > 3 ? (float)atof(f[3]) : 0.f; if (s->anim < 0) return -ln; r->nstates++;
         } else if (!strcmp(f[0], "TRACK")) {
-            if (n < 6 || r->ntracks >= BVA_MAX_TRACKS) return -ln; BvaTrack *t = &r->track[r->ntracks]; t->anim = bva_find_anim(r, f[1]); t->part = bva_find_part(r, f[2]); t->ch = -1;
+            if (n < 6 || r->ntracks >= BVA_MAX_TRACKS) return -ln;
+            BvaTrack *t = &r->track[r->ntracks]; t->anim = bva_find_anim(r, f[1]); t->part = bva_find_part(r, f[2]); t->ch = -1;
             for (int c = 0; c < BVA_NCH; c++) if (!strcmp(f[3], bva_ch_name[c])) t->ch = c;
-            if (t->anim < 0 || t->part < 0 || t->ch < 0) return -ln; t->t = (float)atof(f[4]); t->v = (float)atof(f[5]); t->ease = 0;
+            if (t->anim < 0 || t->part < 0 || t->ch < 0) return -ln;
+            t->t = (float)atof(f[4]); t->v = (float)atof(f[5]); t->ease = 0;
             if (n > 6) { t->ease = -1; for (int e = 0; e < 5; e++) if (!strcmp(f[6], bva_ease_name[e])) t->ease = e; if (t->ease < 0) return -ln; }
             r->ntracks++;
         }       /* any other row type: ignored on purpose */
@@ -80,11 +89,13 @@ static float bva_ease(int e, float u) {
 }
 /* The value of one channel of one part at time t_ms: `base` when no track names it. */
 static float bva_channel(const BvaRig *r, int anim, int part, int ch, float t_ms, float base) {
-    if (anim < 0) return base; const BvaAnim *a = &r->anim[anim]; float t = t_ms;
+    if (anim < 0) return base;
+    const BvaAnim *a = &r->anim[anim]; float t = t_ms;
     if (a->loop) { t = fmodf(t, a->length_ms); if (t < 0) t += a->length_ms; } else if (t > a->length_ms) t = a->length_ms; if (t < 0) t = 0;
     const BvaTrack *k[BVA_MAX_TRACKS]; int nk = 0;
     for (int i = 0; i < r->ntracks; i++) if (r->track[i].anim == anim && r->track[i].part == part && r->track[i].ch == ch) k[nk++] = &r->track[i];
-    if (!nk) return base; if (nk == 1 || t <= k[0]->t) return k[0]->v;
+    if (!nk) return base;
+    if (nk == 1 || t <= k[0]->t) return k[0]->v;
     for (int i = 0; i < nk; i++) {
         float t1, v1; if (i + 1 < nk) { t1 = k[i + 1]->t; v1 = k[i + 1]->v; } else if (a->loop) { t1 = a->length_ms; v1 = k[0]->v; } else return k[i]->v;
         if (t >= k[i]->t && t < t1) return k[i]->v + (v1 - k[i]->v) * bva_ease(k[i]->ease, (t - k[i]->t) / (t1 - k[i]->t));
@@ -117,4 +128,6 @@ static void bva_eval(const BvaRig *r, int anim, float t_ms, BvaPose *out) {
             for (int k = 0; k < 3; k++) { float w = o->p[k] + o->m[k * 3] * cr[0] + o->m[k * 3 + 1] * cr[1] + o->m[k * 3 + 2] * cr[2]; if (w < o->lo[k]) o->lo[k] = w; if (w > o->hi[k]) o->hi[k] = w; } }
     }
 }
+/* The animation a verb pattern plays (-1 = none: the rest pose). */
+static int bva_anim_for_pattern(const BvaRig *r, int pattern) { for (int i = 0; i < r->nstates; i++) if (r->state[i].pattern == pattern) return r->state[i].anim; return -1; }
 #endif

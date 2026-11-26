@@ -1,0 +1,57 @@
+# Biped rig, schema 2 (decision D140; BOOK 16.game/TUTORIAL-HARNESS-ONBOARDING-GAMIFICATION-AND-NEAR-TERM-DRIVE-PLAN-2026-11-26.md sections 9 and 11). Template: append these rows to an actor's rig_<name>.pdl (the RIG colour rows stay in that file).
+# Proportions are Minecraft's in 1/16 (1 px = 0.05625 block): head 8x8x8, torso 8x12x4, arms 4x12x4, legs 4x12x4, 32 px = 1.8 blocks. Actor space: origin at the feet centre, +x the figure's RIGHT, +y up, +z FORWARD. rot_x positive swings a limb BACK, negative swings it forward and up.
+# Every number below is data: change a key, save, and the next frame shows it (the file is re-read when its size changes).
+SCHEMA | rig | 2
+PART | torso | -     | voxel | 8 | 0.45 0.675 0.225 | 0.225 0 0.1125     | 0 0.675 0       | 0 0 0 | 1 1 1 | 255 | skin
+PART | head  | torso | voxel | 8 | 0.45 0.45 0.45   | 0.225 0 0.225      | 0 0.675 0       | 0 0 0 | 1 1 1 | 255 | skin
+PART | arm_r | torso | voxel | 4 | 0.225 0.675 0.225 | 0.1125 0.675 0.1125 | 0.3375 0.675 0  | 0 0 0 | 1 1 1 | 255 | skin
+PART | arm_l | torso | voxel | 4 | 0.225 0.675 0.225 | 0.1125 0.675 0.1125 | -0.3375 0.675 0 | 0 0 0 | 1 1 1 | 255 | skin
+PART | leg_r | torso | voxel | 4 | 0.225 0.675 0.225 | 0.1125 0.675 0.1125 | 0.1125 0 0      | 0 0 0 | 1 1 1 | 255 | skin
+PART | leg_l | torso | voxel | 4 | 0.225 0.675 0.225 | 0.1125 0.675 0.1125 | -0.1125 0 0     | 0 0 0 | 1 1 1 | 255 | skin
+# the verb patterns of bv_rig.h: 0 idle, 1 and 2 walk, 3 jump, 4 mine, 5 place
+ANIM | idle  | 2400 | loop
+ANIM | walk  | 800  | loop
+ANIM | jump  | 600  | loop
+ANIM | mine  | 600  | loop
+ANIM | place | 700  | loop
+STATE | 0 | idle  | 120
+STATE | 1 | walk  | 120
+STATE | 2 | walk  | 120
+STATE | 3 | jump  | 80
+STATE | 4 | mine  | 80
+STATE | 5 | place | 80
+# idle: a slow breath in the head and a hair of sway in the arms
+TRACK | idle | head  | pos_y | 0    | 0.675 | sine
+TRACK | idle | head  | pos_y | 1200 | 0.684 | sine
+TRACK | idle | arm_r | rot_z | 0    | 2     | sine
+TRACK | idle | arm_r | rot_z | 1200 | -2    | sine
+TRACK | idle | arm_l | rot_z | 0    | -2    | sine
+TRACK | idle | arm_l | rot_z | 1200 | 2     | sine
+# walk: arms and legs swing opposite as a sine, the body rises at mid stride (twice a cycle)
+TRACK | walk | arm_r | rot_x | 0   | -45 | sine
+TRACK | walk | arm_r | rot_x | 400 | 45  | sine
+TRACK | walk | arm_l | rot_x | 0   | 45  | sine
+TRACK | walk | arm_l | rot_x | 400 | -45 | sine
+TRACK | walk | leg_r | rot_x | 0   | 45  | sine
+TRACK | walk | leg_r | rot_x | 400 | -45 | sine
+TRACK | walk | leg_l | rot_x | 0   | -45 | sine
+TRACK | walk | leg_l | rot_x | 400 | 45  | sine
+TRACK | walk | torso | pos_y | 0   | 0.675 | sine
+TRACK | walk | torso | pos_y | 200 | 0.70  | sine
+TRACK | walk | torso | pos_y | 400 | 0.675 | sine
+TRACK | walk | torso | pos_y | 600 | 0.70  | sine
+# jump: both arms up, legs apart (one key each = held)
+TRACK | jump | arm_r | rot_x | 0 | -160
+TRACK | jump | arm_l | rot_x | 0 | -160
+TRACK | jump | leg_r | rot_x | 0 | -15
+TRACK | jump | leg_l | rot_x | 0 | 15
+# mine: the right arm raised forward and brought down, again and again
+TRACK | mine | arm_r | rot_x | 0   | -100 | ease_in
+TRACK | mine | arm_r | rot_x | 250 | -30  | ease_out
+TRACK | mine | arm_l | rot_x | 0   | 12   | sine
+TRACK | mine | arm_l | rot_x | 300 | -6   | sine
+# place: both arms forward, a small press
+TRACK | place | arm_r | rot_x | 0   | -70 | sine
+TRACK | place | arm_r | rot_x | 350 | -40 | sine
+TRACK | place | arm_l | rot_x | 0   | -70 | sine
+TRACK | place | arm_l | rot_x | 350 | -40 | sine

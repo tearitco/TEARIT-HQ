@@ -21,6 +21,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <fcntl.h>
+#include <sys/file.h>
 #include "rmmc_play.inc"
 static volatile sig_atomic_t stop_; static void on_term(int s) { (void)s; stop_ = 1; }
 static int split(char *line, char **f, int max) {
@@ -40,6 +42,14 @@ static int owner_gone(long pid) {   /* gone = no such process, or a zombie (dead
     if (kill((pid_t)pid, 0) != 0) return 1;
     char p[64], b[512]; snprintf(p, sizeof p, "/proc/%ld/stat", pid); FILE *f = fopen(p, "r"); if (!f) return 1; size_t n = fread(b, 1, sizeof b - 1, f); fclose(f); b[n] = 0;
     char *r = strrchr(b, ')'); return r && r[1] == ' ' && r[2] == 'Z'; }
+/* key=value from a state file (xelector_01/state.txt, world_01/state.txt); out is empty when the key or the file is missing */
+static void kv_get(const char *path, const char *key, char *out, size_t osz) { out[0] = 0; FILE *f = fopen(path, "r"); if (!f) return; char l[300]; size_t kl = strlen(key);
+    while (fgets(l, sizeof l, f)) if (!strncmp(l, key, kl) && l[kl] == '=') { snprintf(out, osz, "%s", l + kl + 1); out[strcspn(out, "\r\n")] = 0; break; }
+    fclose(f); }
+/* desks.pdl (data): DESK | <desk id> | <ledger file under state/games/rmmc/game/>. The editor's open page says which row applies; no row = the driver writes nothing for that page. Returns 1 when found. */
+static int desk_row(const char *book, const char *id, char *ledger, size_t lsz) { char p[4400], l[300], *x[6]; snprintf(p, sizeof p, "%s/desks.pdl", book); FILE *f = fopen(p, "r"); if (!f) return 0; int hit = 0;
+    while (!hit && fgets(l, sizeof l, f)) { int n = split(l, x, 6); if (n >= 3 && !strcmp(x[0], "DESK") && !strcmp(x[1], id)) { snprintf(ledger, lsz, "%s", x[2]); hit = 1; } }
+    fclose(f); return hit; }
 static long now_ms(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec * 1000L + t.tv_nsec / 1000000L; }
 static int run_out(char *const av[], char *out, size_t osz) { int p[2]; if (pipe(p)) return 99; pid_t c = fork(); if (c < 0) return 99; if (c == 0) { dup2(p[1], 1); dup2(p[1], 2); close(p[0]); close(p[1]); execv(av[0], av); _exit(127); }
     close(p[1]); size_t n = 0; ssize_t k; while (n < osz - 1 && (k = read(p[0], out + n, osz - 1 - n)) > 0) n += (size_t)k; out[n] = 0; close(p[0]); int st = 0; waitpid(c, &st, 0); out[strcspn(out, "\r\n")] = 0; return WIFEXITED(st) ? WEXITSTATUS(st) : 99; }
@@ -77,24 +87,53 @@ static int chrome_feed(char *fb, size_t cap, const char *book, const char *actor
     return (int)(n < cap ? n : cap - 1);
 }
 int main(int argc, char **argv) {
-    if (argc < 3) { fprintf(stderr, "usage: rmmc_driver <house> <relay_file> [--keys F] [--keybinds F] [--feed F] [--from-start] [--once] [--owner-pid N]\n"); return 2; }
-    const char *house = argv[1], *relay = argv[2], *keys = NULL, *kbf = NULL, *feed = NULL; int from_start = 0, once = 0; long owner = 0;
+    if (argc < 3) { fprintf(stderr, "usage: rmmc_driver <house> <relay_file> [--keys F] [--keybinds F] [--feed F] [--from-start] [--once] [--owner-pid N] [--editor-pkg DIR] [--lock FILE]\n"); return 2; }
+    const char *house = argv[1], *relay = argv[2], *keys = NULL, *kbf = NULL, *feed = NULL, *pkg = NULL, *lockf = NULL; int from_start = 0, once = 0; long owner = 0;
     for (int i = 3; i < argc; i++) { if (!strcmp(argv[i], "--keys") && i + 1 < argc) keys = argv[++i]; else if (!strcmp(argv[i], "--keybinds") && i + 1 < argc) kbf = argv[++i]; else if (!strcmp(argv[i], "--feed") && i + 1 < argc) feed = argv[++i];
-        else if (!strcmp(argv[i], "--from-start")) from_start = 1; else if (!strcmp(argv[i], "--once")) once = 1; else if (!strcmp(argv[i], "--owner-pid") && i + 1 < argc) owner = atol(argv[++i]); else { fprintf(stderr, "unknown option %s\n", argv[i]); return 2; } }
+        else if (!strcmp(argv[i], "--from-start")) from_start = 1; else if (!strcmp(argv[i], "--once")) once = 1; else if (!strcmp(argv[i], "--owner-pid") && i + 1 < argc) owner = atol(argv[++i]);
+        else if (!strcmp(argv[i], "--editor-pkg") && i + 1 < argc) pkg = argv[++i]; else if (!strcmp(argv[i], "--lock") && i + 1 < argc) lockf = argv[++i]; else { fprintf(stderr, "unknown option %s\n", argv[i]); return 2; } }
     static char book[4300], desk[4400], seed[4500], led[4400], vop[4400], data[4400], pop[4400], pose[4400], hm[4400], dkeys[4400], dkb[4400]; const char *e;
     snprintf(book, sizeof book, "%s/@.apps/rmmc", house); snprintf(vop, sizeof vop, "%s/@.apps/vox/ops/+x/vox_op.+x", house); snprintf(data, sizeof data, "%s/vox", book); snprintf(pop, sizeof pop, "%s/ops/+x/rmmc_project_op.+x", book);
     snprintf(pose, sizeof pose, "%s/pose.pdl", book); snprintf(hm, sizeof hm, "%s/vox/terrain.heightmap", book);
     e = getenv("RMMC_DESK"); if (e && *e) snprintf(desk, sizeof desk, "%s", e); else snprintf(desk, sizeof desk, "%s/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001", book);
     e = getenv("RMMC_SEED"); if (e && *e) snprintf(seed, sizeof seed, "%s", e); else snprintf(seed, sizeof seed, "%s/seed", desk);
     e = getenv("RMMC_LEDGER"); if (e && *e) snprintf(led, sizeof led, "%s", e); else snprintf(led, sizeof led, "%s/@.apps/rpg-edit-hq/state/games/rmmc/game/ledger.txt", house);
-    const char *actor = getenv("RMMC_ACTOR"); if (!actor || !*actor) actor = "asa";
+    static char actor_b[48]; const char *actor = actor_b; { const char *ea = getenv("RMMC_ACTOR"); snprintf(actor_b, sizeof actor_b, "%s", ea && *ea ? ea : "asa"); }
+    int env_fixed = (getenv("RMMC_DESK") && *getenv("RMMC_DESK")) || (getenv("RMMC_LEDGER") && *getenv("RMMC_LEDGER"));   /* an environment that names the desk or the ledger wins over the open page (the harness and the director set it) */
+    if (!owner) { const char *g = getenv("GAME_OWNER_PID"); if (g && *g) owner = atol(g); }   /* the Play launcher hands the game to the editor window this way */
+    if (lockf) { int lfd = open(lockf, O_CREAT | O_RDWR | O_CLOEXEC, 0644); if (lfd < 0 || flock(lfd, LOCK_EX | LOCK_NB)) return 0; }   /* one instance: a second Play press finds the lock held and ends quietly */
     if (!keys) { snprintf(dkeys, sizeof dkeys, "%s/keys.pdl", book); keys = dkeys; } if (!kbf) { snprintf(dkb, sizeof dkb, "%s/rmmc-pchq/pieces/system/keybinds.pdl", book); kbf = dkb; }
     if (load_keys(kbf, keys)) { fprintf(stderr, "rmmc_driver: bad keybinds or keys file\n"); return 2; }
     signal(SIGTERM, on_term); signal(SIGINT, on_term);
     long cur = 0; if (!from_start) { struct stat st; if (!stat(relay, &st)) cur = (long)st.st_size; }
     char msg[500] = "waiting for keys", seatn[96] = "harness", where[320] = ""; long last_key = 0, last_feed = -100000; int idle_pending = 0, first_refusal = 0;
+    char cur_did[96] = "", cur_poss[96] = "", poss_actor[48] = ""; int desk_ok = 1, first_follow = 1;
     for (;;) {
+        if (pkg) {   /* FOLLOW THE EDITOR (2026-11-26): the open page picks desk and ledger (desks.pdl), the possessed rig: token picks the actor, and the seat follows the possession, a ledger row each way */
+            char pp[4500], did[96], pid_[96]; snprintf(pp, sizeof pp, "%s/pieces/world_01/state.txt", pkg); kv_get(pp, "desk_id", did, sizeof did); snprintf(pp, sizeof pp, "%s/pieces/xelector_01/state.txt", pkg); kv_get(pp, "possessed_id", pid_, sizeof pid_);
+            if (strcmp(did, cur_did)) { snprintf(cur_did, sizeof cur_did, "%s", did); char lf[300];
+                if (env_fixed) desk_ok = 1;
+                else if (did[0] && !strchr(did, '/') && desk_row(book, did, lf, sizeof lf)) { snprintf(desk, sizeof desk, "%.4000s/rmmc-pchq/pieces/system/maps/rmmc/%s", book, did); snprintf(seed, sizeof seed, "%s/seed", desk); snprintf(led, sizeof led, "%.4000s/@.apps/rpg-edit-hq/state/games/rmmc/game/%.200s", house, lf); desk_ok = 1; }
+                else { desk_ok = 0; snprintf(msg, sizeof msg, "page %s has no row in desks.pdl: keys are ignored there", did); }
+                last_feed = 0; }
+            setenv("RMMC_DESK", desk, 1); setenv("RMMC_SEED", seed, 1); setenv("RMMC_LEDGER", led, 1);
+            if (first_follow && desk_ok) {      /* a fresh driver does not remember who was possessed before it started: every actor of the page that is not possessed NOW gets a human seat back to the harness (a SEAT row only when the seat really is human), so a stuck seat never blocks the harness or a tutorial presenter */
+                char ep[4600], el[300]; snprintf(ep, sizeof ep, "%.4000s/events.txt", seed); FILE *ef = fopen(ep, "r");
+                while (ef && fgets(el, sizeof el, ef)) { char nm[48]; int ex, ey, er, eg, eb; if (sscanf(el, "%d %d %d %d %d %47s", &ex, &ey, &er, &eg, &eb, nm) != 6 || strncmp(nm, "rig:", 4) || !nm[4] || !strcmp(nm, pid_)) continue;
+                    int ok = 1; for (const char *c = nm + 4; *c; c++) if (!((*c >= 'a' && *c <= 'z') || (*c >= '0' && *c <= '9') || *c == '_')) ok = 0; if (!ok) continue;
+                    char so[100]; char *as[] = { vop, "seat", data, led, nm + 4, NULL }; run_out(as, so, sizeof so);
+                    if (!strcmp(so, "seat=human")) { setenv("RMMC_ACTOR", nm + 4, 1); char m2[200]; rmmc_play_verb(house, book, "seat", "harness", "human", m2, sizeof m2); } }
+                if (ef) fclose(ef); }
+            first_follow = 0;
+            if (strcmp(pid_, cur_poss)) {
+                if (desk_ok && poss_actor[0]) { setenv("RMMC_ACTOR", poss_actor, 1); char m2[200]; rmmc_play_verb(house, book, "seat", "harness", "human", m2, sizeof m2); }      /* released, or switched to another token: the old actor goes back to the harness */
+                poss_actor[0] = 0; snprintf(cur_poss, sizeof cur_poss, "%s", pid_);
+                if (!strncmp(pid_, "rig:", 4) && pid_[4] && strlen(pid_ + 4) < sizeof poss_actor) { int ok = 1; for (const char *c = pid_ + 4; *c; c++) if (!((*c >= 'a' && *c <= 'z') || (*c >= '0' && *c <= '9') || *c == '_')) ok = 0; if (ok) snprintf(poss_actor, sizeof poss_actor, "%s", pid_ + 4); }
+                if (poss_actor[0]) { snprintf(actor_b, sizeof actor_b, "%s", poss_actor); if (desk_ok) { setenv("RMMC_ACTOR", poss_actor, 1); char m2[200]; rmmc_play_verb(house, book, "seat", "human", "human", m2, sizeof m2); } }
+                last_feed = 0; }
+            setenv("RMMC_ACTOR", actor_b, 1); }
         FILE *f = fopen(relay, "r"); char ln[200];
+        if (f && pkg && !desk_ok) { fseek(f, 0, SEEK_END); cur = ftell(f); fclose(f); f = NULL; }      /* a page with no desks.pdl row: the keys are read and dropped, never replayed later */
         if (f) { struct stat st; if (!fstat(fileno(f), &st) && st.st_size < cur) cur = 0;   /* the relay was trimmed: start over */
             fseek(f, cur, SEEK_SET); while (fgets(ln, sizeof ln, f)) { if (!strchr(ln, '\n')) break; cur += (long)strlen(ln); int code = 0; long ms = 0; if (sscanf(ln, "%d %ld", &code, &ms) < 1) continue; (void)ms;
                 const char *gk = NULL; for (int i = 0; i < ngk; i++) if (GK[i].code == code) gk = GK[i].name; if (!gk) continue;

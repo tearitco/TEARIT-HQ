@@ -5,6 +5,7 @@ ENV | LC_ALL | C
 CASE | rest-pose-tree-and-rotation-about-the-shoulder
 SCRATCH |
 COPY | &.widgits/board-viewer/ops/bv_rig_anim.h | bv_rig_anim.h
+COPY | &.widgits/board-viewer/ops/bv_rig_anim_draw.h | bv_rig_anim_draw.h
 COPY | &.widgits/board-viewer/ops/rig_pose_op.c | rig_pose_op.c
 RUN | /usr/bin/gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/pose | $T/rig_pose_op.c | -lm
 EXPECT_EXIT | 0 | the-evaluator-and-op-compile-alone-without-warnings-as-errors
@@ -19,6 +20,7 @@ CLEAN |
 CASE | animation-tracks-eases-loop-and-the-parent-carries-the-child
 SCRATCH |
 COPY | &.widgits/board-viewer/ops/bv_rig_anim.h | bv_rig_anim.h
+COPY | &.widgits/board-viewer/ops/bv_rig_anim_draw.h | bv_rig_anim_draw.h
 COPY | &.widgits/board-viewer/ops/rig_pose_op.c | rig_pose_op.c
 RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -o | $T/pose | $T/rig_pose_op.c | -lm
 EXPECT_EXIT | 0 | compiles
@@ -44,6 +46,7 @@ CLEAN |
 CASE | mutant-parents-ignored-must-be-caught-and-bad-input-is-refused
 SCRATCH |
 COPY | &.widgits/board-viewer/ops/bv_rig_anim.h | bv_rig_anim.h
+COPY | &.widgits/board-viewer/ops/bv_rig_anim_draw.h | bv_rig_anim_draw.h
 COPY | &.widgits/board-viewer/ops/rig_pose_op.c | rig_pose_op.c
 RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -o | $T/pose | $T/rig_pose_op.c | -lm
 EXPECT_EXIT | 0 | compiles
@@ -69,6 +72,7 @@ CLEAN |
 CASE | an-old-colour-only-rig-file-is-not-an-error
 SCRATCH |
 COPY | &.widgits/board-viewer/ops/bv_rig_anim.h | bv_rig_anim.h
+COPY | &.widgits/board-viewer/ops/bv_rig_anim_draw.h | bv_rig_anim_draw.h
 COPY | &.widgits/board-viewer/ops/rig_pose_op.c | rig_pose_op.c
 RUN | /usr/bin/gcc | -std=gnu11 | -O2 | -o | $T/pose | $T/rig_pose_op.c | -lm
 EXPECT_EXIT | 0 | compiles
@@ -76,4 +80,35 @@ COPY | @.apps/rmmc/rigs/rig_asa.pdl | rig_asa.pdl
 RUN | $T/pose | $T/rig_asa.pdl | - | 0
 EXPECT_EXIT | 0 | the-real-schema-1-asa-rig-loads
 EXPECT_OUT | schema=1 parts=0 anims=0 tracks=0 | and-has-nothing-to-pose-so-the-old-rigs-keep-working
+CLEAN |
+CASE | the-real-biped-template-poses-into-the-six-renderer-boxes
+SCRATCH |
+COPY | &.widgits/board-viewer/ops/bv_rig_anim.h | bv_rig_anim.h
+COPY | &.widgits/board-viewer/ops/bv_rig_anim_draw.h | bv_rig_anim_draw.h
+COPY | &.widgits/board-viewer/ops/rig_pose_op.c | rig_pose_op.c
+RUN | /usr/bin/gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/pose | $T/rig_pose_op.c | -lm
+EXPECT_EXIT | 0 | compiles-with-the-draw-header
+COPY | @.apps/rmmc/rigs/biped_anim.pdl | biped.pdl
+RUN | $T/pose | $T/biped.pdl | - | 0
+EXPECT_OUT | schema=2 parts=6 anims=5 tracks=30 | the-template-parses-6-parts-5-animations-and-30-tracks
+RUN | $T/pose | $T/biped.pdl | - | 0 | boxes | 2
+EXPECT_OUT | boxes 6 | six-boxes-for-a-six-part-rig
+EXPECT_OUT | box 0 -0.225 1.350 -0.225 0.225 1.800 0.225 | REST-the-head-is-an-8-pixel-cube-on-top-at-1-35-to-1-8-blocks
+EXPECT_OUT | box 1 -0.225 0.675 | REST-the-torso-stands-on-the-hips-at-0-675
+EXPECT_OUT | box 2 -0.450 0.675 | REST-the-right-arm-is-at-the-figures-right-which-faces-south-so-it-is-world-west
+RUN | $T/pose | $T/biped.pdl | @1 | 0 | boxes | 2
+EXPECT_OUT | box 2 -0.450 0.774 0.126 -0.225 1.449 0.351 | WALK-t0-the-right-arm-is-45-degrees-forward-its-centre-moved-0-2386-forward-and-up
+RUN | $T/pose | $T/biped.pdl | @2 | 0 | boxes | 2
+EXPECT_OUT | box 2 -0.450 0.774 0.126 -0.225 1.449 0.351 | pattern-2-is-the-same-walk
+RUN | $T/pose | $T/biped.pdl | @1 | 0 | boxes | 6
+EXPECT_OUT | box 2 0.126 0.774 0.225 0.351 1.449 0.450 | WALK-facing-east-the-same-arm-is-forward-along-world-x-and-on-the-south-side
+RUN | $T/pose | $T/biped.pdl | @4 | 0 | boxes | 2
+EXPECT_OUT | box 2 -0.450 1.071 0.220 -0.225 1.746 0.445 | MINE-t0-the-right-arm-is-raised-forward-and-a-little-above-the-shoulder
+RUN | $T/pose | $T/biped.pdl | @9 | 0 | boxes | 2
+EXPECT_OUT | box 2 -0.450 0.675 | an-unmapped-pattern-draws-the-rest-pose
+RUN | $T/pose | $T/biped.pdl | @9 | 0
+EXPECT_EXIT | 3 | NEGATIVE-the-pose-mode-refuses-a-pattern-with-no-STATE-3
+WRITE | six.pdl | SCHEMA \p rig \p 2\nPART \p head \p - \p box \p 1 \p 1 1 1 \p 0 0 0 \p 0 0 0 \p 0 0 0 \p 1 1 1 \p 255 \p skin\n
+RUN | $T/pose | $T/six.pdl | - | 0 | boxes | 2
+EXPECT_OUT | boxes 0 | NEGATIVE-a-rig-without-the-six-named-parts-gives-0-boxes-so-the-renderer-keeps-the-old-stepped-rig
 CLEAN |

@@ -1,8 +1,8 @@
-# Play is still the shared driver. Break and place are not wired yet.
+# Play starts rmmc_driver (2026-11-26): it follows the open page (desks.pdl), the possessed rig: token and the seat, and turns the keys the engine forwards into the verb pages. Break and place are wired through keys.pdl.
 GAME   | name        | rmmc
 GAME   | title       | RM sandbox
 GAME   | kind        | editor
 GAME   | ruleset     | default
-GAME   | driver      | {house}/&.widgits/_shared-lib/ops/+x/game_core.+x driver {house} {book} {editor}
+GAME   | driver      | {book}/ops/+x/rmmc_driver.+x {house} {editor}/state/interact_relay.txt --feed {editor}/state/game_ui.txt --editor-pkg {editor}/rpg-edit-hq-pchq --lock {editor}/state/rmmc_driver.lock
 GAME   | clock       | pause
 GAME   | export      | {house}/&.widgits/_shared-lib/ops/+x/game_core.+x {book} {state} export {out}

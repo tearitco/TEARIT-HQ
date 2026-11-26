@@ -1,0 +1,4 @@
+# rmmc_follow.pal — rmmc_driver follows the editor: the possessed rig: token is the actor, the seat follows possession, the open page picks the ledger (desks.pdl)
+exec ./ops/+x/harness_case_op.+x cases/rmmc_follow.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/rmmc_follow.pdl
+halt

@@ -1,0 +1,5 @@
+# desks.pdl: which ledger a page of this book plays on (decision D140 follow-up, 2026-11-26). rmmc_driver reads it when the editor's open page changes (world_01/state.txt desk_id) and writes only for a page that has a row here.
+# DESK | <desk id as in maps/rmmc/game.pdl> | <ledger file under @.apps/rpg-edit-hq/state/games/rmmc/game/>
+# A page with no row is looked at, never written (the driver says so in the game bar). The vox rules directory is still shared by every page (NOT separable yet: a rule experiment on rmmc-alpha changes both).
+DESK | rmmc-0001  | ledger.txt
+DESK | rmmc-alpha | ledger_alpha.txt
