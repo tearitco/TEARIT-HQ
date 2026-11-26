@@ -13,8 +13,13 @@ DATA="$(cd "$DATA" && pwd)"
 for d in pieces/system/maps pieces/system/chunks pieces/system/widget_cmds pieces/sessions pieces/apps/player_app pieces/display pieces/keyboard data state; do mkdir -p "$DATA/$d"; done
 # the per-piece state files (the game's daemon rewrites world / hero / xelector as it plays; these are only the starting shape)
 for p in hero_01 xelector_01 sun_01 moon_01 world_01; do
+    # PCHQ_NO_HERO=1 (set by a board that drives its own characters, e.g. rpg-edit-hq, owner 2026-11-26): the hero placeholder is not part of that instance. What it did is kept by the engine for the page's own rig: tokens
+    # (8 snaps to the character, 9 jumps back to the last one, Enter and [ ] take one; BOOK 16.game/TUTORIAL-HARNESS-...-2026-11-26.md section 15). Default (unset) = every instance gets the hero as before.
+    if [ "$p" = hero_01 ] && [ "${PCHQ_NO_HERO:-0}" = 1 ]; then rm -rf "$DATA/pieces/hero_01"; continue; fi
     [ -d "$DATA/pieces/$p" ] || { [ -d "$PKG/pieces/$p" ] && cp -R "$PKG/pieces/$p" "$DATA/pieces/$p"; } || mkdir -p "$DATA/pieces/$p"
 done
+# with no hero the xelector must not remember one: its "last possessed" would be a piece that does not exist (a harmless no-op, but a vestige that agents keep copying)
+if [ "${PCHQ_NO_HERO:-0}" = 1 ] && [ -f "$DATA/pieces/xelector_01/state.txt" ]; then sed -i 's/^last_possessed_id=hero_01$/last_possessed_id=none/; s/^possessed_id=hero_01$/possessed_id=none/' "$DATA/pieces/xelector_01/state.txt"; fi
 # pieces/registry = the assets the engine looks up UNDER the game root: the HUD font (fonts/ascii/<code>/glyph.txt: without it the 3D HUD is black on black), emoji and phymoji assets (1.3 MB, plain copies)
 [ -d "$DATA/pieces/registry" ] || { [ -d "$PKG/pieces/registry" ] && cp -R "$PKG/pieces/registry" "$DATA/pieces/registry"; } || mkdir -p "$DATA/pieces/registry"
 # the small configuration files of pieces/system (keys, hud, legend, view, manifest ...); not the maps, the generated chunks, pids or session pointers

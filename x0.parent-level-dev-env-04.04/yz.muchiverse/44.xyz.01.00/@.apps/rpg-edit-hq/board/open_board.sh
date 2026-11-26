@@ -9,6 +9,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"; APP="$(dirname "$HERE")"; HOUSE="$(cd "$A
 GATE="$HOUSE/&.widgits/_shared-lib/ops/+x/cpu_gate.+x"
 [ -x "$GATE" ] && { "$GATE" "$HOUSE" check --wait 90 >/dev/null || { echo "open_board: the machine is too busy right now (cpu_gate); not relaunching" >&2; exit 1; }; }
 export PCHQ_PKG="$APP/rpg-edit-hq-pchq"
+export PCHQ_NO_HERO=1   # this editor drives its own characters (rig: tokens): no hero_01 placeholder in its instance (owner 2026-11-26; pchq_instance_init.sh)
 sh "$HOUSE/@.apps/piececraft-hq/ops/pchq_instance_init.sh" "$PCHQ_PKG" >/dev/null 2>&1
 mkdir -p "$HERE/state"; [ -f "$HERE/state/sides.txt" ] || printf "side_left=1\nside_right=1\n" > "$HERE/state/sides.txt"
 "$APP/ops/+x/rpg_edit_hq.+x" export3d >/dev/null 2>&1

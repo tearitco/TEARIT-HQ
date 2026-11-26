@@ -802,6 +802,7 @@ int main(int argc, char **argv) {
 
     char hero_state_path[PATH_BUF];
     snprintf(hero_state_path, sizeof(hero_state_path), "%s/state.txt", hero_dir);
+    { const char *nh = getenv("PCHQ_NO_HERO"); if (nh && nh[0] == '1') { unlink(hero_state_path); } else {   /* PCHQ_NO_HERO=1: a board that drives its own rig: tokens has no hero placeholder (owner 2026-11-26) */
     write_kv(hero_state_path, "entity_type", "hero");
     write_kv_int(hero_state_path, "hp", 20);
     write_kv_int(hero_state_path, "pos_x", spawn_col);
@@ -809,7 +810,7 @@ int main(int argc, char **argv) {
     write_kv_int(hero_state_path, "pos_z", spawn_z);
     write_kv(hero_state_path, "owner_id", "player");
     write_kv_int(hero_state_path, "chunk_x", spawn_cx);
-    write_kv_int(hero_state_path, "chunk_y", spawn_cy);
+    write_kv_int(hero_state_path, "chunk_y", spawn_cy); } }
 
     /* pieces/xelector_01/state.txt - real, separate cursor entity, per
      * civ-vs-piece.md §6a's own real precedent citation (fuzz-op's own

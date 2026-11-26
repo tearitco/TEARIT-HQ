@@ -1181,7 +1181,7 @@ static int handle_one_key(int key) {
                 write_kv(xs, "possessed_id", tid);
                 write_kv(xs, "last_possessed_id", tid);
                 bump_screen_changed(project_root);
-            } else if (!possessing && poss_enter_any) {
+            } else if (poss_enter_any && strncmp(possessed_id, "rig:", 4) != 0) {      /* nothing under the cursor and no game token held (nothing possessed, or only an engine piece): take the next token */
                 possess_cycle(focused_project_root, xs, state_path, project_root, 1);      /* Enter with nothing under the cursor: the next token (KEY possess_enter_anywhere) */
             }
             return 0;
@@ -1223,6 +1223,12 @@ static int handle_one_key(int key) {
             write_kv_int(state_path, "selector_y", ly);
             write_kv_int(state_path, "current_z", lz);
             bump_screen_changed(project_root);
+        } else if (!strncmp(last_possessed_id, "rig:", 4)) {
+            /* reverse-jump to the last GAME TOKEN (owner 2026-11-26: the hero placeholder is gone, the job it did stays): snap back to the character controlled last and take it again */
+            char tn[16][48]; int tx[16], ty[16]; int nt = desk_tokens(focused_project_root, tn, tx, ty, 16);
+            for (int i = 0; i < nt; i++) if (!strcmp(last_possessed_id, tn[i])) {
+                write_kv(xs, "possessed_id", tn[i]); write_kv_int(xs, "pos_x", tx[i]); write_kv_int(xs, "pos_y", ty[i]);
+                write_kv_int(state_path, "selector_x", tx[i]); write_kv_int(state_path, "selector_y", ty[i]); bump_screen_changed(project_root); break; }
         }
         return 0;
     }
@@ -1248,6 +1254,14 @@ static int handle_one_key(int key) {
         int hx = read_kv_int(hero_state_path, "pos_x", 0);
         int hy = read_kv_int(hero_state_path, "pos_y", 0);
         int hz = read_kv_int(hero_state_path, "pos_z", 0);
+        if (!piece_exists(focused_project_root, "hero_01")) {
+            /* A board WITHOUT the hero placeholder (owner 2026-11-26: the hero was a vestige; what it solved is kept): "viewable" is the page's own character. The one possessed now, else the first rig: row of the page.
+             * No token either: the xelector stays where it is (never the height 0 a missing hero file would read as). */
+            char tn[16][48]; int tx[16], ty[16]; int nt = desk_tokens(focused_project_root, tn, tx, ty, 16); char cur_[64] = ""; read_kv_str(xelector_state_path, "possessed_id", cur_, sizeof(cur_));
+            int pick = -1; for (int i = 0; i < nt; i++) if (!strcmp(cur_, tn[i])) pick = i; if (pick < 0 && nt > 0) pick = 0;
+            hz = read_kv_int(xelector_state_path, "pos_z", 0); hx = read_kv_int(xelector_state_path, "pos_x", 0); hy = read_kv_int(xelector_state_path, "pos_y", 0);
+            if (pick >= 0) { hx = tx[pick]; hy = ty[pick]; }
+        }
         write_kv_int(xelector_state_path, "pos_x", hx);
         write_kv_int(xelector_state_path, "pos_y", hy);
         write_kv_int(xelector_state_path, "pos_z", hz);
