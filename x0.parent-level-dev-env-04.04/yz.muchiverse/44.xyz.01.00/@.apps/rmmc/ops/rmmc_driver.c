@@ -80,6 +80,37 @@ static void bump_view(const char *pkg) {
     FILE *m = fopen(p, "a");
     if (m) { fputc('.', m); fclose(m); }
 }
+/* STOPGAP (owner 2026-11-26, removal: when the engine's token follow, D118, also carries the token's LEVEL): a followed token moves the cursor's cell but not its level, so the third-person camera hung about 14 blocks above Asa and showed only grass. The driver tells the board its actor's level: floor_z of the board manifest + (ledger height - heightmap shift), written to the xelector's pos_z ONLY while that actor is the possessed one, then the redraw nudge. */
+static void sync_view(const char *pkg, const char *vop, const char *data, const char *led, const char *actor) {
+    if (!pkg || !pkg[0]) return;
+    char p[PATH_MAX + 160], ln[300], o[200]; int floor_z = -1, shift = 0, ay = 0, ax, az;
+    snprintf(p, sizeof p, "%.4000s/pieces/system/board_manifest.txt", pkg);
+    FILE *f = fopen(p, "r");
+    while (f && fgets(ln, sizeof ln, f)) if (!strncmp(ln, "floor_z=", 8)) floor_z = atoi(ln + 8);
+    if (f) fclose(f);
+    snprintf(p, sizeof p, "%.4000s/terrain.heightmap", data);
+    f = fopen(p, "r");
+    while (f && fgets(ln, sizeof ln, f)) if (!strncmp(ln, "META | shift |", 14)) shift = atoi(ln + 14);
+    if (f) fclose(f);
+    char *av[] = { (char *)vop, "where", (char *)data, (char *)led, (char *)actor, NULL };
+    if (floor_z >= 0 && run_out(av, o, sizeof o) == 0 && sscanf(o, "at=%d,%d,%d", &ax, &ay, &az) == 3) {
+        char xp[PATH_MAX + 160], want[96]; snprintf(xp, sizeof xp, "%.4000s/pieces/xelector_01/state.txt", pkg); snprintf(want, sizeof want, "possessed_id=rig:%s", actor);
+        char buf[4096]; size_t n = 0; int poss = 0, have = 0, same = 0; int z = floor_z + ay - shift; if (z < 1) z = 1;
+        f = fopen(xp, "r");
+        if (f) {
+            char out[4096]; size_t on = 0;
+            while (fgets(ln, sizeof ln, f)) {
+                if (!strncmp(ln, want, strlen(want)) && (ln[strlen(want)] == '\n' || !ln[strlen(want)])) poss = 1;
+                if (!strncmp(ln, "pos_z=", 6)) { have = 1; if (atoi(ln + 6) == z) same = 1; on += (size_t)snprintf(out + on, sizeof out - on, "pos_z=%d\n", z); }
+                else on += (size_t)snprintf(out + on, sizeof out - on, "%s", ln);
+                if (on > sizeof out - 400) break;
+            }
+            fclose(f); memcpy(buf, out, on); n = on;
+        }
+        if (poss && have && !same) { FILE *w = fopen(xp, "w"); if (w) { fwrite(buf, 1, n, w); fclose(w); } }
+    }
+    bump_view(pkg);
+}
 static int chrome_feed(char *fb, size_t cap, const char *book, const char *actor, const char *where, const char *seatn, const char *msg) {
     size_t n = 0; char p[PATH_MAX + 64], line[256], pick[64] = "";
     snprintf(p, sizeof p, "%.4000s/play/pick.txt", book); { FILE *f = fopen(p, "r"); if (f) { if (fgets(pick, sizeof pick, f)) pick[strcspn(pick, "\r\n")] = 0; fclose(f); } }
@@ -146,6 +177,7 @@ int main(int argc, char **argv) {
                 poss_actor[0] = 0; snprintf(cur_poss, sizeof cur_poss, "%s", pid_);
                 if (!strncmp(pid_, "rig:", 4) && pid_[4] && strlen(pid_ + 4) < sizeof poss_actor) { int ok = 1; for (const char *c = pid_ + 4; *c; c++) if (!((*c >= 'a' && *c <= 'z') || (*c >= '0' && *c <= '9') || *c == '_')) ok = 0; if (ok) snprintf(poss_actor, sizeof poss_actor, "%s", pid_ + 4); }
                 if (poss_actor[0]) { snprintf(actor_b, sizeof actor_b, "%s", poss_actor); if (desk_ok) { setenv("RMMC_ACTOR", poss_actor, 1); char m2[200]; rmmc_play_verb(house, book, "seat", "human", "human", m2, sizeof m2); } }
+                if (poss_actor[0] && desk_ok) sync_view(pkg, vop, data, led, poss_actor);      /* a fresh possession frames the actor at once */
                 last_feed = 0; }
             setenv("RMMC_ACTOR", actor_b, 1); }
         FILE *f = fopen(relay, "r"); char ln[200];
@@ -160,7 +192,7 @@ int main(int argc, char **argv) {
                     last_key = now_ms(); last_feed = 0; continue; }
                 { char o2[100]; char *av[] = { vop, "seat", data, led, (char *)actor, NULL }; run_out(av, o2, sizeof o2); snprintf(seatn, sizeof seatn, "%s", strncmp(o2, "seat=", 5) ? "harness" : o2 + 5);
                   if (strcmp(seatn, "human")) { snprintf(msg, sizeof msg, "refused: the seat is %s, keys are ignored (exit 24)", seatn); if (!first_refusal) first_refusal = 24; if (once) { fprintf(stderr, "%s\n", msg); fclose(f); return 24; } continue; } }
-                int rc = rmmc_play_verb(house, book, KV[kv].verb, KV[kv].arg, "human", msg, sizeof msg); if (rc && !first_refusal) first_refusal = rc; { char kt[200]; const char *mm = msg; if (!strncmp(mm, "refused: refused: ", 18)) mm += 9; snprintf(kt, sizeof kt, "key %.20s -> %.150s", gk, mm); snprintf(msg, sizeof msg, "%s", kt); }   /* the last key and what came of it, on screen (owner 2026-11-26: a silent key is a bug; the browser-style debug console replaces this later, plan section 15) */ last_key = now_ms(); idle_pending = 1; bump_view(pkg); }
+                int rc = rmmc_play_verb(house, book, KV[kv].verb, KV[kv].arg, "human", msg, sizeof msg); if (rc && !first_refusal) first_refusal = rc; { char kt[200]; const char *mm = msg; if (!strncmp(mm, "refused: refused: ", 18)) mm += 9; snprintf(kt, sizeof kt, "key %.20s -> %.150s", gk, mm); snprintf(msg, sizeof msg, "%s", kt); }   /* the last key and what came of it, on screen (owner 2026-11-26: a silent key is a bug; the browser-style debug console replaces this later, plan section 15) */ last_key = now_ms(); idle_pending = 1; sync_view(pkg, vop, data, led, actor); }
             fclose(f); }
         if (last_key > last_feed || now_ms() - last_feed >= 2000) { last_feed = now_ms(); char o2[300]; char *av[] = { vop, "where", data, led, (char *)actor, NULL }; run_out(av, o2, sizeof o2); snprintf(where, sizeof where, "%s", o2[0] ? o2 : "not spawned"); char o3[100]; char *a3[] = { vop, "seat", data, led, (char *)actor, NULL }; run_out(a3, o3, sizeof o3); snprintf(seatn, sizeof seatn, "%s", strncmp(o3, "seat=", 5) ? "harness" : o3 + 5); { char ob[400]; char *ab[] = { vop, "bag", data, led, (char *)actor, NULL }; run_out(ab, ob, sizeof ob); snprintf(g_bag, sizeof g_bag, "%s", strncmp(ob, "bag=", 4) ? "" : ob + 4); }
         if (feed) { char fb[16384]; int n = chrome_feed(fb, sizeof fb, book, actor, where, seatn, msg); put_if_changed(feed, fb, (size_t)n); } }
