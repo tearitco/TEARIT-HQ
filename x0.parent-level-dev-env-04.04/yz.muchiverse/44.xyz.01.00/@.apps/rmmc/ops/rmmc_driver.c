@@ -187,6 +187,7 @@ int main(int argc, char **argv) {
     if (load_keys(kbf, keys)) { fprintf(stderr, "rmmc_driver: bad keybinds or keys file\n"); return 2; }
     signal(SIGTERM, on_term); signal(SIGINT, on_term);
     long cur = 0; if (!from_start) { struct stat st; if (!stat(relay, &st)) cur = (long)st.st_size; }
+    static const char HINT[] = "ready: the Help menu lists the keys"; char shown[500] = ""; long shown_at = 0;      /* a key result fades to HINT after 8 s (QA 2026-11-26: a refusal stayed on the bar forever); a "page ..." warning stays while you are on that page */
     char msg[500] = "waiting for keys", seatn[96] = "harness", where[320] = ""; long last_key = 0, last_feed = -100000; int idle_pending = 0, first_refusal = 0;
     char cur_did[96] = "", cur_poss[96] = "", poss_actor[48] = ""; int desk_ok = 1, first_follow = 1;
     for (;;) {
@@ -196,6 +197,7 @@ int main(int argc, char **argv) {
                 if (env_fixed) desk_ok = 1;
                 else if (did[0] && !strchr(did, '/') && desk_row(book, did, lf, sizeof lf)) { snprintf(desk, sizeof desk, "%.4000s/rmmc-pchq/pieces/system/maps/rmmc/%s", book, did); snprintf(seed, sizeof seed, "%s/seed", desk); snprintf(led, sizeof led, "%.4000s/@.apps/rpg-edit-hq/state/games/rmmc/game/%.200s", house, lf); desk_ok = 1; }
                 else { desk_ok = 0; snprintf(msg, sizeof msg, "page %s has no row in desks.pdl: keys are ignored there", did); }
+                if (desk_ok && !strncmp(msg, "page ", 5)) snprintf(msg, sizeof msg, "%s", HINT);      /* back on a page that has a desk: the old page warning no longer applies */
                 last_feed = 0; }
             setenv("RMMC_DESK", desk, 1); setenv("RMMC_SEED", seed, 1); setenv("RMMC_LEDGER", led, 1);
             if (first_follow && desk_ok) {      /* a fresh driver does not remember who was possessed before it started: every actor of the page that is not possessed NOW gets a human seat back to the harness (a SEAT row only when the seat really is human), so a stuck seat never blocks the harness or a tutorial presenter */
@@ -234,6 +236,7 @@ int main(int argc, char **argv) {
                     reset_asked = 0; }
                 int rc = rmmc_play_verb(house, book, KV[kv].verb, KV[kv].arg, "human", msg, sizeof msg); held_write(pkg, book, actor, KV[kv].verb, rc); if (!rc && !strcmp(KV[kv].verb, "mine")) mine_say(led, actor, msg, sizeof msg); if (!strcmp(KV[kv].verb, "walk")) g_last_step = now_ms(); if (rc && !first_refusal) first_refusal = rc; { char kt[200]; const char *mm = msg; if (!strncmp(mm, "refused: refused: ", 18)) mm += 9; snprintf(kt, sizeof kt, "key %.20s: %.150s", gk, mm); { char *cut = strstr(kt, " (direct"); if (cut) *cut = 0; cut = strstr(kt, " ["); if (cut) *cut = 0; } snprintf(msg, sizeof msg, "%s", kt); }   /* the last key and what came of it, on screen (owner 2026-11-26: a silent key is a bug; the browser-style debug console replaces this later, plan section 15) */ last_key = now_ms(); idle_pending = 1; sync_view(pkg, vop, data, led, actor); }
             fclose(f); }
+        if (strcmp(msg, shown)) { snprintf(shown, sizeof shown, "%s", msg); shown_at = now_ms(); } else if (now_ms() - shown_at > 8000 && strncmp(msg, "page ", 5) && strcmp(msg, HINT) && strcmp(msg, "waiting for keys")) { snprintf(msg, sizeof msg, "%s", HINT); last_feed = 0; }
         if (last_key > last_feed || now_ms() - last_feed >= 2000) { last_feed = now_ms(); char o2[300]; char *av[] = { vop, "where", data, led, (char *)actor, NULL }; run_out(av, o2, sizeof o2); snprintf(where, sizeof where, "%s", o2[0] ? o2 : "not spawned"); char o3[100]; char *a3[] = { vop, "seat", data, led, (char *)actor, NULL }; run_out(a3, o3, sizeof o3); snprintf(seatn, sizeof seatn, "%s", strncmp(o3, "seat=", 5) ? "harness" : o3 + 5); { char ob[400]; char *ab[] = { vop, "bag", data, led, (char *)actor, NULL }; run_out(ab, ob, sizeof ob); snprintf(g_bag, sizeof g_bag, "%s", strncmp(ob, "bag=", 4) ? "" : ob + 4); }
         if (feed) { char fb[16384]; g_tut_led = led[0] ? led : NULL; int n = chrome_feed(fb, sizeof fb, book, actor, where, seatn, msg); put_if_changed(feed, fb, (size_t)n); } }
         if (once) return first_refusal;
