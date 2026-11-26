@@ -69,3 +69,31 @@ Converted files live in `@.apps/rmmc/rigs/` (`rig_asa.pdl`, `rig_actor1_0.pdl`, 
 - **Harness:** `bv_rig` 46 PASS (new case `face`: for directions 2, 4, 6, 8 the 5 sclera/iris/mouth parts are all in front of the head; mask 7 = 12 parts, mask 0 = 6, mask 15 = 19; NEGATIVE: a header built with `BV_RIG_MUTANT_FACE_BEHIND` reads `in_front 0`); `rig_convert` 51 PASS (one expected value changed on purpose: the converted file has 8 rows and mask 15 because of the new `eyes` row).
 - **SAW live** (`XO/31.Nov/nov-25/7.rig-face-live/`): Harold's rig on the island with blue eyes, white sclera, brows and a mouth, red hair cap and back slab. The camera in that shot is steep and close, so the body looks stretched: that is perspective.
 - **Not done:** textures (the hair is a flat cap, not a fringe), `Actor1`-style sprites with a hood or helmet have no skin band and fall back to the fixed fractions, and the preview op (original sprite beside the rig) was not built (the live engine was used instead).
+
+## A standard animation set that every game reuses (owner 2026-11-26: "assassins creed ... take downs, gun / weapon animations etc, could probably have std animations since they will reappear in lots of games ... climbing w/e, u would make a list"; PROPOSAL, nothing below the first table is built)
+
+**What exists today (read from `@.apps/rmmc/rigs/biped_anim.pdl` and `pose.pdl`, 2026-11-26):** 6 box parts (torso, head, arm_r, arm_l, leg_r, leg_l); 5 clips (`idle` 2400 ms, `walk` 800, `jump` 600, `mine` 600, `place` 700); `STATE` rows that pick a clip with a blend time; `TRACK` rows (clip, part, channel, time, value, ease); and `pose.pdl`, which maps a ledger row kind (MOVE, DAMAGE, MINE, PLACE, FACE, RESET, IDLE) to a pose number. The chain is: ledger row -> POSE -> STATE -> ANIM tracks. A new animation is therefore data rows plus, where the action is a game rule, a verb that writes a ledger row (D92: the rule is an op).
+
+**The list (what a player would call the common moves; each is a clip name plus the verb that triggers it).** Clip names are the shared vocabulary; a game that lacks a verb simply never plays that clip.
+
+| Group | Clips | Triggered by | Note |
+|---|---|---|---|
+| Locomotion | idle, walk, run (sprint), crouch_idle, crouch_walk, jump, fall, land | MOVE rows with a speed / stance, the jump verb | run and crouch need a stance flag in the ledger |
+| Traversal (Assassin's Creed, climbing) | climb_up, climb_down, ledge_hang, ledge_shimmy, mantle (pull up), vault (over a low block), wall_run, swim, ladder | a `climb` / `mantle` / `vault` verb that moves the actor to a new cell | needs hand-hold detection: a world rule, not an animation |
+| Items | equip (draw), holster, pickup, throw, eat_drink, use_item | the cycle verb (D143), pickup / throw / use verbs | the held item is drawn through `held.txt` in first person |
+| Mining and building | swing (mine), place | MINE, PLACE, DAMAGE rows | exists as `mine` and `place` |
+| Melee | melee_light, melee_heavy, block, dodge (roll), parry | attack / block / dodge verbs | block and dodge need a timing window rule |
+| Guns and aiming (Doom, GTA, MGS) | aim_idle, aim_walk, fire, recoil, reload, weapon_swap | aim (hold), fire, reload verbs | recoil is a short additive track on arm_r and torso |
+| Stealth and take-downs (MGS, Assassin's Creed) | stealth_idle, sneak_walk, takedown_back, takedown_air, takedown_ledge, grab_hold, hide | a `takedown` verb with a target actor | TWO actors: the clip runs on both, see below |
+| Reactions | hit_react, stagger, knockdown, get_up, death, respawn_in | DAMAGE, DEATH, RESET rows | exists as the DAMAGE pose; death needs a DEATH row |
+| Social and rest | talk, gesture, wave, sit, sleep, emote | chat verb, the SLEEP row (already in `vox_op`), emote verbs | |
+| Vehicles (GTA) | drive, ride, enter_vehicle, exit_vehicle | vehicle verbs | needs a vehicle part and a seat; a separate design |
+
+**Three things that are not "just more clips":**
+1. **Two-actor moves** (a take-down, a grapple, a hug, a trade hand-over) need the clip on BOTH actors, started by ONE ledger row naming both, with a shared start time. That is a rule (an op), and the paired clips are authored as a pair. Plan the pair in the data (`PAIR | takedown_back | attacker | victim`) before authoring any.
+2. **The rig is 6 boxes with no inverse kinematics.** Aiming at a target, feet on slopes and reaching a ledge are approximated with fixed poses and a few angles. Weapons are held items; in third person a weapon needs an extra part (see "Extra parts" above). That limits how close the result gets to MGSV or Assassin's Creed. It is a style, not a failure: Minecraft-like animation is blocky by design.
+3. **The engine redraws on a change** (trap 6 in the handoff): a clip that animates outside the world needs the driver to nudge the view per tick, or the clip looks frozen.
+
+**Where the set lives (design-choice answer, to be logged as its own D row before building):** the clip names and tracks are the trunk of the TRUNK-AND-BRANCH standard (D87): one shared base file of clips for every biped, and each game or character adds BRANCH rows (a different `run` speed, a game-only `takedown_ledge`). Today `biped_anim.pdl` sits in rmmc's own `rigs/`. The proposal is to promote it to a shared library folder (suggested `&.widgits/_shared-lib/anim/`, NOT created yet) and have rmmc branch from it. One authority per fact: the clip is authored once; a game never copies it.
+
+**Suggested order, by leverage:** (1) `run` + `crouch` (needs a stance flag), (2) `equip` driven by the `cycle` verb from D143, (3) `fire` / `aim` / `reload` (a shooter feel quickly), (4) `climb` / `mantle` (needs the hand-hold rule), (5) the two-actor `takedown` pair (the hardest and the most distinctive). Each step: a verb op, its ledger row, POSE / STATE / ANIM rows, a harness case that can fail, and a photograph of the clip in the window.
