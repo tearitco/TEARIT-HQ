@@ -1270,6 +1270,7 @@ static int handle_one_key(int key) {
         write_kv_int(state_path, "current_z", hz);
         int camera_mode = read_kv_int(state_path, "camera_mode", default_camera_mode(focused_project_root));
         if (camera_mode == 3) write_kv_int(state_path, "cam_pan_y", hz);
+        if (camera_mode == 1 || camera_mode == 2) { write_kv_int(state_path, "cam_pan_x", 0); write_kv_int(state_path, "cam_pan_z", 0); }   /* the follow camera = cursor + pan offset: "viewable" means no leftover offset (owner 2026-11-26: 8 did nothing with cam_pan_x=107) */
         bump_screen_changed(project_root);
         return 0;
     }
