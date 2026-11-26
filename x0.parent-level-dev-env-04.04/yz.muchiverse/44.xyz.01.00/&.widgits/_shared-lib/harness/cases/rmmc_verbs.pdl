@@ -185,3 +185,26 @@ RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --once
 EXPECT_EXIT | 0 | the driver starts on an absent relay
 EXPECT_FILE | bp.txt | paused=1\n | the pause file is exactly as the harness wrote it (never cleared)
 CLEAN |
+CASE | creative-is-off-when-the-switch-says-so-a-place-needs-a-block-in-the-bag-and-costs-one
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+MKDIR | h/@.apps/rmmc/play/world
+WRITE | h/@.apps/rmmc/play/creative.txt | creative=0\n
+ENV | MUCHI_TARGET_ENT | $T/h/@.apps/rmmc/play/world
+ENV | GAME_ARG | 140 100
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/spawn | $T/h | ui
+ENV | GAME_ARG | e
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/walk | $T/h | ui
+ENV | GAME_ARG |
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/place | $T/h | ui
+EXPECT_LACKS | led.txt | PLACE \p asa | with creative off and no dirt in the bag the place is refused: no PLACE row
+EXPECT_LACKS | led.txt | hotbar | and no free GIVE hotbar row was written (that is what creative mode does)
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_mode_op.+x | toggle | $T/h/@.apps/rmmc
+EXPECT_EXIT | 0 | the menu toggle runs
+EXPECT_FILE | h/@.apps/rmmc/play/creative.txt | creative=1\n | the toggle wrote the config file and nothing else
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/place | $T/h | ui
+EXPECT_HAS | led.txt | GIVE \p asa \p dirt \p 1 \p hotbar | with creative on the hotbar gives the block first (the old behaviour, now only on request)
+EXPECT_HAS | led.txt | PLACE \p asa \p dirt | and the place is accepted
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_mode_op.+x | toggle | $T/h/@.apps/rmmc
+EXPECT_FILE | h/@.apps/rmmc/play/creative.txt | creative=0\n | toggling again turns it off (a negative control: the switch really flips both ways)
+CLEAN |

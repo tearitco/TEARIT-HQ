@@ -20,4 +20,5 @@ FILE | hotbar.pdl (beside this book) | CONFIG | a human | - (the Minecraft hotba
 FILE | hotbar/*-bgr.png (beside this book) | CONFIG | cut from the atlas of rmmc-0001 (ffmpeg, see hotbar.pdl) | regenerate with the ffmpeg line in hotbar.pdl
 FILE | play/pick.txt (beside this book) | PREFERENCE | rmmc_pick_op writes the picked block (the hotbar click); it changes no outcome | deleted any time
 FILE | play/tutorial.txt (beside this book) | PREFERENCE | rmmc_tutorial_op writes lesson=<id> and offset=<ledger bytes at start>: only WHERE the lesson started; the progress is always derived from the ledger | deleted any time (the tutorial is off; Tutorial: stop does it)
+FILE | play/creative.txt (beside this book) | CONFIG | rmmc_mode_op writes creative=1 or creative=0 (menu: Tools, Game: creative mode); rmmc_verb.c reads it only to decide whether to WRITE the hotbar GIVE rows, so replay never needs it (the rows carry the effect); default OFF | deleted any time = off
 FILE | EDIT state/games/rmmc/game/ledger_alpha.txt | LEDGER | the rmmc-alpha page ledger (a copy of ledger.txt made 2026-11-25, then its own); chosen by desks.pdl; same rows as ledger.txt | none

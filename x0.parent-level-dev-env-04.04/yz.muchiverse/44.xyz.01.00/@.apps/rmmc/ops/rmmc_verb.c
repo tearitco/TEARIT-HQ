@@ -24,6 +24,8 @@ static int run(char *const av[], char *out, size_t osz) {
     int st = 0; waitpid(c, &st, 0); char *e = strchr(out, '\n'); if (e) *e = 0; return WIFEXITED(st) ? WEXITSTATUS(st) : 99; }
 static void result(const char *rp, int code, const char *out) { FILE *f = fopen(rp, "w"); if (f) { if (code == 0) fputs("ok\n", f); else fprintf(f, "refused: %s [exit %d]\n", out[0] ? out : "no reason given", code); fclose(f); } }
 /* the picked hotbar item is a TOOL when vox/rules.pdl has a TOOL row of that name (hand excluded): data decides, no tool list in C */
+/* creative mode (rmmc_mode_op, default OFF): only then does the verb layer write the hotbar GIVE rows below */
+static int creative_on(const char *book) { char p[PATH_MAX + 96], l[64]; snprintf(p, sizeof p, "%s/play/creative.txt", book); FILE *f = fopen(p, "r"); if (!f) return 0; int on = 0; while (fgets(l, sizeof l, f)) if (!strncmp(l, "creative=1", 10)) on = 1; fclose(f); return on; }
 static int picked_tool(const char *book, const char *data, char *out, size_t n) {
     char pp[PATH_MAX + 96], item[64] = ""; snprintf(pp, sizeof pp, "%s/play/pick.txt", book); FILE *f = fopen(pp, "r"); if (!f) return 0;
     if (fgets(item, sizeof item, f)) item[strcspn(item, "\r\n'| ")] = 0; fclose(f); if (!item[0] || !strcmp(item, "hand")) return 0;
@@ -78,10 +80,10 @@ int main(int argc, char **argv) {
             char *g[] = { vop, "ground", data, led, gx, gz, NULL }; int c2 = run(g, o3, sizeof o3); int top = -1; if (c2 == 0) sscanf(o3, "top=%d", &top);
             if (c2 != 0 || top < 0) { snprintf(out, sizeof out, "no ground in front at %d,%d", fx, fz); code = 11; }
             else if (!strcmp(v, "mine")) { char cell[96], tool[64] = "hand"; snprintf(cell, sizeof cell, "%d,%d,%d", fx, top, fz);
-                if (picked_tool(book, data, tool, sizeof tool)) { char one[8] = "1", og[200]; char *gv[] = { vop, "give", data, led, (char *)actor, tool, one, "hotbar", NULL }; run(gv, og, sizeof og); }   /* creative hotbar: the picked tool is given first, as for a placed block */
+                if (creative_on(book) && picked_tool(book, data, tool, sizeof tool)) { char one[8] = "1", og[200]; char *gv[] = { vop, "give", data, led, (char *)actor, tool, one, "hotbar", NULL }; run(gv, og, sizeof og); }   /* creative hotbar: the picked tool is given first, as for a placed block */
                 char *av[] = { vop, "mine", data, led, (char *)actor, tool, cell, NULL }; code = run(av, out, sizeof out); }
             else { char item[64] = "dirt", pp[PATH_MAX + 96]; snprintf(pp, sizeof pp, "%s/play/pick.txt", book); FILE *pf = fopen(pp, "r"); if (pf) { if (fgets(item, sizeof item, pf)) item[strcspn(item, "\r\n'| ")] = 0; fclose(pf); } if (!item[0]) snprintf(item, sizeof item, "dirt");
-                char cell[96], one[8] = "1"; snprintf(cell, sizeof cell, "%d,%d,%d", fx, top + 1, fz); char *gv[] = { vop, "give", data, led, (char *)actor, item, one, "hotbar", NULL }; char og[200]; run(gv, og, sizeof og);   /* creative hotbar: the picked block is given first, as a GIVE row */
+                char cell[96], one[8] = "1"; snprintf(cell, sizeof cell, "%d,%d,%d", fx, top + 1, fz); char *gv[] = { vop, "give", data, led, (char *)actor, item, one, "hotbar", NULL }; char og[200]; if (creative_on(book)) run(gv, og, sizeof og);   /* creative hotbar: the picked block is given first, as a GIVE row */
                 char *av[] = { vop, "place", data, led, (char *)actor, item, cell, NULL }; code = run(av, out, sizeof out); } } }
     else if (!strcmp(v, "craft")) {   /* the picked hotbar item names what to craft: the RECIPE row of vox/rules.pdl whose OUT item it is (data decides; a recipe name in GAME_ARG wins) */
         char item[64] = "", rec[64] = "", pp[PATH_MAX + 96], rp[PATH_MAX + 96], l[300]; snprintf(pp, sizeof pp, "%s/play/pick.txt", book); FILE *pf = fopen(pp, "r");

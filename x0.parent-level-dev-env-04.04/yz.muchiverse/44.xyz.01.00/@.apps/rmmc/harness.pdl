@@ -4,3 +4,4 @@
 HARNESS | tut_lesson1 | * | ACTION | Lesson 1: drive Asa | @.apps/rmmc/ops/+x/rmmc_tutorial_op.+x | start ${APP} ${HOUSE}/@.apps/rpg-edit-hq/state/games/rmmc/game lesson1 | - | no | starts lesson 1: the left bar shows each step; Tutorial: stop ends it
 HARNESS | tut_stop | * | ACTION | Stop the lesson | @.apps/rmmc/ops/+x/rmmc_tutorial_op.+x | stop ${APP} | - | no | ends the lesson (deletes play/tutorial.txt); the game is untouched
 HARNESS | tut_check | * | CASE | Check the lessons | rmmc_tutorial | - | - | no | the tutorial op: progress read from the ledger in order, controls that must not advance
+HARNESS | creative_toggle | * | ACTION | Game: creative mode on/off (default off) | @.apps/rmmc/ops/+x/rmmc_mode_op.+x | toggle ${APP} | - | no | flips play/creative.txt; ON = the hotbar gives the picked tool and block before every swing and place (nothing runs out); OFF = a mine adds the drop, a place costs one

@@ -18,6 +18,8 @@ RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/h/@.apps/rmmc/ops/+x/rm
 EXPECT_EXIT | 0 | fixture: rmmc_verb compiles
 RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | $HOUSE/@.apps/rmmc/ops/rmmc_project_op.c
 EXPECT_EXIT | 0 | fixture: rmmc_project_op compiles
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/h/@.apps/rmmc/ops/+x/rmmc_mode_op.+x | $HOUSE/@.apps/rmmc/ops/rmmc_mode_op.c
+EXPECT_EXIT | 0 | fixture: rmmc_mode_op compiles
 RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/h/@.apps/rmmc/ops/+x/rmmc_beat_op.+x | $HOUSE/@.apps/rmmc/ops/rmmc_beat_op.c
 EXPECT_EXIT | 0 | fixture: rmmc_beat_op compiles
 RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $HOUSE/@.apps/rmmc/ops/rmmc_driver.c
@@ -33,3 +35,5 @@ COPY | @.apps/rmmc/vox/terrain.pdl | h/@.apps/rmmc/vox/terrain.pdl
 COPY | @.apps/rmmc/vox/terrain.heightmap | h/@.apps/rmmc/vox/terrain.heightmap
 COPYDIR | @.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed
 COPYDIR | @.apps/rmmc/events | h/@.apps/rmmc/events
+MKDIR | h/@.apps/rmmc/play
+WRITE | h/@.apps/rmmc/play/creative.txt | creative=1\n
