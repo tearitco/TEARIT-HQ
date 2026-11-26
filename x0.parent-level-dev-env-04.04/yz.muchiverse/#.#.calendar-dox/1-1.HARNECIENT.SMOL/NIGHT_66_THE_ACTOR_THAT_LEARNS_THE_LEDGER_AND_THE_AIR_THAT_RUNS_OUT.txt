@@ -1,0 +1,243 @@
+# NIGHT 66 — The Actor That Learns the Ledger, and the Air That Runs Out
+# ====================================================================
+# Title: "NIGHT 66 — The Actor That Learns the Ledger, and the Air That Runs Out"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (ja-JP-NanamiNeural), RAHWEH (en-GB-RyanNeural), THE NARRATOR (en-GB-ThomasNeural)
+# Voice profiles: as in night_voices.pdl. The owner judges the voices by ear.
+# Topic: 2026-11-26, the long class the owner asked for ("usually the classes are too short"). How the Asa tutorial, the harness and the ledger connect to the AI pipeline: reinforcement learning on itself, a vocabulary and a bank of beneficial actions that grow, more NPCs, which of the house's words (attrition, TEARIT, Harnecient, tomom, hai) does which job, and how the physical testing fits. Then advanced mechanics: where the cdda ideas and the oxygen mechanic of rpg-space fit, what Asa could and could not do in the rpg-space level, what would be needed (ops, rows, plugs), and how a developer and a user would each go about it.
+# Long-form: RAN means run and the result seen, with the harness name or the session where it ran. DESIGN means written down, nothing runs. NOT PROVEN means nobody has shown it. READ means a file was opened and read. No unpublished lore is used.
+# Companion documents: NIGHT 30 (the attrition model), NIGHT 63 (Tearitization and the agent that learns your words), NIGHT 65; BOOK 17.ai META-STRATEGY-ATTRITION-HARNESS-TOOL-USE-AND-CHEAP-BUILDING-2026-11-22, HARNESS-AS-GAME-BRAIN, AI-ROADMAP-MICRO-AI-AND-IN-HOUSE-MODELS-2026-11-05; BOOK 16.game RMMC-TUTORIAL-FIRST-PERSON-DRIVE-HANDOFF-AND-ROADMAP-2026-11-26, PLUGS-AND-HARNZ-SPEC-2026-11-14, MINECRAFT-EVENTS-HANDOFF-FARMING-WATER-MOBS-DAYNIGHT-2026-11-22; decision log D92, D140 to D142.
+
+**THE NARRATOR:** Welcome to night sixty-six. The owner said the classes are too short, so tonight is long, and it has eight parts. One: the words, because this house has too many of them. Two: what the tutorial work added to the picture. Three: how the house would learn by itself, and how little of that exists. Four: more characters. Five: the physical testing. Six: advanced mechanics, with the oxygen of rpg-space as the worked example. Seven: how a developer and a user would each add one. Eight: what we would build first, and what the owner has to decide.
+
+**MAXINE:** And I want the two hard questions answered at the end, not dodged. Could Asa stand in the rpg-space level? And do we really learn by ourselves, or is that a story?
+
+**RAHWEH:** House rule for the whole night. Every claim carries a label. RAN, DESIGN, NOT PROVEN, or READ. If a line has no label, challenge it.
+
+**TOMO:** Hai. And one honest warning first. Today the house has a judge, a ledger, a bank and a router. It does not have a single actor that learns anything by playing. We will say that again at the end.
+
+---
+
+**THE NARRATOR:** Part one. The words. Maxine, the first one is the one in everybody's mouth.
+
+**MAXINE:** Attrition. It is a strategy name, not a product. A war of attrition against needing an outside model for everything. Spend a big model's effort on architecture and review. Let cheap, deterministic machinery do the repeatable work. Over time the house's own banks, weights and small models take over, one narrow task at a time, until the expensive tier is retired for that task. READ, from the meta strategy page.
+
+**TOMO:** TEARIT is the learning loop inside it. Watch what happened. A small model DESCRIBES it in one fixed line. Real code turns that line into a candidate edit. A validator checks it. A human reviews it. Only then does the house believe it. NIGHT thirty, READ.
+
+**RAHWEH:** The law of that loop is two words: describe, never classify. The model never picks a number, never flips a switch. A fixed table maps its strength word to a weight change. That law was measured against the real model, not assumed. Free text invented a fact that was not in the input. One fixed line did not.
+
+**MAXINE:** Tearitization is a different word. NIGHT sixty-three. It means rebuilding a known game shape the house way. Five parts. A ledger row is the only authority. One op per rule, with a describe flag. An event page that calls it. The numbers in rule rows. And a harness case with a sabotage that must turn it red.
+
+**TOMO:** So TEARIT is how the house learns, and Tearitization is how the house builds a game. Different jobs, similar spirit.
+
+**RAHWEH:** Harnecient. This one is honestly unsettled. The folder these classes live in is named for it, and the lab notebook lives under that name in the owner's folder. But the roadmap's own open question is still open: is Harnecient the name of the router and judge layer, or only the hai relay? Nobody has answered. NOT DECIDED. Tonight we use it for the folder and the lab, and we say router and judge for the layers.
+
+**MAXINE:** Tomom is the hand-built local model. READ: real, substantial, dormant. It is waiting for something worth learning from. Hai is the small chat that learns your words. Define rows, alias rows, say rows, in packs. The shipped pack is called lyfedesk. And the harness is the judge. Pal, a case file, and compiled ops. It must be able to fail.
+
+**TOMO:** So what will we be using? Not one thing. The judge is the harness. The memory is the ledger, plus the bank. The chooser, today, is a router over a fixed set of routes. The describer is a small model on the owner's Mac. The decision layer is a state machine for what is known and a planner for what is new. Tomom is a candidate for later.
+
+**RAHWEH:** And the thing that answers "what is the AI" is: all of that, in a line. Rules first, a small model only where rules cannot decide, a human at the promotion gate.
+
+---
+
+**THE NARRATOR:** Part two. What did the tutorial work add? Tomo, start with the action space.
+
+**TOMO:** The game has a closed set of verbs. READ in vox op: give, move, mine, place, wait, sleep, eat, craft, walk, face, jump, seat, reset. Each either appends all its rows in one write or refuses and writes nothing. That is a small, enumerated action space, and every refusal has an exit code. Reach, no ground, hunger, no item. The refusals are the guardrails.
+
+**MAXINE:** Why does that matter for learning?
+
+**TOMO:** Because an actor cannot invent a move. It can only call a verb the game already knows. It cannot write a ledger row by hand. A hand-edited ledger is detected and refused. RAN: the verify step is built into every mutating verb.
+
+**RAHWEH:** Second addition. The seat row. Who drives an actor is a row, human or harness. RAN, built into the voxel game. So the slot where an AI actor would sit already exists. A learning actor is a caller with the seat set to harness, using the same verbs a human uses with the keyboard.
+
+**MAXINE:** Third. The tutorial itself. The lesson is data. The checker is an op that reads the ledger from the point where the lesson started and says step three of seven, have two, need five. It stores no progress. RAN, nineteen checks.
+
+**TOMO:** And that is exactly the shape of a reward signal. A deterministic function from ledger rows to progress. It is cheap, it can fail, and it is not a language model's opinion. A curriculum and a reward in one data file.
+
+**RAHWEH:** NOT PROVEN, and say it loudly. Nobody has run an AI actor through lesson one. Only a human and a recording script have. The shape fits. The fit has not been shown.
+
+**MAXINE:** Fourth, and this is the one I did not expect. Today the proof of a place was weak, and the reason was a rule.
+
+**TOMO:** The game wrote a free give row before every place and every swing. A creative hotbar. So the count never went down. A learner rewarded for placing blocks would have learned to place forever, for nothing.
+
+**RAHWEH:** That is reward hacking, at home, in miniature. A reward is only as honest as the rule under it. RAN: the owner ruled creative off by default, a menu toggle, and today's take shows dirt twelve, thirteen after the mine, twelve after the place. Decision one-forty-two.
+
+**MAXINE:** And the lesson inside the lesson. I first called it a double credit bug, and I was wrong. Replaying the ledger row by row showed the design. Before you say a rule is broken, replay it.
+
+**TOMO:** Fifth. The grade is derived, never stored. So any actor, human, scripted or learned, can be graded after the fact by replaying. That is what makes a trace a verified row: the rows plus a verdict from a locked judge. Only verified rows may ever become training data. READ, the standing rule.
+
+---
+
+**THE NARRATOR:** Part three. How the house would learn by itself. Rahwey, begin with the honest limit.
+
+**RAHWEH:** Training here is counting. Reward and punish counts per context and per op, and a weight, reward plus one over reward plus punish plus two. No gradient descent. No graphics card. Neural training on this machine is explicitly out of scope. READ. And hand-tuned weights choose among an enumerated set in a closed domain. They do not write novel code.
+
+**MAXINE:** So what does reinforcement learning on itself mean, here?
+
+**TOMO:** DESIGN, in steps. One. An actor proposes a phase table, a story of verbs with a stated expectation. Two. The harness runs it on a scratch copy of the game, not the live one. Three. The verdict, pass or fail with counts, is the reward. Four. The weight for that phase moves. Five. Next time the planner prefers the phases with the better weight, and sometimes tries a new one to explore.
+
+**RAHWEH:** The pieces that exist, RAN: the runner that plays a phase table in a scratch copy, the bank that updates weights, the search that ranks phases by words times weight, the decision ledger in three games, one choice that reads a weight back, the log and the with-and-without control. The caller does not exist. The planner that reads weights does not exist. The exploration rule does not exist.
+
+**MAXINE:** Say the control again, because it is the part people skip.
+
+**TOMO:** Toolformer's test, house version. Keep a tool call only if the case passes more checks with the call than without it. RAN, one route: committing with the scoped commit tool beat a plain commit in a scratch repo, three checks against one. A control where the two were equal came out useless, so the test can fail.
+
+**RAHWEH:** Nineteen of twenty routes have no such test yet. Most need real work with a pass or fail attached.
+
+**MAXINE:** And the three published techniques, mapped?
+
+**TOMO:** Toolformer is the with-and-without credit. ToolkenGPT, tools as tokens, is the concept bank: each op is a node, the attention score is the bank ranking, fire above a threshold rule row. And synthetic data from a big model becomes: generate scenarios ourselves from seeds, solve them with a planner, keep only traces the harness passed.
+
+**RAHWEH:** Attention, since the owner asked. Today attention is a sparse, inspectable score over a fixed list of routes. It is hand-tunable. The meta page says a learned layer is only worth building when a logged failure needs it, and gives a table of failures and the smallest piece for each. RAN analysis: the router's problem was a threshold problem, and softmax did no better than a plain gap on forty goals. So adding attention first would have been building for its own sake.
+
+**MAXINE:** What did the lab measure about the router?
+
+**TOMO:** RAN, the lab. Ninety percent on the forty goals the author wrote. About fifty-three percent on phrasings written by two other models. The router is bound to wording. In-sample fixes looked big and did not transfer.
+
+**RAHWEH:** And the router's confidence, a softmax over the scores at a low temperature, was close to calibrated on three datasets, a candidate to replace the gap rule. It needs an owner yes. Open.
+
+---
+
+**THE NARRATOR:** Now the vocabulary the owner asked about. How does the house build its own words?
+
+**MAXINE:** Three different things share that name. First, words to ops: the router and the concept bank. A goal is split into words, a keyword scores only on a whole word, so entries use single words. The growth path: log real goals with verdicts, then learn word weights from the log, then cosine over the concept bank, then a small network, in that order, each only if it beats the hand seeds on goals it has not seen.
+
+**TOMO:** Second, glyph senses. The owner's own idea: symbols learned as we go, with several meanings. It was named the best first real family for the attrition model: input a glyph and a context row, output one fixed line, a candidate sense, judged by a shape check, a dictionary check and a human. DESIGN.
+
+**RAHWEH:** Third, hai's packs. A pack is a text file of define, alias and say rows. The lyfedesk pack has nine definitions. RAN, shipped. A new word is a row, not a retraining.
+
+**MAXINE:** And a bank of beneficial actions?
+
+**TOMO:** That is the behavior bank plus the decision ledger. Every choice an actor makes is a row: which verb, at what, with which belief. Later the harness result says whether it worked. The gap between what the actor believed and what was measured is the signal. READ as design. One choice reads its weight today, a pet picking a new target. Per-actor weights are not built.
+
+**RAHWEH:** The rules around it. Promotion is human-reviewed, never automatic. Only harness-generated rows are training data. Private things, wallets, chats, user desks, are never data. Verified rows never leave the house: only signed receipts and hashes may. Free models only, the owner's Mac for the small one, never a loop to a rate limit, and a harness case never touches the network.
+
+**MAXINE:** Say what the tokens look like.
+
+**RAHWEH:** NOT MEASURED. The log has a tokens column and it holds zero, meaning unknown. The ratio the notes quote is an estimate from stated assumptions. A saving is a hypothesis until a number arrives from outside the model.
+
+---
+
+**THE NARRATOR:** Part four. More characters. What changes when there are many NPCs?
+
+**TOMO:** An NPC is an actor row, a seat, and a policy. The policy has two layers. A state machine for what is already known, a planner for what must be figured out. Neither writes the ledger directly. They call verbs, and the verbs refuse what is not allowed.
+
+**MAXINE:** So ten NPCs are ten seats and ten callers. What does that cost?
+
+**RAHWEH:** CPU, on a weak machine next to the owner's browser. The ticks must be cheap, idle cost near zero, and heavy work niced, gated, one at a time, and offloaded to another machine. Today's own compose run proved it: ffmpeg took the machine over because niceness does not cap threads.
+
+**TOMO:** Per-actor memory is the open piece. The weights today belong to a phase or a route, not to a character. Two NPCs would share one bank. Whether they should is a design choice, with the five questions, not a default.
+
+**MAXINE:** And talking?
+
+**RAHWEH:** The entity chat endpoints exist, READ, on the owner's Mac. The model describes in a fixed shape. It does not decide. An NPC's words never become a ledger row without a verb.
+
+**TOMO:** The party order, who is in the party and in what sequence, is already a ledger row, not a second file. One authority per fact, even for friends.
+
+---
+
+**THE NARRATOR:** Part five. The physical testing. Rahwey, the nuance that gets forgotten.
+
+**RAHWEH:** There are three kinds of truth, and a claim needs the right one. The ledger and the harness say the rules held. The screen says a human can see it. The human's own hands say it feels right. A case that passes on ledgers while the screen is empty is a failed test. That was a Teropoly lesson and it came back today.
+
+**MAXINE:** Today's example?
+
+**TOMO:** The relay. All the driving today went through relay files, never the synthetic input tool. It passes, and it is reproducible, and a real keyboard can still differ. A focus bug once passed three relay runs and failed on real hardware. So the tutorial is RAN on a relay and NOT PROVEN on a keyboard. The owner will check.
+
+**RAHWEH:** Second. Observe before you report. A count on a missing file reads as zero. A bar that says the lesson is done can lag the ledger. I composed two videos from the wrong folder and the length gave it away. Check a number against what you recorded.
+
+**MAXINE:** Third, the learning angle. Where does an AI actor play?
+
+**TOMO:** On a scratch copy of the game, with its own house, its own ledger and a stand-in window. It cannot reach the live game, the user's data, or another agent's checkout. What it changes is a weight and a row. Adopting a plan in the live game is a separate act, by the normal route, with the owner's gate.
+
+**RAHWEH:** And the live editor is the owner's. Record its state. Never press play over a game they are running without a yes. A guard kill is a finding in our own footprint, never the browser.
+
+**MAXINE:** So physical testing is for humans, regression and presentations. Learning happens in the scratch copy.
+
+**TOMO:** Yes, and the bridge between them is the verified row: the same verbs, the same rules, a ledger you can replay anywhere.
+
+---
+
+**THE NARRATOR:** Part six. Advanced mechanics. The owner named two sources: the survival-game ideas of the cdda family, and the oxygen of rpg-space. Maxine, what is the oxygen mechanic, exactly?
+
+**MAXINE:** READ, the data file. Air and heat per room. Constants: oxygen below sixteen percent and a character chokes. Thirty per-mille of maximum health lost per tick while choking. A recycler gives back one percent a tick in a sealed room. A hole in the hull leaks twelve percent of the gap to the outside each tick. A collision at speed punctures a chosen room. Cold below five degrees, heat above forty-five. The outside is no air at minus a hundred and fifty. The constants are re-read every two seconds, no rebuild.
+
+**TOMO:** And the state is one row per room, in a state file: room, oxygen, temperature, breach.
+
+**RAHWEH:** Two honest observations, both READ. One: the logic itself is native C inside the rpg-space program, a function that ticks the air. It predates decision ninety-two, which says every rule is an op. Two: the air lives in a mutable state file, not a ledger. It predates the no-ghost-data rule. So it is a good source of constants and design, and a bad precedent for how to build.
+
+**MAXINE:** It also reaches damage through a shared sink that hunger and cold use. And there is a reactions file, hydrogen and methane and rusting, that no game reads. Paper data.
+
+**TOMO:** Now Asa. Could Asa stand in that level?
+
+**RAHWEH:** Not by walking in. Two different engines. Asa lives in the voxel ledger: terrain columns, a bag, verbs of the vox op. Rpg-space is a pets-style board with rooms, its own life verbs and its own state. They share no ledger and no actor table. To put Asa there you would carry her rig, her colours, her possession and her driver into another engine. Expensive, and it duplicates a driver.
+
+**MAXINE:** So the other direction. Bring the oxygen to Asa's world.
+
+**TOMO:** DESIGN, in pieces. The voxel game already has the right model, in miniature. Hunger rises on every turn row, eating is a row, and at a starving threshold mining and placing refuse. All data in the rules file. Note that hunger per turn is set to zero in rmmc, so it exists and is switched off.
+
+**RAHWEH:** And here is the gap. The voxel game has no health. I searched the op: no health, no damage to an actor. Oxygen needs it. So the first missing piece is a small health fold and a hurt row.
+
+**MAXINE:** And rooms?
+
+**TOMO:** In a voxel world a room is not drawn, it emerges. A sealed volume is air cells with no path to the outside. Mining a wall opens it. Placing a block closes it. That is a derived fold over the ledger, the same way the world itself is derived. Oxygen then comes from geometry, which is better than a flag called breach.
+
+**RAHWEH:** And that is where the two games meet in a way that is actually Minecraft. You dig the wall, the air goes, you choke, you place a block, you recover. Every one of those is a row the existing verbs already write, except hurt.
+
+**MAXINE:** What could Asa do then, and what could she not?
+
+**TOMO:** She could mine, place, craft and eat as before, and she would also choke, freeze or scorch, by the rule rows. She could not fly a ship, because there is no ship in the voxel game. She could not use the rpg-space rooms, hold or bridge, because those are that board's data. Each of those is a separate feature, not a side effect.
+
+---
+
+**THE NARRATOR:** And the other source. The cdda ideas.
+
+**RAHWEH:** What exists, READ: a copy of the dsr engine renamed cdda-hq, a scaffold, nothing specific to the real game yet. And a played phase table with thirty-nine checks that includes crafting a bandage. So the shape is proven on a scaffold, and the content is not there.
+
+**MAXINE:** What are those ideas, as rows?
+
+**TOMO:** Body parts as sub-state of an actor, a hurt row naming the part. Treatment as a craft or use row. Temperature, wetness, noise, light as per-turn folds. Weather as a seeded fold. Factions as a table. Every one has the same five parts, and none is built here. DESIGN.
+
+**RAHWEH:** The rule that keeps it honest: the quick version in engine C needs a removal condition in writing, or it is not allowed. D ninety-two.
+
+---
+
+**THE NARRATOR:** Part seven. How would a developer, and how would a user, actually do this? Start with the user, because the user is the point.
+
+**MAXINE:** The house has a word for the optional kind of mechanic: a plug. An optional, project-wide behaviour with parameters and an on-off switch. The judge is: if RPG Maker has an event for it, it is an event. Otherwise it is a plug. Day and night is a plug, because a game need not have it. Oxygen would be a plug for the same reason.
+
+**TOMO:** What is built, RAN: the plug file with an enabled row, the Tools menu entry, and the plugs window where a click flips the switch and writes a toggle row. The first real plug is day and night, with a harness case. The maker, the form that builds a new plug, and the parameter editor are DESIGN. NOT PROVEN beyond what is written.
+
+**RAHWEH:** So a user with no code would open Tools, plugs, switch oxygen on, and later change a number in a visible file. They would not touch C.
+
+**MAXINE:** And the developer?
+
+**TOMO:** The recipe. One. Answer the five design-choice questions and write the decision row before building. Two. Write the spec and a locked case, and make the case fail against a stub. Three. Generate the skeleton. The mechanic generator is built, RAN, forty-three checks: a verb row, an event page skeleton, rule rows, a case that can fail, and a concept-bank proposal row.
+
+**RAHWEH:** Four. Fill in only what the generator cannot: a small pure module for the rule, an op with a describe flag. Five. Put the numbers in rule rows. Six. The case goes green, then one sabotage turns it red. Seven. Photograph the screen and open the picture. Eight. Declare any new file in the state declaration, cap it, and commit only your own paths.
+
+**MAXINE:** Show the oxygen as that recipe.
+
+**TOMO:** DESIGN. The ledger rows: an air row per sealed region per turn, derived, and a hurt row. The op: air, with a describe flag, folding regions and levels. The rules: the sixteen, the thirty, the leak percent, as rule rows, copied from the environment file. The event page: on each turn, call the air op, then hurt for each actor below the threshold. The projection: oxygen in the left bar, a short line. The case: dig the wall, oxygen falls, health falls, place a block, oxygen recovers, and a sabotage that removes the leak must fail.
+
+**RAHWEH:** The thing that would make it a plug and not engine code is that last point: it is switchable, parameterised, and the game still plays without it.
+
+---
+
+**THE NARRATOR:** Part eight. What would we build first, and what must the owner decide? Rahwey.
+
+**RAHWEH:** In order, each with a gate. One. A first caller. Run lesson one with a scripted state machine in a scratch copy, graded by the tutorial op. That is a rule-based tier zero actor, and the baseline any learner must beat.
+
+**MAXINE:** Two. Log every attempt as a row with the harness verdict, by the harness only. Three. A planner over the voxel verbs that uses the tutorial's step as its goal and the bank's weights to choose. Four. The with-and-without control for the planner, so a planner that does not help is not credited.
+
+**TOMO:** Five. The describe loop on real watch records from rmmc, one fixed line, validator, human review. Six. Oxygen as a plug on the voxel ledger, health first. Seven. Per-actor weights, once there are several NPCs to need them.
+
+**RAHWEH:** Decisions for the owner, labelled OPEN. The name Harnecient. Softmax confidence in place of the gap rule. The promotion criteria, once real review entries pile up. Whether NPCs share a bank or each have one. Whether oxygen belongs in the voxel game at all, or stays a rpg-space feature. And the moment a learned layer is allowed to go live: only after it beats the hand seeds on goals it has not seen, with a human reviewing.
+
+**MAXINE:** And the thing to remember if you remember only one?
+
+**TOMO:** The harness verdict is the loss. Everything else is a way to get more verified rows.
+
+**RAHWEH:** The recap. RAN today: the tutorial with its checker, nineteen checks; the verb cases, one hundred eleven; creative mode off by default; the arm; the hotbar proof; the router at ninety percent on the author's goals and about fifty-three on others; the with-and-without control for one route. DESIGN: the caller, the planner, exploration, per-actor weights, promotion, glyph senses, health, air in the voxel world, the plug maker. NOT PROVEN: an actor learning anything by playing, any token saving, the tutorial on a real keyboard, any cdda mechanic.
+
+**THE NARRATOR:** That was night sixty-six. The next class starts from the first caller: a scripted actor, a scratch copy, and a judge that can say no.
