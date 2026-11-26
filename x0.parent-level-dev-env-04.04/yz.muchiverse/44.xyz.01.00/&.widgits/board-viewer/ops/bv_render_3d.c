@@ -2506,6 +2506,7 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
 /* The corner map is sized by the PAINTED page (g_mk.w x g_mk.h) when there is one, not by the 3D glyph board (<= 256). The full frame AND the click's HUD-only repaint (bv_repaint_hud_only)
  * must both call this: the repaint used the glyph-board size, so after any click the map turned square, cropped to the page's top-left and pinned the eye to the right edge
 #include "bv_rig.h"      /* box-limb rig: an event whose charset starts with rig: is six boxes (BOOK 16.game/BOX-LIMB-RIG-FOR-WALKING-CHARACTERS-2026-11-25.md) */
+#include "bv_rig_anim_draw.h"   /* schema-2 rig (PART/ANIM/TRACK/STATE rows in rig_<name>.pdl): the same pure evaluator rig_pose_op tests (decision D140, stage 1) */
  * (owner 2026-11-16: "scale / crop is weird again"; reproduced with a scratch session, before/after in CENTROID-TEST-AND-LIVE). Pass the flag of the last full frame. */
 static void bv_mm_page_dims(int maker_ground) {
     g_mm_maker = 0;
@@ -2862,6 +2863,17 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
         int cx = mm_x + cx0, cy = mm_y + cy0, cw = cellpx > 0 ? cellpx : 3;
         bv_fill_rect(cx, cy, cx + cw, cy + cw, 80, 220, 255);
     }
+    /* RIG TOKENS (2026-11-26, owner: "add ava to the level and mini map so i can easily find and posses her"): every rig:<name> event row of the shown desk is a 5 px marker in ITS OWN row colour (the r g b of its events.txt
+     * line: data, so each character is findable at a glance) with a dark outline, above the faint generic dots. The same events the game drives and the keys [ and ] cycle through. */
+    for (int ri = 0; ri < g_mk.ev_n; ri++) {
+        if (strncmp(g_mk.ev[ri].name, "rig:", 4)) continue;
+        if (g_mk.ev[ri].x < wx0 || g_mk.ev[ri].x >= wx0 + ww || g_mk.ev[ri].y < wy0 || g_mk.ev[ri].y >= wy0 + wh) continue;
+        int mxi = 0, myi = 0; bv_minimap_dot((double)g_mk.ev[ri].x, (double)wx0, ww, mm_w, cellpx, &mxi); bv_minimap_dot((double)g_mk.ev[ri].y, (double)wy0, wh, mm_h, cellpx, &myi);
+        int mx = mm_x + mxi - 2, my = mm_y + myi - 2; if (mx < mm_x + 1) mx = mm_x + 1; if (my < mm_y + 1) my = mm_y + 1; if (mx > mm_x + mm_w - 6) mx = mm_x + mm_w - 6; if (my > mm_y + mm_h - 6) my = mm_y + mm_h - 6;
+        bv_fill_rect(mx - 1, my - 1, mx + 6, my + 6, 20, 20, 20);
+        bv_fill_rect(mx, my, mx + 5, my + 5, g_mk.ev[ri].r, g_mk.ev[ri].g, g_mk.ev[ri].b);
+    }
+
 
     /* the desk's own edge when the map is bigger than it, and the voxel pieces (asteroids, other ships) as boxes in their average colour, lightened so they read on the dark space */
     if (ww != g_mm_board_w || wh != g_mm_board_h || wx0 != 0 || wy0 != 0) {
@@ -4619,7 +4631,26 @@ static int render_one_frame(void) {
                 } else {
                 float lift = 0.f;
                 if (g_mk.evlift && g_mk.glyph && g_mk.ev[i].x >= 0 && g_mk.ev[i].y >= 0 && g_mk.ev[i].x < g_mk.w && g_mk.ev[i].y < g_mk.h) { int gh = g_mk.zh[(unsigned char)g_mk.glyph[g_mk.ev[i].y * g_mk.w + g_mk.ev[i].x]]; if (gh > 1) lift = (float)(gh - 1); }   /* D114: stand on the column top */
-                if (!strncmp(g_mk.ev[i].name, "item:", 5)) {      /* a DROPPED item (rmmc): a 0.28 cube in the block's colour hovering above the column top, bobbing on the wall clock; the projection writes it and takes it away when it is collected */
+                if (bv_rig_is(g_mk.ev[i].name)) {      /* box-limb rig: 6 boxes, colours from rig_<name>.pdl beside the desk, pose from dir / pat and a 140 ms step of the wall clock */
+                    float rb[BV_RIG_MAX][6]; unsigned char rc[12][3]; int rci[BV_RIG_MAX], rmask = 0, rfb[3] = { g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b }; struct timespec rt; clock_gettime(CLOCK_MONOTONIC, &rt);
+                    bv_rig_colors(g_mk.key, g_mk.ev[i].name, rfb, rc, &rmask);
+                    int rn = 0; { /* SCHEMA 2 (stage 1): a rig file with PART/ANIM/STATE rows is posed by the shared evaluator; no such rows (or not the six named parts) = the old stepped rig below. The phase is the wall clock plus a per-actor offset from the NAME (stable while the actor walks, so no pops, and two actors do not breathe in step). */
+                        long long nms = (long long)rt.tv_sec * 1000 + rt.tv_nsec / 1000000; const BvaRig *r2 = bv_rig2_get(g_mk.key, g_mk.ev[i].name, nms);
+                        if (r2) { float rb2[6][6]; int rci2[6]; unsigned nh = 0; for (const char *nc = g_mk.ev[i].name; *nc; nc++) nh = nh * 31u + (unsigned char)*nc;
+                            if (bv_rig2_boxes(r2, g_mk.ev[i].dir, g_mk.ev[i].pat, (float)((nms + (long long)(nh % 2400u)) % 8400000LL), rb2, rci2) == 6) { memcpy(rb, rb2, sizeof rb2); for (int k = 0; k < 6; k++) rci[k] = rci2[k]; rn = 6; } } }
+                    if (!rn) rn = bv_rig_boxes_ex(1, rmask, g_mk.ev[i].dir, g_mk.ev[i].pat, (int)(((long long)rt.tv_sec * 1000 + rt.tv_nsec / 1000000) / 140), rb, rci);
+                    /* SKIN: with a rig_<name>.skin.csv beside the desk each of the six limb boxes carries a small voxel MODEL (one box slot, the box size is the voxel scale: 1/16 block pixels), so the sprite's whole pattern shows, not one colour a limb;
+                     * the hair / sleeve / shoe / face extras are in the skin already, so they are skipped. No file: the flat-colour boxes as before. */
+                    const unsigned char *skv = NULL; int sdim[3] = { 0, 0, 0 }, sfx = 0, sfz = 1; bv_rig_facing(g_mk.ev[i].dir, &sfx, &sfz);
+                    int skinned = bv_rig_skin_get(g_mk.key, g_mk.ev[i].name, sfx, sfz, 0, &skv, sdim) != NULL;
+                    for (int rp = 0; rp < rn; rp++) { const unsigned char *k = rc[rci[rp]]; if (skinned && rp >= 6) break;
+                        int bn0 = sc.box_n;
+                        ADDBOX(g_mk.ev[i].x + 0.5f + rb[rp][0], 1.0f + lift + rb[rp][1], g_mk.ev[i].y + 0.5f + rb[rp][2], g_mk.ev[i].x + 0.5f + rb[rp][3], 1.0f + lift + rb[rp][4], g_mk.ev[i].y + 0.5f + rb[rp][5], k[0], k[1], k[2], 0);
+                        if (skinned && sc.box_n > bn0 && sc.model_n < BV_GPU_MAX_MODEL && bv_rig_skin_get(g_mk.key, g_mk.ev[i].name, sfx, sfz, rp, &skv, sdim)) {
+                            int mm = sc.model_n++; memset(sc.model_vox[mm], 0, sizeof(sc.model_vox[mm]));
+                            for (int mz = 0; mz < sdim[2]; mz++) for (int my = 0; my < sdim[1]; my++) memcpy(&sc.model_vox[mm][((mz * BV_GPU_MDL_DIM + my) * BV_GPU_MDL_DIM) * 4], &skv[((mz * sdim[1] + my) * sdim[0]) * 4], (size_t)sdim[0] * 4);
+                            sc.model_dim[mm][0] = sdim[0]; sc.model_dim[mm][1] = sdim[1]; sc.model_dim[mm][2] = sdim[2]; sc.box[sc.box_n - 1].model = mm; } }
+                } else if (!strncmp(g_mk.ev[i].name, "item:", 5)) {      /* a DROPPED item (rmmc): a 0.28 cube in the block's colour hovering above the column top, bobbing on the wall clock; the projection writes it and takes it away when it is collected */
                     struct timespec it; clock_gettime(CLOCK_MONOTONIC, &it); float bob = 0.06f * sinf((float)(((long long)it.tv_sec * 1000 + it.tv_nsec / 1000000) % 1600) * 6.2831853f / 1600.f), hy = 1.0f + lift + 0.22f + bob;
                     ADDBOX(g_mk.ev[i].x + 0.33f, hy, g_mk.ev[i].y + 0.33f, g_mk.ev[i].x + 0.67f, hy + 0.34f, g_mk.ev[i].y + 0.67f, g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0);
                 } else if (!strncmp(g_mk.ev[i].name, "tree:", 5)) {      /* A TREE (rmmc): tree:<trunk>:<crown_r>:<crown_h>. A trunk box (wood brown) stands on the column top and a crown box in the event colour FLOATS on it: the crown spans crown_h blocks and
@@ -4672,13 +4703,6 @@ static int render_one_frame(void) {
         if (g_hero_present && camera_mode != 1) {
             int hm = -1;
             if (hero_phymoji_count > 0)
-                if (bv_rig_is(g_mk.ev[i].name)) {      /* box-limb rig: 6 boxes, colours from rig_<name>.pdl beside the desk, pose from dir / pat and a 140 ms step of the wall clock */
-                    float rb[BV_RIG_MAX][6]; unsigned char rc[12][3]; int rci[BV_RIG_MAX], rmask = 0, rfb[3] = { g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b }; struct timespec rt; clock_gettime(CLOCK_MONOTONIC, &rt);
-                    bv_rig_colors(g_mk.key, g_mk.ev[i].name, rfb, rc, &rmask);
-                    int rn = bv_rig_boxes_ex(1, rmask, g_mk.ev[i].dir, g_mk.ev[i].pat, (int)(((long long)rt.tv_sec * 1000 + rt.tv_nsec / 1000000) / 140), rb, rci);
-                    for (int rp = 0; rp < rn; rp++) { const unsigned char *k = rc[rci[rp]];
-                        ADDBOX(g_mk.ev[i].x + 0.5f + rb[rp][0], 1.0f + lift + rb[rp][1], g_mk.ev[i].y + 0.5f + rb[rp][2], g_mk.ev[i].x + 0.5f + rb[rp][3], 1.0f + lift + rb[rp][4], g_mk.ev[i].y + 0.5f + rb[rp][5], k[0], k[1], k[2], 0); }
-                } else
                 hm = GPU_ADD_MODEL(g_hero_phymoji, hero_phymoji_count,
                                    hero_phymoji_max_lx, hero_phymoji_max_ly, hero_phymoji_max_lz);
             double hs = 0.9;
