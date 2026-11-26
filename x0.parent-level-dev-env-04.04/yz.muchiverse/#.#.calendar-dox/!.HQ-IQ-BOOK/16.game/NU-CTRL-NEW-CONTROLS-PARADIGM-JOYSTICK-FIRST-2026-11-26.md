@@ -32,3 +32,23 @@ Why this page exists: the keyboard is about to be needed for typing and relay (c
 - Never assume a key is free: read the engine's table (`bv_menu_input.c`, the `key_pov_*` reads) and the book's keybinds first. I put the hotbar on the digits and worked around the camera collision instead of asking (2026-11-26).
 - A relay test proves the verb, not the physical key path: test the joystick path with the real device, with the owner pressing buttons.
 - Do not leave the joystick op running unregistered, and do not let it read while another window is typing (the cursword and cli_io fields grab keys).
+
+## Console style inside In mode (owner 2026-11-26, late; decision D143, DESIGN only)
+
+Owner: use Metal Gear Solid / GTA / Minecraft style controls; the same map should later serve GTA or MGSV style play, or Doom / shooter mechanics; In mode plays like a console, so the hotbar may be disregarded unless L/R cycle it.
+
+**What is built and seen on the real pad (2026-11-26):** the D-pad walks, a held direction repeats (`REPEAT | 120 | 250` in `#.desktop/joystick_map.pdl`), button 0 jumps, button 1 mines, button 2 places, button 3 crafts (the game input file got the codes and the ledger shows three jumps and a DAMAGE row; place and craft were refused because an axe was held). Guard: harness case `joy_map`.
+
+**The shape (D143):** the pad sends INTENTS, not key codes. A style profile (one file per style: `minecraft`, `mgs`, `gta`, `doom`) maps pad buttons to intent names; each book's `keybinds.pdl` already maps intent to key code; one op generates the daemon's `joystick_map.pdl` from the two. The daemon is not changed. Why: the key code then lives in ONE place, a new game or style is data, and the intent names are the verbs a harness or a model calls.
+
+**A first layout to react to (a proposal, not built, and the physical numbers are NOT known):**
+
+- D-pad or left stick: move. Right stick: look (the pad has 6 axes; axes 2 to 5 are ignored today and which one is the right stick is unproven).
+- Bottom face button: jump. Left face button: primary (mine / attack / use). Right face button: secondary (place / aim). Top face button: craft / inventory.
+- L1 and R1: cycle the held item backward and forward. This replaces the hotbar digits in In mode, so digits stay nav numbers. The hotbar stays on screen as the readout of what L1 / R1 selected.
+- L2 or R2: aim / sprint (shooter and MGS style, needs game-side stances).
+- Stick click: crouch (MGS style). Start: menu. Select: map or release control.
+
+**What it needs, in order:** (1) a `cycle` verb as an OP (D92), next and previous over `hotbar.pdl`, writing the same PREFERENCE `play/pick.txt` that `rmmc_pick_op` writes; (2) per-button repeat in the map (hold to keep mining); (3) the intent generator op and its harness case; (4) the physical numbers of L1, R1, the sticks (buttons 4, 5 and 7 were seen being pressed, not yet identified); (5) animations and stances for crouch and aim are GAME-side states, not pad work, and are a separate design.
+
+**Open:** how Start enters In mode (the key sequence the editor accepts is not found yet; a relayed `1` + Enter did nothing, a real click works); whether L1 / R1 cycling should wrap; whether the hotbar is hidden in In mode or only dimmed.
