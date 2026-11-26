@@ -14,6 +14,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <dirent.h>
 
 #define MAXSTEP 24
 typedef struct { char id[24], shortt[48], goal[200], kind[16], arg[40]; int need; } Step;
@@ -29,9 +30,10 @@ static int load_lesson(const char *book, const char *lesson) {
         if (on && n >= 6 && !strcmp(x[0], "STEP") && nst < MAXSTEP) { Step *s = &ST[nst++]; snprintf(s->id, sizeof s->id, "%s", x[1]); snprintf(s->shortt, sizeof s->shortt, "%s", x[2]); snprintf(s->goal, sizeof s->goal, "%s", x[3]); snprintf(s->kind, sizeof s->kind, "%s", x[4]); snprintf(s->arg, sizeof s->arg, "%.39s", x[5]); s->need = n >= 6 ? atoi(x[5]) : 1; if (s->need < 1) s->need = 1; } }
     fclose(f); return nst ? 0 : 2; }
 
-static int read_pref(const char *book, char *lesson, size_t ln, long *off) {
-    char p[4200]; snprintf(p, sizeof p, "%.4000s/play/tutorial.txt", book); FILE *f = fopen(p, "r"); if (!f) return 0; char l[200]; lesson[0] = 0; *off = -1;
-    while (fgets(l, sizeof l, f)) { l[strcspn(l, "\r\n")] = 0; if (!strncmp(l, "lesson=", 7)) snprintf(lesson, ln, "%.60s", l + 7); else if (!strncmp(l, "offset=", 7)) *off = atol(l + 7); }
+static int read_pref(const char *book, char *lesson, size_t ln, long *off, const char *ledger) {      /* offset_<ledger file name>= wins over the generic offset=: a lesson started with a ledger FOLDER remembers the start of every page ledger in it */
+    char p[4200]; snprintf(p, sizeof p, "%.4000s/play/tutorial.txt", book); FILE *f = fopen(p, "r"); if (!f) return 0; char l[200], key[200]; lesson[0] = 0; *off = -1; long spec = -1; const char *bn = strrchr(ledger, '/'); bn = bn ? bn + 1 : ledger; snprintf(key, sizeof key, "offset_%.150s=", bn);
+    while (fgets(l, sizeof l, f)) { l[strcspn(l, "\r\n")] = 0; if (!strncmp(l, "lesson=", 7)) snprintf(lesson, ln, "%.60s", l + 7); else if (!strncmp(l, key, strlen(key))) spec = atol(l + strlen(key)); else if (!strncmp(l, "offset=", 7)) *off = atol(l + 7); }
+    if (spec >= 0) *off = spec;
     fclose(f); return lesson[0] && *off >= 0; }
 
 static int seat_is_human(const char *ledger, const char *actor) {      /* the last SEAT row of the actor, whole ledger */
@@ -73,8 +75,11 @@ int main(int argc, char **argv) {
     const char *ledger = argv[3];
     if (!strcmp(verb, "start")) { const char *lesson = argc > 4 ? argv[4] : "lesson1"; if (load_lesson(book, lesson)) { fprintf(stderr, "rmmc_tutorial_op: no lesson %s in %s/tutorial.pdl\n", lesson, book); return 2; }
         struct stat st; long off = stat(ledger, &st) ? 0 : (long)st.st_size; char d[4200]; snprintf(d, sizeof d, "%.4000s/play", book); mkdir(d, 0755);
-        FILE *f = fopen(pp, "w"); if (!f) return 2; fprintf(f, "lesson=%s\noffset=%ld\n", lesson, off); fclose(f); printf("started %s\n", lesson); return 0; }
-    if (!strcmp(verb, "status")) { const char *actor = argc > 4 ? argv[4] : "asa"; char lesson[64]; long off; if (!read_pref(book, lesson, sizeof lesson, &off)) { puts("off"); return 0; }
+        FILE *f = fopen(pp, "w"); if (!f) return 2; fprintf(f, "lesson=%s\n", lesson);
+        if (!stat(ledger, &st) && S_ISDIR(st.st_mode)) { DIR *dr = opendir(ledger); struct dirent *de; while (dr && (de = readdir(dr))) { size_t nl = strlen(de->d_name); if (strncmp(de->d_name, "ledger", 6) || nl < 10 || strcmp(de->d_name + nl - 4, ".txt")) continue; char lp[4400]; snprintf(lp, sizeof lp, "%.4000s/%s", ledger, de->d_name); struct stat ls; fprintf(f, "offset_%s=%ld\n", de->d_name, stat(lp, &ls) ? 0L : (long)ls.st_size); } if (dr) closedir(dr); }
+        else fprintf(f, "offset=%ld\n", off);
+        fclose(f); printf("started %s\n", lesson); return 0; }
+    if (!strcmp(verb, "status")) { const char *actor = argc > 4 ? argv[4] : "asa"; char lesson[64]; long off; if (!read_pref(book, lesson, sizeof lesson, &off, ledger)) { puts("off"); return 0; }
         if (load_lesson(book, lesson)) { puts("off"); return 0; } int have; int cur = progress(book, ledger, actor, off, &have);
         if (cur >= nst) { printf("done=%d/%d lesson=%s\n", nst, nst, lesson); return 0; }
         printf("step=%d/%d id=%s short=%s have=%d need=%d goal=%s\n", cur + 1, nst, ST[cur].id, ST[cur].shortt, have, ST[cur].need, ST[cur].goal); return 0; }

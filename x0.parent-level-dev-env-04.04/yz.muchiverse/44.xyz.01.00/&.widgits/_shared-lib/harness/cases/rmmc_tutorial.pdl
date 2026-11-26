@@ -40,4 +40,23 @@ RUN | $T/book/ops/+x/rmmc_tutorial_op.+x | stop | $T/book
 RUN | $T/book/ops/+x/rmmc_tutorial_op.+x | status | $T/book | $T/led.txt
 EXPECT_OUT_IS | off | stop deletes the preference: the tutorial is off and the ledger is untouched
 EXPECT_NOFILE | book/play/tutorial.txt | the only stored thing is gone
+CASE | one-start-works-on-every-page-ledger
+SCRATCH
+MKDIR | book/play
+MKDIR | book/ops/+x
+MKDIR | ledgers
+COPY | @.apps/rmmc/tutorial.pdl | book/tutorial.pdl
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/book/ops/+x/rmmc_tutorial_op.+x | $HOUSE/@.apps/rmmc/ops/rmmc_tutorial_op.c
+EXPECT_EXIT | 0 | the op compiles
+WRITE | ledgers/ledger.txt | SEAT | asa | human\nMOVE | asa | 142 | 6 | 100\nMOVE | asa | 143 | 6 | 100\nMOVE | asa | 144 | 6 | 100\n
+WRITE | ledgers/ledger_alpha.txt | SEAT | asa | human\nMOVE | asa | 10 | 6 | 10\n
+RUN | $T/book/ops/+x/rmmc_tutorial_op.+x | start | $T/book | $T/ledgers | lesson1
+EXPECT_OUT | started lesson1 | started with the ledger FOLDER
+EXPECT_HAS | book/play/tutorial.txt | offset_ledger.txt= | the start point of the first page ledger is stored
+EXPECT_HAS | book/play/tutorial.txt | offset_ledger_alpha.txt= | and of the second one
+WRITE | ledgers/ledger.txt | SEAT | asa | human\nMOVE | asa | 142 | 6 | 100\nMOVE | asa | 143 | 6 | 100\nMOVE | asa | 144 | 6 | 100\nMOVE | asa | 145 | 6 | 100\nMOVE | asa | 146 | 6 | 100\n
+RUN | $T/book/ops/+x/rmmc_tutorial_op.+x | status | $T/book | $T/ledgers/ledger.txt
+EXPECT_OUT | id=walk short=arrows have=2 need=5 | two steps after the start on the first page count (the rows before the start do not)
+RUN | $T/book/ops/+x/rmmc_tutorial_op.+x | status | $T/book | $T/ledgers/ledger_alpha.txt
+EXPECT_OUT | id=walk short=arrows have=0 need=5 | CONTROL: the other page ledger has nothing after its own start point
 CLEAN
