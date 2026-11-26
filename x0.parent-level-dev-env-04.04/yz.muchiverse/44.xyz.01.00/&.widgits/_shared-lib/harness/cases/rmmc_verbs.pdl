@@ -208,3 +208,20 @@ EXPECT_HAS | led.txt | PLACE \p asa \p dirt | and the place is accepted
 RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_mode_op.+x | toggle | $T/h/@.apps/rmmc
 EXPECT_FILE | h/@.apps/rmmc/play/creative.txt | creative=0\n | toggling again turns it off (a negative control: the switch really flips both ways)
 CLEAN |
+CASE | creative-off-the-picked-tool-is-still-the-one-swung-when-it-is-owned
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+MKDIR | h/@.apps/rmmc/play/world
+WRITE | h/@.apps/rmmc/play/creative.txt | creative=0\n
+ENV | MUCHI_TARGET_ENT | $T/h/@.apps/rmmc/play/world
+ENV | GAME_ARG | 101 60
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/spawn | $T/h | ui
+ENV | GAME_ARG | w
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/face | $T/h | ui
+ENV | GAME_ARG |
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | pick | 1 | test
+WRITE | h/@.apps/rmmc/play/pick.txt | pick\n
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/mine | $T/h | ui
+EXPECT_HAS | led.txt | DAMAGE \p asa \p pick \p 100 | with creative off an OWNED picked tool is still the tool swung (a pick swing on the stone, not the bare hand)
+EXPECT_LACKS | led.txt | GIVE \p asa \p pick \p 1 \p hotbar | and no free hotbar GIVE row was written
+CLEAN |
