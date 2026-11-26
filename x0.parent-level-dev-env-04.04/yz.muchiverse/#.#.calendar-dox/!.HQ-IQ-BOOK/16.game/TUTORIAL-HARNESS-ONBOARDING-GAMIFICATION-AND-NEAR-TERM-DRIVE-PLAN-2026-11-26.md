@@ -98,3 +98,40 @@ Cost and risk of B: a new op and a hand-over rule; first slice is small (3 STEP 
 5. `possess_next` key (after asking about Shift), tutorial T02, **owner does it**.
 6. `tutorial_check_op` + harness case; in-game caption; BADGE row; list page.
 7. Survival-basics roadmap note and its tutorials.
+
+## 9. Owner decisions 2026-11-26 (later the same day) and the robust part/animation data structure
+
+**Possession key: Tab was NOT free, checked in code.** Tab (raw code 9) is already two things: (a) the engine's side-scroll POV 5 (`key_pov_5 = 9`, `bv_menu_input.c` line 630) and (b) the editor row `KEY | control_switch | 9  # Tab: INT drives the selected pet <-> the player` (`@.apps/rpg-edit-hq/keybinds.pdl:9`). So Tab already means "switch who INT drives" in the editor; the new `possess_next` must either REUSE `control_switch` (preferred: one authority, one meaning) or take another key. Decision pending the owner; Shift stays the camera modifier.
+
+**Owner ruling: rotation and all animation live in `.pdl`, and the data structure must not paint us into a voxel-only corner** ("we get bit when we get far in game dev of voxel games and want other shapes the voxels cannot do; scaled voxels can represent spheres depending on resolution"). So the animation work (section 2, item 2) is no longer "more offset poses": it is a **node tree with transforms**, versioned, with the box slide as only the first renderer of it.
+
+### 9.1 The model: PART nodes (a scene graph in rows)
+`rig_<name>.pdl` schema 2 (a `SCHEMA | rig | 2` row; a file without it loads as today, every new key optional with the old behaviour, same rule as `rig_convert.pdl`):
+```
+PART | name | parent | shape | res | pivot_x pivot_y pivot_z | pos_x pos_y pos_z | rot_x rot_y rot_z | scale_x scale_y scale_z | alpha | material
+```
+- **parent**: relative position and rotation compose down the tree (head on body, hand on forearm, held item on hand); `-` = the actor root.
+- **pos** in block units RELATIVE to the parent's pivot, **rot** in degrees (euler order fixed and written in the schema), **scale** per axis (squash and stretch, growth, "bigger Asa"), **pivot** so a limb swings from the shoulder, not its centre.
+- **shape** is a name, not a hard-coded box: `box`, `voxel` (a model grid, the skin we have), `sphere`, `capsule`, `cylinder`. Analytic shapes are tiny in the raymarcher (a distance function each); `voxel` carries `res` = grid size per axis (8, 16, 32): **a sphere is `voxel` at `res` N with a filled-radius rule, or `sphere` exact; the same row either way**, so quality is a number (resolution) and a pdl edit, never a code change.
+- **alpha** 0..255 per part (ghost, glass, fade-in on spawn, water). `material` is a name looked up in a small `MATERIAL` table (emissive for torches/lava, flat, leaf-dither), so lighting needs no new column later.
+- Reserve columns now, even before the renderer reads them: a part whose row has fields the renderer does not know yet is **kept and ignored, never an error** (forward compatibility), and a `PART_EXTRA | name | key | value` row carries anything later.
+
+### 9.2 Animation: tracks of keyframes over those channels
+```
+ANIM | name | length_ms | loop
+TRACK | anim | part | channel | t_ms | value | ease
+```
+- channels: `pos_x/y/z`, `rot_x/y/z`, `scale_x/y/z`, `alpha`. Eases: `linear`, `sine`, `step`, `ease_in`, `ease_out`.
+- A **state row** `STATE | actor | pattern | anim | blend_ms` maps the existing patterns (0 idle, 1/2 walk, 3 jump, 4 mine, 5 place, plus later eat, sleep, hurt, swim) to animations, so verbs and the ledger do not change. Blending two anims is a weighted sum of channels (data, not code).
+- Minecraft feel = walk cycle `rot_x` on arms and legs as a sine of the walk phase, a head that looks at its target, a body bob, a swing with wind-up and follow-through: all of it TRACK rows.
+- Procedural helpers (look-at, walk phase from speed) are ops that WRITE rows or per-frame channels from a rule row; they are not baked into the renderer.
+
+### 9.3 How the renderer gets there without a rewrite (honest limits)
+Today `bv_rig_boxes_ex` returns axis-aligned boxes and `ADDBOX` takes min/max corners; the raymarcher can scale a voxel grid to a box but cannot rotate a box (`bv_rig.h` header). Three stages, each shippable:
+1. **Stage 1 (data first, no engine change):** the node tree, tracks and states are parsed and **evaluated on the CPU** to world transforms; rotation is approximated for the existing renderer by a chain of 2 to 3 offset boxes (option C of section 2); scale and alpha-as-threshold work today. The data is already final.
+2. **Stage 2 (engine, shared path, owner approves first):** add an optional per-box orientation (a 3x3 or a quaternion) to the GPU box record; the raymarcher transforms the ray into the box's local frame (a box and a voxel-model grid both work the same way). `BV_GPU_MAX_BOX 128` is the budget: a rig of 12 parts x a few actors must be counted and measured on the weak machine, never guessed.
+3. **Stage 3:** analytic `sphere` / `capsule` / `cylinder` primitives and real per-part alpha blending (alpha needs a second pass or an ordered march; costly, so it is behind a rule and off by default).
+Harness: an op `rig_pose_op <rig> <anim> <t_ms>` prints the evaluated world transforms; cases check a known pose (arm at 45 degrees at t = quarter cycle), a parent move carries its children, schema-1 files load unchanged, and the old mutant (legs in phase) still turns the walk check red.
+
+### 9.4 Why this shape (design-choice test, folded into D139)
+One authority: the rig file is the only place a part's geometry is stated, the skin CSV only fills a `voxel` part's grid. Modular: transforms, tracks and states are data; the renderer only reads the evaluated list. Scalable: the 10th creature (sheep, creeper, spider) is a new rig file and animations, no C. Long term: sphere/capsule/alpha/rotation arrive as stages without a file-format break because the columns exist from day one. Cost: a parser, an evaluator op and a harness case first; the engine orientation change is gated on the owner seeing stage 1.
