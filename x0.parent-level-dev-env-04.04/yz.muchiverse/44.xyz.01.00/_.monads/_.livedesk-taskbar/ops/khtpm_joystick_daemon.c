@@ -50,6 +50,8 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <poll.h>
+#include <errno.h>
 
 typedef struct {
     unsigned int time;
@@ -106,6 +108,11 @@ static int mapped_code(const char *house_root, int n) {
     char path[4096], l[256]; snprintf(path, sizeof(path), "%s/#.desktop/joystick_map.pdl", house_root); FILE *f = fopen(path, "r"); if (!f) return 0; int code = 0;
     while (fgets(l, sizeof l, f)) { char *a = strtok(l, "|"), *b = strtok(NULL, "|"), *c = strtok(NULL, "|"); if (!a || !b || !c) continue; while (*a == ' ') a++; if (strncmp(a, "BUTTON", 6)) continue; if (atoi(b) == n && (b[strspn(b, " ")] >= '0' && b[strspn(b, " ")] <= '9')) { code = atoi(c); break; } }
     fclose(f); return code; }
+/* v3 (owner 2026-11-26: "hold arrows to move continuously doesn't work" on the PAD): a pad reports a CHANGE, never a repeat, so a held direction was one step. While a direction stays held the daemon now resends it: first after `first` ms, then every `rate` ms; both are DATA in joystick_map.pdl:  REPEAT | <rate ms> | <first ms>  (no row = 120 / 250, rate 0 = no repeat). Read when a direction is pressed, so an edit applies on the next press. Idle cost unchanged: the wait is timed ONLY while a direction is held, otherwise it blocks in poll with no timeout. */
+static void load_repeat(const char *house_root, int *rate, int *first) {
+    char path[4096], l[256]; *rate = 120; *first = 250; snprintf(path, sizeof(path), "%s/#.desktop/joystick_map.pdl", house_root); FILE *f = fopen(path, "r"); if (!f) return;
+    while (fgets(l, sizeof l, f)) { char *a = strtok(l, "|"), *b = strtok(NULL, "|"), *c = strtok(NULL, "|"); if (!a || !b) continue; while (*a == ' ') a++; if (strncmp(a, "REPEAT", 6)) continue; *rate = atoi(b); if (c) *first = atoi(c); break; }
+    fclose(f); }
 int main(int argc, char **argv) {
     if (argc < 2) {
         fprintf(stderr, "usage: %s <house_root> [device]\n", argv[0]);
@@ -131,7 +138,18 @@ int main(int argc, char **argv) {
     int zone_x = 0, zone_y = 0; /* -1, 0, +1 */
 
     JsEvent ev;
-    while (fread(&ev, sizeof(ev), 1, jf) == 1) {
+    int rep_rate = 0, rep_first = 0, fired = 0;      /* the repeat of a held direction (v3) */
+    for (;;) {
+        int held = (zone_x || zone_y) && rep_rate > 0;
+        struct pollfd pf = { fileno(jf), POLLIN, 0 };
+        int pr = poll(&pf, 1, held ? (fired ? rep_rate : rep_first) : -1);      /* held: wake for the next repeat; else block with no timer */
+        if (pr < 0) { if (errno == EINTR) continue; break; }
+        if (pr == 0) {      /* the direction is still held: send it again */
+            if (zone_x) append_key(house_root, zone_x < 0 ? KEY_LEFT : KEY_RIGHT);
+            if (zone_y) append_key(house_root, zone_y < 0 ? KEY_UP : KEY_DOWN);
+            fired = 1; continue; }
+        if (pf.revents & (POLLERR | POLLHUP | POLLNVAL)) break;
+        if (fread(&ev, sizeof(ev), 1, jf) != 1) break;
         if (ev.type & JS_EVENT_INIT) continue;
         unsigned char type = ev.type & ~JS_EVENT_INIT;
         if (type == JS_EVENT_BUTTON) { if (ev.value == 1) { note_button(house_root, ev.number); int mc = mapped_code(house_root, ev.number); if (mc > 0) append_key(house_root, mc); } continue; }
@@ -142,7 +160,7 @@ int main(int argc, char **argv) {
             else if (ev.value > THRESHOLD) nz = 1;
             else if (ev.value > -DEADZONE && ev.value < DEADZONE) nz = 0;
             if (nz != zone_x) {
-                zone_x = nz;
+                zone_x = nz; fired = 0; if (nz) load_repeat(house_root, &rep_rate, &rep_first);
                 if (nz == -1) append_key(house_root, KEY_LEFT);
                 else if (nz == 1) append_key(house_root, KEY_RIGHT);
             }
@@ -152,7 +170,7 @@ int main(int argc, char **argv) {
             else if (ev.value > THRESHOLD) nz = 1;
             else if (ev.value > -DEADZONE && ev.value < DEADZONE) nz = 0;
             if (nz != zone_y) {
-                zone_y = nz;
+                zone_y = nz; fired = 0; if (nz) load_repeat(house_root, &rep_rate, &rep_first);
                 if (nz == -1) append_key(house_root, KEY_UP);
                 else if (nz == 1) append_key(house_root, KEY_DOWN);
             }

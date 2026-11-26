@@ -1,0 +1,12 @@
+# joystick_map.pdl - which pad button sends which key (read by khtpm_joystick_daemon on every press, no restart needed).
+# Row: BUTTON, the button number the daemon logged in joystick_buttons_seen.txt, the relay key code (same codes as the keyboard: ASCII, 13 Enter, 27 Esc).
+# The key goes to the focused window, so these work as the keyboard letters do: with In ON they reach the game.
+# Owner 2026-11-26: "start mapping the keys to joys for play, like mining, jmp". Numbers 0-3 are the buttons seen being pressed; swap them here if the feel is wrong.
+BUTTON | 0 | 32
+BUTTON | 1 | 98
+BUTTON | 2 | 103
+BUTTON | 3 | 109
+# 0 = space = jump | 1 = b = mine the faced block | 2 = g = place a block | 3 = m = craft
+# not mapped yet: Start (probably 9) to enter In mode, the shoulder buttons for turning (q and e), the rest. Press them and they appear in joystick_buttons_seen.txt first.
+# REPEAT: a held D-pad direction repeats. First number = ms between repeats, second = ms before the first repeat. Rate 0 = one step per press (the old behaviour).
+REPEAT | 120 | 250
