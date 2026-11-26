@@ -31,12 +31,12 @@ static int split(char *line, char **f, int max) {
     for (int i = 0; i < n; i++) { char *e = f[i] + strlen(f[i]); while (e > f[i] && isspace((unsigned char)e[-1])) *--e = 0; }
     return n;
 }
-static struct { char name[24]; int code; } GK[32]; static int ngk; static struct { char name[24], verb[24], arg[16]; } KV[32]; static int nkv; static int poll_ms = 100, idle_ms = 400, step_ms = 120;
+static struct { char name[24]; int code; } GK[32]; static int ngk; static struct { char name[24], verb[24], arg[16]; } KV[32]; static int nkv; static int idle_poll_ms = 0, g_pick_dirty = 0; static int poll_ms = 100, idle_ms = 400, step_ms = 120;
 static int load_keys(const char *kb, const char *kv) { char l[300], *x[6]; FILE *f = fopen(kb, "r"); if (!f) return 2;
     while (fgets(l, sizeof l, f)) { int n = split(l, x, 6); if (n >= 3 && !strcmp(x[0], "GAMEKEY") && ngk < 32) { snprintf(GK[ngk].name, 24, "%s", x[1]); GK[ngk++].code = atoi(x[2]); } } fclose(f);
     f = fopen(kv, "r"); if (!f) return 2;
     while (fgets(l, sizeof l, f)) { int n = split(l, x, 6); if (n >= 4 && !strcmp(x[0], "KEYVERB") && nkv < 32) { snprintf(KV[nkv].name, 24, "%s", x[1]); snprintf(KV[nkv].verb, 24, "%s", x[2]); snprintf(KV[nkv].arg, 16, "%s", !strcmp(x[3], "-") ? "" : x[3]); nkv++; }
-        else if (n >= 3 && !strcmp(x[0], "RULE") && !strcmp(x[1], "poll_ms")) poll_ms = atoi(x[2]); else if (n >= 3 && !strcmp(x[0], "RULE") && !strcmp(x[1], "idle_after_ms")) idle_ms = atoi(x[2]); else if (n >= 3 && !strcmp(x[0], "RULE") && !strcmp(x[1], "step_ms")) step_ms = atoi(x[2]); }
+        else if (n >= 3 && !strcmp(x[0], "RULE") && !strcmp(x[1], "poll_ms")) poll_ms = atoi(x[2]); else if (n >= 3 && !strcmp(x[0], "RULE") && !strcmp(x[1], "idle_after_ms")) idle_ms = atoi(x[2]); else if (n >= 3 && !strcmp(x[0], "RULE") && !strcmp(x[1], "idle_poll_ms")) idle_poll_ms = atoi(x[2]); else if (n >= 3 && !strcmp(x[0], "RULE") && !strcmp(x[1], "step_ms")) step_ms = atoi(x[2]); }
     fclose(f); return ngk && nkv ? 0 : 2; }
 static int owner_gone(long pid) {   /* gone = no such process, or a zombie (dead but not yet reaped by its parent) */
     if (kill((pid_t)pid, 0) != 0) return 1;
@@ -105,7 +105,11 @@ static void mine_say(const char *led, const char *actor, char *msg, size_t sz) {
 /* the hand follows the picked item even when the pick did not come from a key: a mouse click on a hotbar slot only writes play/pick.txt (rmmc_pick_op), so each tick one tiny read compares it with what held.txt last said and rewrites held.txt (and nudges the view: the engine only redraws on a change) when it differs */
 static void held_poll(const char *pkg, const char *book, const char *actor) {
     char pp[PATH_MAX + 64], item[64] = ""; snprintf(pp, sizeof pp, "%.4000s/play/pick.txt", book); FILE *f = fopen(pp, "r"); if (f) { if (fgets(item, sizeof item, f)) item[strcspn(item, "\r\n")] = 0; fclose(f); }
-    if (strcmp(item, g_held_item)) { held_write(pkg, book, actor, "", 0); bump_view(pkg); } }
+    if (strcmp(item, g_held_item)) { held_write(pkg, book, actor, "", 0); bump_view(pkg); g_pick_dirty = 1; } }
+/* IDLE COST (owner 2026-11-26: "its costing on idle"): the 2 s bar feed forked four helpers (vox_op where, seat, bag and rmmc_tutorial_op status, each replaying the whole ledger) even when nothing had changed: about 7% of a core at rest, measured. Everything the feed shows derives from the LEDGER and two small files, so it now runs only when one of them changed (the ledger path or size, the tutorial preference size, a pick change) or a key arrived, never more often than every 300 ms (a held pad would run it every step), plus a 30 s safety refresh. Size is the marker, never mtime. */
+static int feed_inputs_changed(const char *led, const char *book) {
+    static char seen_led[PATH_MAX]; static long seen_sz = -2, seen_tut = -2; struct stat st; long sz = stat(led, &st) ? -1 : (long)st.st_size; char tp[PATH_MAX + 64]; snprintf(tp, sizeof tp, "%.4000s/play/tutorial.txt", book); long tz = stat(tp, &st) ? -1 : (long)st.st_size;
+    int ch = strcmp(seen_led, led) || sz != seen_sz || tz != seen_tut; snprintf(seen_led, sizeof seen_led, "%.4000s", led); seen_sz = sz; seen_tut = tz; return ch; }
 static void sync_view(const char *pkg, const char *vop, const char *data, const char *led, const char *actor) {
     if (!pkg || !pkg[0]) return;
     char p[PATH_MAX + 160], ln[300], o[200]; int floor_z = -1, shift = 0, ay = 0, ax, az;
@@ -238,13 +242,13 @@ int main(int argc, char **argv) {
                 int rc = rmmc_play_verb(house, book, KV[kv].verb, KV[kv].arg, "human", msg, sizeof msg); held_write(pkg, book, actor, KV[kv].verb, rc); if (!rc && (!strcmp(KV[kv].verb, "mine") || !strcmp(KV[kv].verb, "place"))) mine_say(led, actor, msg, sizeof msg); if (!strcmp(KV[kv].verb, "walk")) g_last_step = now_ms(); if (rc && !first_refusal) first_refusal = rc; { char kt[200]; const char *mm = msg; if (!strncmp(mm, "refused: refused: ", 18)) mm += 9; snprintf(kt, sizeof kt, "key %.20s: %.150s", gk, mm); { char *cut = strstr(kt, " (direct"); if (cut) *cut = 0; cut = strstr(kt, " ["); if (cut) *cut = 0; } snprintf(msg, sizeof msg, "%s", kt); }   /* the last key and what came of it, on screen (owner 2026-11-26: a silent key is a bug; the browser-style debug console replaces this later, plan section 15) */ last_key = now_ms(); idle_pending = 1; sync_view(pkg, vop, data, led, actor); }
             fclose(f); }
         if (strcmp(msg, shown)) { snprintf(shown, sizeof shown, "%s", msg); shown_at = now_ms(); } else if (now_ms() - shown_at > 8000 && strncmp(msg, "page ", 5) && strcmp(msg, HINT) && strcmp(msg, "waiting for keys")) { snprintf(msg, sizeof msg, "%s", HINT); last_feed = 0; }
-        if (last_key > last_feed || now_ms() - last_feed >= 2000) { last_feed = now_ms(); char o2[300]; char *av[] = { vop, "where", data, led, (char *)actor, NULL }; run_out(av, o2, sizeof o2); snprintf(where, sizeof where, "%s", o2[0] ? o2 : "not spawned"); char o3[100]; char *a3[] = { vop, "seat", data, led, (char *)actor, NULL }; run_out(a3, o3, sizeof o3); snprintf(seatn, sizeof seatn, "%s", strncmp(o3, "seat=", 5) ? "harness" : o3 + 5); { char ob[400]; char *ab[] = { vop, "bag", data, led, (char *)actor, NULL }; run_out(ab, ob, sizeof ob); snprintf(g_bag, sizeof g_bag, "%s", strncmp(ob, "bag=", 4) ? "" : ob + 4); }
+        if ((last_feed == 0 || now_ms() - last_feed >= 300) && (last_key > last_feed || g_pick_dirty || feed_inputs_changed(led, book) || now_ms() - last_feed >= 30000)) { last_feed = now_ms(); g_pick_dirty = 0; char o2[300]; char *av[] = { vop, "where", data, led, (char *)actor, NULL }; run_out(av, o2, sizeof o2); snprintf(where, sizeof where, "%s", o2[0] ? o2 : "not spawned"); char o3[100]; char *a3[] = { vop, "seat", data, led, (char *)actor, NULL }; run_out(a3, o3, sizeof o3); snprintf(seatn, sizeof seatn, "%s", strncmp(o3, "seat=", 5) ? "harness" : o3 + 5); { char ob[400]; char *ab[] = { vop, "bag", data, led, (char *)actor, NULL }; run_out(ab, ob, sizeof ob); snprintf(g_bag, sizeof g_bag, "%s", strncmp(ob, "bag=", 4) ? "" : ob + 4); }
         if (feed) { char fb[16384]; g_tut_led = led[0] ? led : NULL; int n = chrome_feed(fb, sizeof fb, book, actor, where, seatn, msg); put_if_changed(feed, fb, (size_t)n); } }
         if (once) return first_refusal;
         if (idle_pending && now_ms() - last_key >= idle_ms) { char o2[200]; char *av[] = { pop, "project", seed, desk, led, pose, hm, "--idle", "--no-marker", NULL }; run_out(av, o2, sizeof o2); idle_pending = 0; }
         if (stop_ || (owner > 0 && owner_gone(owner))) return 0;
         held_poll(pkg, book, actor);
         if (g_swing_ms && now_ms() - g_swing_ms <= 450) bump_view(pkg);      /* the engine only redraws on a change: nudge it every tick of a swing and once after, so the arm swings and comes back (about 8 nudges per press) */
-        usleep((useconds_t)poll_ms * 1000);
+        { int sl = poll_ms; if (idle_poll_ms > poll_ms && now_ms() - last_key > 3000 && !(g_swing_ms && now_ms() - g_swing_ms <= 600)) sl = idle_poll_ms; usleep((useconds_t)sl * 1000); }      /* at rest the loop wakes every idle_poll_ms (keys.pdl RULE, 0 = poll_ms); 3 s after the last key it is back to poll_ms */
     }
 }
