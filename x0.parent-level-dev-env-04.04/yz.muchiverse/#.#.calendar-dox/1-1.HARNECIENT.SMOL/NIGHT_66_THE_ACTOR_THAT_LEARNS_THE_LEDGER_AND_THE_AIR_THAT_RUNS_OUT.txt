@@ -236,13 +236,51 @@
 
 ---
 
-**THE NARRATOR:** Part nine. The debates. Topic one: what does the name Harnecient mean?
+**THE NARRATOR:** Part nine. The debates. But a debate is no use if the listener does not know what the argument is about. So before each topic, Maxine tells the story and Tomo says it in plain words. First, seven words that every topic uses.
+
+**TOMO:** One. The ledger. Think of a notebook where you may only add lines at the bottom and never erase. The state of the game is rebuilt by reading it from the top. Two. A verb, or an op. A button the game offers, backed by a small program. It either does its whole job or refuses and writes nothing.
+
+**MAXINE:** Three. The harness. A referee. A case file lists steps and what should be true afterwards, and the referee says pass or fail. A referee that can never say fail is useless, so every case is tested with a deliberate sabotage. Four. A scratch copy. A throwaway copy of the game where experiments run, so the real game, and the owner's own desk, are never touched.
+
+**TOMO:** Five. A route. A known good way to do a recurring job, with the name of the tool or the document that does it. The house has about twenty, such as: commit only my own files. The router is the part that reads a goal written in ordinary words and picks the route. Six. A bank and a weight. A scoreboard of wins and losses per route. The weight is wins plus one, over wins plus losses plus two. With no data it is one half. After three wins and one loss it is four sixths, about zero point six seven.
+
+**RAHWEH:** Seven. A verified row. A record of one attempt, together with the referee's pass or fail. Only verified rows are ever allowed to teach the system anything. And a reminder of the labels: RAN, DESIGN, NOT PROVEN, READ.
+
+---
+
+**MAXINE:** Topic one, the background. Harnecient. In August, the owner and the agents wrote a plan for a company and a technique with that name, and the plan calls itself load-bearing for the company and its customers. READ.
+
+**TOMO:** The problem it solved: big models can use tools by emitting structured calls. Small local models, the ones that run free on the owner's machines, cannot do that reliably. So the technique flips it. The program does the deciding. The prompt is short and plain. A persona tells the model not to produce structure. The answer is read tolerantly. And the program, not the model, dispatches the action. The plan says the tools field is never sent. There was a nine for nine proof of the pattern.
+
+**RAHWEH:** Then the word spread, and this is the nuance. It is now also a folder of state machines that delegate multi-step read-only work to such models, called harnecient-fsm. It is the name of the folder these night classes live in, with SMOL, for small, on the end. It is the name of the owner's lab notebook folder. And the hai relay plan carries it. So today it names a company, a technique, and several folders.
+
+**MAXINE:** So why is it a question at all?
+
+**TOMO:** Because the house also has a layer made of the referee, the scoreboard, the router and the verdicts, and that layer has no single name. The question is whether this existing word should become that name too. A name decides how future agents search and which document they open first. When the name is ambiguous, an agent opens the wrong document, and that costs tokens, which is the one thing the whole strategy is trying to save.
+
+---
+
+**THE NARRATOR:** And the debate. Topic one: what does the name Harnecient mean?
 
 **MAXINE:** Option A. Harnecient names the router and judge layer: the harness, the bank, the router, the verdicts. The case for it: the house has no single name for that layer, and the doc that routes agents would finally have one word. The price: it is a folder name and a relay name already, so two meanings share one word, and old docs would need to be read with care.
 
 **TOMO:** Option B. Harnecient stays the name of the hai relay and the lab, nothing more. The case: it is what the words already mean in the files, so nothing has to change. The price: the router and judge layer keeps being called by a list of parts, which is exactly the confusion the owner's own question shows.
 
 **RAHWEH:** Option C. Keep it as the folder and lab name, and give the layer a plain new name, such as router and judge. The case: no overloaded word, and it is searchable. The price: one more name to teach. PROPOSAL: option C, because a product word should be chosen on purpose, not inherited by accident. OWNER DECIDES.
+
+---
+
+**MAXINE:** Topic two, the background. The router reads a goal in plain words and scores each of the twenty routes. It matches whole words only, so a keyword counts only when it is exactly a word in the goal. Then it must answer a second question: do I trust this enough to act, or do I say I am not sure and fall back to the written table?
+
+**TOMO:** There are two ways to say how sure it is. The gap is the lead of the winner over the runner-up, like a race: if the winner leads by a lot, fire. Softmax is different. It turns all the scores into percentages that add to one hundred, and a setting called the temperature decides how decisive that is. A low temperature makes the favourite look much more likely than the rest.
+
+**RAHWEH:** And calibration. If a system says it is eighty percent sure, is it right eighty percent of the time? The lab measured the gap between claimed and actual. The measure is called the expected calibration error, and a small number means the confidence is honest.
+
+**MAXINE:** The story is from November twenty-second and twenty-third. The router scored ninety percent on forty goals the author wrote. Then two other models were asked to phrase the same jobs in their own words, two hundred and eighty-six phrasings, and the router dropped to about fifty-three percent. The gap threshold, zero point four five, had been chosen after seeing four wrong answers. So it was graded on the exam it was tuned on.
+
+**TOMO:** The softmax confidence was close to honest on three separate datasets, with an error of about five to eight percent, one of them never used for tuning. Answers it rated at eighty percent or more were right nine times in ten.
+
+**RAHWEH:** The nuance. Every set here is small, and written by the people who built the router. So the real test is the goals that actually arrive. And the decision needs the owner's yes, because it changes when the system acts on its own.
 
 ---
 
@@ -256,6 +294,18 @@
 
 ---
 
+**MAXINE:** Topic three, the background. Remember the learning loop from night thirty. Something happens, a small model describes it in one fixed line, real code turns that line into a candidate change, and a validator checks it. What happens to a change that passes?
+
+**TOMO:** Nothing, yet. It lands in a review file, like a suggestion box. Promotion is the moment the house starts acting on a suggestion: a weight really changes, a new concept really exists. Four kinds of change were named in the design: nudge the weight of something that exists, invent a new concept, describe a new state-machine step, describe a new planner action. Only the first has a validator today.
+
+**RAHWEH:** The owner's standing rule, READ: auto-promotion is never built. Promotion is a human-reviewed batch. That means the speed at which the house can learn is the speed at which a person reads the box. That is the real ceiling, more than the model or the validator.
+
+**MAXINE:** So the question is whether the box may ever sign the small slips by itself.
+
+**TOMO:** And the nuance is that there is almost no data yet. Only one kind of change exists, and few review entries. Rules written now would be guesses about a pile that has not formed.
+
+---
+
 **THE NARRATOR:** Topic three: when does a learned edit become something the house believes?
 
 **MAXINE:** Option A, a human reviews every edit, forever. The case: it is the standing rule, nothing the model suggests can change behaviour without a person, and it cannot be gamed. The price: it is the real ceiling on how fast the house learns, and review is slow.
@@ -266,13 +316,33 @@
 
 ---
 
+**MAXINE:** Topic four, the background. An NPC is a character the player does not control. Earlier we said a bank is a scoreboard of what worked. With one character that is simple. With twenty, whose scoreboard is it?
+
+**TOMO:** The house met this problem before, with something unrelated: the address book of the texting app, on November sixteenth. The answer became a standard called trunk and branch. Keep one shared trunk, once. Give each owner a branch that stores only its own changes. Read it as trunk plus mine, and where both have the same key, mine wins. Think of a family recipe book where each cook writes notes in the margin, and nobody copies the whole book.
+
+**RAHWEH:** The standard has three levels and eleven rules, and a shared operation was built the same day with fifty-nine passing checks. No existing data has been moved onto it. READ. The existing precedent is the per-book database layers.
+
+**MAXINE:** The nuances are two. Which layer wins when they disagree. And that one bad row in the trunk reaches every character.
+
+---
+
 **THE NARRATOR:** Topic four: do all the NPCs share one bank of learned actions, or does each have its own?
 
 **MAXINE:** Option A, one shared bank. The case: every NPC benefits from every verified row, learning is faster, and there is one authority. The price: characters become identical in behaviour, and one bad row spoils all of them.
 
 **TOMO:** Option B, a bank per actor. The case: personalities, and a mistake stays local. The price: each actor learns from far fewer rows, storage and checking multiply, and there is no shared knowledge.
 
-**RAHWEH:** Option C, layered: a shared base with a small set of per-actor changes on top. The house already has this shape, trunk and branch for shared data, decision eighty-seven, though the operation that builds it is not written. The case: shared learning with room for character, and one authority per fact. The price: it needs that operation, and a rule for which layer wins. PROPOSAL: C, and do not build per-actor weights until at least two NPCs actually need them. OWNER DECIDES.
+**RAHWEH:** Option C, layered: a shared base with a small set of per-actor changes on top. The house already has this shape, trunk and branch for shared data, decision eighty-seven, and the shared operation that builds it was written on November sixteenth with fifty-nine passing checks, though no data has been moved onto it yet. The case: shared learning with room for character, and one authority per fact. The price: nobody has used it on learning data, and a rule is needed for which layer wins. PROPOSAL: C, and do not build per-actor weights until at least two NPCs actually need them. OWNER DECIDES.
+
+---
+
+**MAXINE:** Topic five, the background. On October twenty-fifth the owner asked for oxygen, gas and temperature in the space game, with the words: fun first, realistic columns kept. Each room of the ship holds an oxygen level. A hole leaks it to space. Below sixteen percent a character chokes.
+
+**TOMO:** The house now has two different games. Rpg-space is a ship made of rooms. Asa's game is made of blocks, which are called voxels, like Minecraft. The question is which of them should own a rule like air, and whether a plug is the right form for it. A plug, remember, is an optional add-on with an on-off switch and settings, borrowed from RPG Maker's plugins. Day and night was the first one.
+
+**RAHWEH:** The nuance is the debt. The oxygen code was written before two house rules existed: every rule is an op, and only the ledger holds game state. So it breaks both, and the third option, one shared op, repays that debt but is the biggest job. And Asa's world has no health to lose, so air would need that first.
+
+**MAXINE:** The attraction is that in a block world the air can come from geometry. Dig a wall and a sealed room opens. Place a block and it closes. Nobody sets a breach flag.
 
 ---
 
@@ -283,6 +353,16 @@
 **TOMO:** Option B, it stays in rpg-space. The case: it exists and works. The price: it is native C and a mutable state file, both against house rules, and Asa cannot use it without a second driver and a second engine.
 
 **RAHWEH:** Option C, one shared op that both games call. The case: one authority for the air rules, and it repays the old rpg-space debt. The price: the largest piece of work, and rpg-space would have to be changed to call it. PROPOSAL: A first, built as an op so that C stays possible, and rpg-space untouched until it matters. DESIGN, nothing built. OWNER DECIDES.
+
+---
+
+**MAXINE:** Topic six, the background. A learned layer is any part that improves from data: a set of weights, a better scorer, a small network. Going live means it stops only being measured and starts influencing real decisions.
+
+**TOMO:** The bar the house set is this. It must beat the hand-written rules on goals it has never seen, and a human reviews the promotion. Goals it has never seen is the hard part. The lab found a trap. Adding each route's plain-English description as extra text raised the score by six and a half points, but mostly because the test phrasings were written by models that had been shown those same descriptions. The gain was an echo. A fair test needs phrasings written by a person who never saw the answers.
+
+**RAHWEH:** Shadow mode is the third idea. Picture a trainee driver with a second steering wheel that is connected to a dummy car beside the real one. The trainee steers, the dummy car moves, and later you compare it with what the real driver did. No risk, and real data. It costs a little compute and shows nothing on screen.
+
+**MAXINE:** And the last nuance. Nobody has yet shown that any learned layer beats the hand-written rules here. So the honest state is not proven.
 
 ---
 
