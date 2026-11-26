@@ -1,0 +1,28 @@
+# rmmc_help (2026-11-26): the Help tab says what each key does. Each help row names a key letter; keybinds.pdl owns the key code. A pair of rows here ties the two (b=98 g=103 m=109 space=32 0=48 Home=65360 p=112 o=111 ]=93 u=117), so changing a key without its help line (or the reverse) fails. Controls: a wrong code and a swapped line must NOT be found.
+RESULTS | ../results/rmmc_help.txt
+CASE | help-rows-agree-with-the-key-bindings
+SCRATCH
+EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | GAMEKEY      \p mine \p 98 | key binding mine is code 98
+EXPECT_HAS | $HOUSE/@.apps/rmmc/harness.pdl | B: mine block | the Help row says: B: mine block
+EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | GAMEKEY      \p place \p 103 | key binding place is code 103
+EXPECT_HAS | $HOUSE/@.apps/rmmc/harness.pdl | G: place block | the Help row says: G: place block
+EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | GAMEKEY      \p craft \p 109 | key binding craft is code 109
+EXPECT_HAS | $HOUSE/@.apps/rmmc/harness.pdl | M: craft item | the Help row says: M: craft item
+EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | GAMEKEY      \p jump \p 32 | key binding jump is code 32
+EXPECT_HAS | $HOUSE/@.apps/rmmc/harness.pdl | Space: jump | the Help row says: Space: jump
+EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | GAMEKEY      \p page \p 48 | key binding page is code 48
+EXPECT_HAS | $HOUSE/@.apps/rmmc/harness.pdl | 0: next hotbar page | the Help row says: 0: next hotbar page
+EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | GAMEKEY      \p reset \p 65360 | key binding reset is code 65360
+EXPECT_HAS | $HOUSE/@.apps/rmmc/harness.pdl | Home x2: spawn | the Help row says: Home x2: spawn
+EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | GAMEKEY      \p slot1 \p 49 | key binding slot1 is code 49
+EXPECT_HAS | $HOUSE/@.apps/rmmc/harness.pdl | 1-9: pick a slot | the Help row says: 1-9: pick a slot
+EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | GAMEKEY      \p slot9 \p 57 | key binding slot9 is code 57
+EXPECT_HAS | $HOUSE/@.apps/rmmc/harness.pdl | 1-9: pick a slot | the Help row says: 1-9: pick a slot
+EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | pov_mode_1_alt     \p 112 | p is first person
+EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | pov_mode_2_alt     \p 111 | o is third person
+EXPECT_HAS | $HOUSE/@.apps/rmmc/harness.pdl | P / O: view 1st/3rd | the Help row says P / O
+EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | possess_next            \p 93 | ] takes control
+EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | possess_release_alt     \p 117 | u lets go
+EXPECT_HAS | $HOUSE/@.apps/rmmc/harness.pdl | U: let go | the Help row says U
+EXPECT_LACKS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | GAMEKEY      \p mine \p 99 | CONTROL: a wrong code for mine is not there, so the checks above can fail
+EXPECT_LACKS | $HOUSE/@.apps/rmmc/harness.pdl | B: place block | CONTROL: a swapped Help line is not there

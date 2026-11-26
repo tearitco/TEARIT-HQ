@@ -1,0 +1,4 @@
+# rmmc_help.pal - the Help tab says what each key does; each help line is paired with its key code in keybinds.pdl
+exec ./ops/+x/harness_case_op.+x cases/rmmc_help.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/rmmc_help.pdl
+halt
