@@ -1,0 +1,97 @@
+# rmmc: the tutorial, first person, driving, and the roadmap: a handoff for agents who do not know any of this (2026-11-26)
+
+Read this BEFORE you touch rmmc (the Minecraft-like book, "Asa on the island"), the rpg-edit-hq editor's Play button, the in-game tutorial, the first-person camera or the hotbar.
+Paths are from the house `44.xyz.01.00/` (H) unless they start with `HQ-IQ-BOOK`. Quote every path (`&`, `@`, `#`). Branch `claude`, nothing here is a claim until a harness name or a photograph backs it.
+Companion docs: `TUTORIAL-HARNESS-ONBOARDING-GAMIFICATION-AND-NEAR-TERM-DRIVE-PLAN-2026-11-26.md` (the plan, sections 14 to 16 are the build log), `RMMC-PLAY-ON-THE-VOX-LEDGER-2026-11-25.md` (the ledger/rules model), decision log D140 to D142.
+
+## 1. What exists today (observed, with the commit)
+
+| Thing | What it is | Proof |
+|---|---|---|
+| **Drive anyone** | In the editor, Play starts `rmmc_driver`. `]` takes control of the selected character (Asa, Ava, ...), `u` releases, arrows walk, space jumps, B mines, G places, digits 1-9 pick a hotbar slot, `m` crafts, Home twice resets to spawn, `c`/`v` camera height. | Relay-driven on the live window many times; ledger rows (`MOVE`, `MINE`, `PLACE`, `RESET`) |
+| **In-game tutorial (lesson 1: drive Asa)** | Data `@.apps/rmmc/tutorial.pdl` + op `ops/rmmc_tutorial_op.c` + the editor's **Tutorial** tab. The grade is DERIVED FROM THE LEDGER, never stored. The left bar shows `press ]` -> `arrows 3/5` -> ... -> `lesson done!`. Commits 4eca057a3, 9e5fdd8a0, 390655a33, f8e2b1d77. | Harness `rmmc_tutorial` (19 checks), recorded video |
+| **First-person view model** | Key `p` = first person. Asa's own arm (rig `arm_r`, rig colours) as 3D boxes in camera space, holding the picked tool or block, swinging on every B/G press. Commit 668482c0f. | Photographs (rest + 12-frame swing strip), final video |
+| **Creative mode OFF by default** | `rmmc_mode_op` flips `@.apps/rmmc/play/creative.txt`; Tools menu row "Game: creative mode on/off". Off: a mine adds the drop, a place costs one, the picked tool is swung. D142, commits 5099d3b08, 34fb525e3. | Harness `rmmc_verbs` (111, includes a case that FAILS on the old code), live bag 12 -> 13 -> 12 |
+| **Video** | `XO/31.Nov/nov-26/2.tutorial-lesson-1-graded/` (EN voice + EN subs, EN voice + JA subs). | Frames read, hotbar counts read from the recorded frames |
+
+NOT proven: a physical keyboard run (everything above was driven through relay files); the Tutorial tab on any book except rmmc; the arm at any camera yaw other than the ones photographed.
+
+## 2. The mental model (so the traps make sense)
+
+- **The ledger is the only authority** (`NO-GHOST-DATA...2026-11-07.md`). A fact about the game is an append-only row (`MOVE`, `MINE`, `DROP`, `GIVE`, `PLACE`, `RESET`, `SEAT`, `FACE`...). `@.apps/vox/ops/vox_op.c` replays it into the world and the bag. The screen, the left bar, `pick.txt`, `held.txt`, `cut_target.txt` are PROJECTIONS: derived, safe to delete, never read back as input.
+- **Rules are ops, not engine C** (D92, skill `game-mechanics-are-events`). A new mechanic = a small op + a registry row + a harness case, never a branch in `game_core.c` or the engine.
+- **Config vs fact.** `play/creative.txt`, `play/tutorial.txt`, `play/pick.txt`, `play/page.txt` are CONFIG/PREFERENCE files declared in `@.apps/rmmc/state.pdl`. They change which rows get WRITTEN or where a lesson started; replay never needs them because the rows carry the effect. If you add one, declare it in `state.pdl`.
+- **Three processes** cooperate: the editor window (`khtpm_core_render`, pid changes on relaunch), the game driver `@.apps/rmmc/ops/rmmc_driver.c` (turns keys into verbs and projects the left bar, view and arm), and the board engine `bv_render_3d` (draws; runs its OWN COPY per session).
+
+## 3. Safe ways to drive and verify (all RAN this session)
+
+- **Never xdotool for game keys.** Game keys: append `<code> <ms>` lines to `@.apps/rpg-edit-hq/state/interact_relay.txt` (arrows 1000 left, 1001 right, 1002 up, 1003 down; space 32; b 98 mine; g 103 place; digits = hotbar; Home 65360; m 109). Engine keys (`]` possess, `u` release, `p` first person, `o` third person, `q`/`e` yaw -10/+10): `&.widgits/board-viewer/tools/+x/bv_keys.+x <session> <text>`, session = `bv_session=` in `@.apps/rpg-edit-hq/board/state/ui.txt`. Window clicks: append `MOUSE_EVENT: 1 x y 1` then `... 0` to `#.desktop/entity_menu_history/<pid>.txt`.
+- **Read state, not pixels, first**: `@.apps/rpg-edit-hq/state/game_ui.txt` (`stat_line`, `stat_line2`, `nick_line`, `gmt_2_text`), `@.apps/rmmc/play/pick.txt`, the ledger `@.apps/rpg-edit-hq/state/games/rmmc/game/ledger.txt`, and the bag: `@.apps/vox/ops/+x/vox_op.+x bag "$H/@.apps/rmmc/vox" "$H/<ledger copy>" asa`. To see the bag after each row, replay `head -n` copies of the ledger in `/tmp` (never edit the live ledger).
+- **Photograph**: `&.widgits/_shared-lib/ops/+x/dump_frame_png_op.+x <window id> out.png` (find the window by size with `xwininfo -root -tree`), then OPEN the PNG.
+- **Harness**: `cd "&.widgits/_shared-lib/harness"; ./ops/+x/harness_case_op.+x cases/rmmc_verbs.pdl; ./ops/+x/harness_verdict_op.+x cases/rmmc_verbs.pdl`. `prisc+x` DISCARDS child output, so a `.pal` run prints nothing: call the two ops directly. Cases: `rmmc_verbs` (111), `rmmc_tutorial` (19), `rmmc_seat`, `rmmc_follow`, `rmmc_project`. No Python, no new `.sh`.
+- **Engine rebuild (offloaded)**: tar `&.widgits/board-viewer/ops` + `&.widgits/_shared-lib` to `debil@10.0.0.16`, `gcc -std=gnu11 -O3 -march=znver1 -funroll-loops -DBV_HAVE_GPU -fopenmp ... bv_render_3d.c bv_gpu_raymarch.c -lm -lEGL -lGLESv2`, fetch with `ssh ... cat`, check `objdump -T | grep GLIBC` is 2.34 or lower (local is 2.35), install by `mv` over `&.widgits/board-viewer/ops/+x/bv_render_3d.+x`. The alias `debil` does not resolve, use the address. debil is the owner's browser-dev machine: prefer the Mac (`10.0.0.144`) or the desktop for long jobs.
+
+## 4. Traps (each cost time; the cause is the lesson)
+
+1. **An engine fix reaches an OPEN board only through a NEW session** (stale session copy of the binary). After installing, `sh @.apps/rpg-edit-hq/button.sh run`, then `rpg_edit_hq.+x play`, then possess again. This moves the owner's window to its default place: tell them.
+2. **`rmmc_driver` must be restarted after every driver or verb rebuild**: `pkill -x 'rmmc_driver.+x'` then `rpg_edit_hq.+x play`. The verb binary `ops/+x/rmmc_verb.+x` is spawned per key, so it takes effect at once, but the harness fixture recompiles from source, so build both.
+3. **The relaunch can land on page `rmmc-0000`** (no row in `desks.pdl`: keys are silently ignored, `stat_line` says so). Switch with `sh @.apps/piececraft-hq/ops/pchq_board_action.sh "$SESSION" desk rmmc-0001`.
+4. **Digits are the hotbar, so `1` is not first person.** The pov keys `1`-`4` are shadowed while a game owns the digits; use `p` (first person) and `o` (third person). `Home` resets, not the Windows key.
+5. **First-person yaw**: the default yaw is 180 and Asa walks +z; the cell she mines is to HER RIGHT (+x). Press `q` nine times (yaw 90) after `p` so the mined block is in front of the camera. The recording script does it.
+6. **The engine only redraws on a change.** Anything animated outside the world (the arm swing) needs the driver to nudge the view (`bump_view`) on every tick of the swing and once after, or the last frame (arm raised) freezes on screen.
+7. **A swing is not a success.** The arm swings on every B/G press like Minecraft, hit or miss. `stat_line` says `refused: out of reach` when nothing was in front. Judge the game by the ledger and the hotbar count, not by the arm.
+8. **The hotbar count was lying to the proof for a reason**: before D142 a place first wrote a free `GIVE ... hotbar`, so a place never lowered the count. If you see `GIVE | asa | item | 1 | hotbar` rows, creative mode is on.
+9. **`creative_on(book) && picked_tool(...)` is a bug shape**: `picked_tool` ALSO selects the tool that is swung. Only the free GIVE depends on creative mode. A harness case guards it (negative-tested).
+10. **Bag arithmetic**: a mine writes `MINE` + `DROP <item> 1` (the drop is credited); `GIVE` credits too; `PLACE` takes one. Replay the ledger row by row before you call something a double credit (I wrongly did, once, and had to retract it).
+11. **Possession state goes stale between setup steps.** Re-read `possessed_id` in `@.apps/rpg-edit-hq/rpg-edit-hq-pchq/pieces/xelector_01/state.txt` right before a key that needs control (it is `rig:asa` when controlled). `]` TOGGLES.
+12. **The top bar's Tools cell lists the BAR's book (`pre-design`), not the editor's book (`rmmc`).** The editor has its own Tools and Tutorial tabs. A tutorial row = a harness row whose id starts `tut_` (`@.apps/rmmc/harness.pdl`); `pal_side.c` splits them into the Tutorial tab. Do not put it on the LyfeDesk bar without the owner (he said: prove it in rpg-edit first).
+13. **Book id vs label**: the editor shows "RM sandbox"; the folder is `@.apps/rmmc`. `pal_side.c prefer_book_id` reads `state/last_book.txt`. A feature that "finds no rows" is usually asking by label.
+14. **CPU**: the machine is weak and the owner runs a browser. `nice` does not cap threads: give ffmpeg `-threads 2`. Every heavy job goes through `cpu_gate <house> run <label> --wait N -- cmd`. A `cpu_guard` WARN is a finding in OUR footprint (the 2026-11-26 one was ffmpeg at 279%). Never run `pkill -f <pattern>` from a tool shell (it kills the shell: use `pkill -x` or explicit pids). Never scan `/`.
+15. **Scripts copied from an older scratch folder keep the old `cd`**. `compose.sh` composed the previous lesson's frames for two runs. Check the video LENGTH and a frame against what you recorded before you believe "built".
+16. **Heavy changes to shared files**: `bv_render_3d.c` is a collision file. Commit by explicit pathspec with `&.widgits/_shared-lib/ops/+x/commit_scoped.+x`, and check `git diff -U0` shows only your hunks (a pathspec commit takes the WHOLE working file: it once swept other agents' hunks, see commit fea2a3a67).
+17. **Compile warnings you may meet** (`-Wmisleading-indentation` in `rmmc_verb.c` `picked_tool`, an `-O3` warning in `bv_draw_hand` on debil only): pre-existing or noise, but do not add new ones.
+
+## 5. File map
+
+- Game rules/data: `@.apps/rmmc/` (`tutorial.pdl`, `keys.pdl`, `pose.pdl`, `hotbar.pdl`, `harness.pdl`, `state.pdl`, `vox/rules.pdl`, `rigs/rig_asa.pdl` + `biped_anim.pdl`).
+- Ops: `@.apps/rmmc/ops/` (`rmmc_driver.c`, `rmmc_verb.c`, `rmmc_tutorial_op.c`, `rmmc_mode_op.c`, `rmmc_project_op.c`, `rmmc_play.inc`), `@.apps/vox/ops/vox_op.c` (the replay), `@.apps/rpg-edit-hq/ops/pal_side.c` (the editor's menus), `@.apps/rpg-edit-hq/board/pchq-board.xhtpm` (the editor's top bar: Tools and Tutorial tabs).
+- Engine: `&.widgits/board-viewer/ops/bv_render_3d.c` (view model: `bv_draw_hand`, `vm_*`; reads `<pkg>/pieces/system/held.txt`), `bv_rig.h`, `bv_rig_anim.h`, `bv_gpu_raymarch.c`.
+- Projections the driver writes into the package: `pieces/system/held.txt` (item, swing, skin, sleeve), `cut_target.txt`, the xelector position, the left bar in `game_ui.txt`.
+- Harness: `&.widgits/_shared-lib/harness/cases/rmmc_*.pdl`, fixture `fixtures/rmmc_house.pdl` (compiles the real ops into a scratch house and sets creative ON so the older verb cases keep testing that mode).
+- Video scratch (not in git): `/tmp/claude-1000/t02/` (`setup.sh`, `record.sh`, `compose.sh`, `lib.sh`, `script.tsv`); rebuild it from this doc if `/tmp` was cleared. Narration: `@.apps/pet-trainer/ops/pet_tts_local.py --voice en-US-AnaNeural`; subtitle fonts Noto Sans CJK; palettes in the HQ-IQ-BOOK presentations doc.
+
+## 6. Rules the owner set (do not relitigate)
+
+Real photographs only; never xdotool first; the ledger is the authority; every rule is an op; no creative mode by default (D142); try tutorials in rpg-edit before LyfeDesk; offload heavy and GPU work to another machine (Mac or desktop; debil is busy); do not move the owner's windows; restore live changes after proof and tell them; commit scoped, never push `user/*` branches; ask before relaunching or pressing Play over their running game.
+
+## 7. Roadmap (priority order; each line has its acceptance check)
+
+| # | Feature | Why / nuance | Done when |
+|---|---|---|---|
+| 1 | **Owner runs the tutorial on a real keyboard** | Everything so far is relay-driven; held keys, key repeat and focus can differ (a real-hardware focus bug once passed 3 relay runs). | Owner completes lesson 1; any key that misbehaves gets a harness case |
+| 2 | **In-game menu popup** (the `Menu` key, raw 65383, is reserved and unbound) | The owner wants a player menu. One shared rows-from-data overlay opened by the key, like the Tools rows, NOT a new bespoke window. | Menu key opens it; rows come from data; `see` step in a harness |
+| 3 | **Tutorial text presentation** | The grader is small plain left-bar text; `gmt_2_text` is written but not shown anywhere prominent. | A readable step banner in the game view, verified in a photograph |
+| 4 | **Lesson 2+ (craft with `m`, Ava, a second page)** | Lessons are DATA: new `LESSON`/`STEP` rows plus, only if needed, a new check kind in `rmmc_tutorial_op.c`. | Lesson list shows 2+; `rmmc_tutorial` grows a case per kind |
+| 5 | **Mining feedback** | The engine already has `crack:`/`chip:`/`item:` event shapes (damage stages, flying chips, a dropped cube). Verify they show in first person. | A photograph of a crack stage and a drop |
+| 6 | **Held-item polish** | Real block textures on the held cube, hunger/eat pose, left-handed option; the arm is a CPU rasteriser because GPU scene boxes are axis-aligned. A shader-side rotated box is the "proper" version, only if the overlay stops being enough. | Owner approves the look |
+| 7 | **Harness cases for the driver and the arm** | `held.txt` projection, key trace, release-only, step_ms, the swing nudge are only photographed. | Cases that FAIL when the feature is removed (negative-tested) |
+| 8 | **Walking speed** | About 3 cells/s, limited by about 200 ms of processing per step (`RULE step_ms 100`, `poll_ms 50` in `keys.pdl`). | Measured steps/s with a C op, not a guess |
+| 9 | **Offload the whole recording/compose to the Mac** | The first thing to move is the compose step (needs ffmpeg, fonts, the frames). The recorder needs the full desktop, so the house must be installed and kept in sync there. | One command renders a video without loading this machine |
+| 10 | **Plateau framing recheck + hero_01 template cleanup** | Plateau camera framing was not rechecked after the last engine change; `hero_01` still exists in the shared template. | Photographs on the plateau page |
+| 11 | **Stop does not pause `rmmc_driver`** | The editor's Stop freezes the game, the driver keeps running. | Stop halts key handling; harness |
+| 12 | **LyfeDesk top-bar Tutorial cell** | Only after the owner approves the editor version. Needs a shared top-bar config change and a desktop relaunch. | Owner OK first |
+| 13 | **Registry for `cpu_gate` and the video scripts** | The guard audit flags `cpu_gate` as unregistered. | `proc_violations.txt` clean |
+
+## 8. Future-proofing checklist for any change here
+
+- Does the new fact live in the ledger (a row through a verb)? If it is only in memory or a file, it is ghost data.
+- Is the new behaviour a data row, an op, or engine C? Prefer data, then op. State why in the decision log (the five design-choice questions) BEFORE building.
+- Did you add a file the game writes? Declare it in `state.pdl`, cap it (`RUNTIME-FILE-GROWTH-STANDARD.md`), and say its bytes per hour in the commit.
+- Does the harness case FAIL if you break the feature? Sabotage it once and say so in the commit.
+- Did you photograph it and open the PNG? A passing ledger with an empty screen is a failed test.
+- Did you tell the owner what you changed on their live desk (window position, `view.pdl`, keybinds) and keep a backup (`/home/no/tear-live-backups/2026-11-25-claude/`)?
+- Heavy job? `cpu_gate`, `nice`, `-threads 2`, one at a time, offloaded if it is a build or a render.
+
+## 9. The coming "night class"
+
+The owner said on 2026-11-26 that they will have us do a new "night class". Nothing else was said about it (subject, format and length unknown: ask). Earlier NIGHT docs and narrated mp3s exist under the HQ-IQ-BOOK and the XO folder. When it starts: read the newest NIGHT doc first, keep the same vocabulary as this book, and put anything the class teaches that a future agent would otherwise re-learn into the ONE doc a route row points to.
