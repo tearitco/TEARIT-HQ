@@ -112,10 +112,10 @@ static void sync_view(const char *pkg, const char *vop, const char *data, const 
     bump_view(pkg);
 }
 static int chrome_feed(char *fb, size_t cap, const char *book, const char *actor, const char *where, const char *seatn, const char *msg) {
-    size_t n = 0; char p[PATH_MAX + 64], line[256], pick[64] = ""; char nick[96]; if (!strcmp(seatn, "human")) { snprintf(nick, sizeof nick, "YOU CONTROL %s", actor); for (char *c = nick + 12; *c; c++) if (*c >= 'a' && *c <= 'z') *c -= 32; } else snprintf(nick, sizeof nick, "%s (not controlled)", actor);
+    size_t n = 0; char p[PATH_MAX + 64], line[256], pick[64] = ""; char wh[64]; snprintf(wh, sizeof wh, "%.60s", where); { char *sp = strchr(wh, ' '); if (sp) *sp = 0; }      /* the bar line is only the position: the reason a key did nothing needs the room below it */ char nick[96]; if (!strcmp(seatn, "human")) { snprintf(nick, sizeof nick, "YOU CONTROL %s", actor); for (char *c = nick + 12; *c; c++) if (*c >= 'a' && *c <= 'z') *c -= 32; } else snprintf(nick, sizeof nick, "%s (not controlled)", actor);
     snprintf(p, sizeof p, "%.4000s/play/pick.txt", book); { FILE *f = fopen(p, "r"); if (f) { if (fgets(pick, sizeof pick, f)) pick[strcspn(pick, "\r\n")] = 0; fclose(f); } }
     n += (size_t)snprintf(fb + n, cap - n, "gm_on=1\ngm_title=rmmc\ngmt_0_text=%s: %s\ngmt_1_text=seat %s | %s\ngm_nt=2\ngm_nb=0\ngm_ne=0\ngm_nl=0\n", actor, where, seatn, msg);
-    n += (size_t)snprintf(fb + n, cap - n, "side_pal=\nside_left=1\nparty_0_label=> %s\nparty_0_id=rmmc_%s\nparty_0_cls=active\nn_party=1\ncoins=0\nnick_line=%s\nstat_line=%s\nstat_line2=seat %s | %s\n", actor, actor, nick, where, seatn, msg);
+    n += (size_t)snprintf(fb + n, cap - n, "side_pal=\nside_left=1\nparty_0_label=> %s\nparty_0_id=rmmc_%s\nparty_0_cls=active\nn_party=1\ncoins=0\nnick_line=%s\nstat_line=%s\nstat_line2=%s\n", actor, actor, nick, msg, wh);
     int k = 0; char slots[12000] = ""; size_t sn = 0;
     int page = 0, ri = 0; { char pg[PATH_MAX + 32]; snprintf(pg, sizeof pg, "%.4000s/play/page.txt", book); FILE *pf = fopen(pg, "r"); if (pf) { if (fscanf(pf, "%d", &page) != 1) page = 0; fclose(pf); } if (page < 0) page = 0; }   /* the hotbar shows 9 slots a page and a flip slot: 14 slots are wider than the bar (a PREFERENCE, play/page.txt) */
     snprintf(p, sizeof p, "%.4000s/hotbar.pdl", book); FILE *f = fopen(p, "r");
