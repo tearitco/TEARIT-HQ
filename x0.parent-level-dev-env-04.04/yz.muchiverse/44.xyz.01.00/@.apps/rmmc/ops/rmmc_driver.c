@@ -83,13 +83,18 @@ static void bump_view(const char *pkg) {
 /* STOPGAP (owner 2026-11-26, removal: when the engine's token follow, D118, also carries the token's LEVEL): a followed token moves the cursor's cell but not its level, so the third-person camera hung about 14 blocks above Asa and showed only grass. The driver tells the board its actor's level: floor_z of the board manifest + (ledger height - heightmap shift), written to the xelector's pos_z ONLY while that actor is the possessed one, then the redraw nudge. */
 /* held.txt: the first-person arm's input (bv_render_3d.c bv_draw_hand). A PROJECTION of the game, rewritten after every key verb: item = the picked item (play/pick.txt), swing = CLOCK_MONOTONIC ms of the last
  * mine or place press (the engine runs the 300 ms swing from it), kind = which. Deleting it hides the arm. Same clock as the engine's, so the two processes agree. */
-static long g_swing_ms = 0; static char g_swing_kind[8] = "";
+static long g_swing_ms = 0; static char g_swing_kind[8] = "", g_held_item[64] = "";      /* g_held_item: the item held.txt last said, so a hotbar CLICK (rmmc_pick_op writes only play/pick.txt, no key event) is noticed by held_poll */
 static void held_write(const char *pkg, const char *book, const char *actor, const char *verb, int rc) {
     (void)rc; if (!strcmp(verb, "mine") || !strcmp(verb, "place")) {      /* the arm swings on every press, hit or miss, like Minecraft (the hotbar count and the ledger say whether it worked) */ struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); g_swing_ms = t.tv_sec * 1000L + t.tv_nsec / 1000000L; snprintf(g_swing_kind, sizeof g_swing_kind, "%s", verb); }
     char pp[PATH_MAX + 64], item[64] = ""; snprintf(pp, sizeof pp, "%.4000s/play/pick.txt", book); FILE *f = fopen(pp, "r"); if (f) { if (fgets(item, sizeof item, f)) item[strcspn(item, "\r\n")] = 0; fclose(f); }
     char skin[24] = "249,193,157", slv[24] = "64,72,67"; { char rp[PATH_MAX + 80], l[200]; snprintf(rp, sizeof rp, "%.4000s/rigs/rig_%.40s.pdl", book, actor); FILE *rf = fopen(rp, "r"); while (rf && fgets(l, sizeof l, rf)) { int r, g, b; char k[16]; if (sscanf(l, " RIG | %15[^| ] | %d %d %d", k, &r, &g, &b) != 4) continue; if (!strcmp(k, "head")) snprintf(skin, sizeof skin, "%d,%d,%d", r, g, b); else if (!strcmp(k, "arm")) snprintf(slv, sizeof slv, "%d,%d,%d", r, g, b); } if (rf) fclose(rf); }      /* the rig file names the real colours: head = skin, arm = sleeve */
+    snprintf(g_held_item, sizeof g_held_item, "%s", item);
     char hp[PATH_MAX + 64], want[300]; snprintf(hp, sizeof hp, "%.4000s/pieces/system/held.txt", pkg); snprintf(want, sizeof want, "item=%s\nswing=%ld\nkind=%s\nskin=%s\nsleeve=%s\n", item, g_swing_ms, g_swing_kind, skin, slv);
     FILE *w = fopen(hp, "w"); if (w) { fputs(want, w); fclose(w); } }
+/* the hand follows the picked item even when the pick did not come from a key: a mouse click on a hotbar slot only writes play/pick.txt (rmmc_pick_op), so each tick one tiny read compares it with what held.txt last said and rewrites held.txt (and nudges the view: the engine only redraws on a change) when it differs */
+static void held_poll(const char *pkg, const char *book, const char *actor) {
+    char pp[PATH_MAX + 64], item[64] = ""; snprintf(pp, sizeof pp, "%.4000s/play/pick.txt", book); FILE *f = fopen(pp, "r"); if (f) { if (fgets(item, sizeof item, f)) item[strcspn(item, "\r\n")] = 0; fclose(f); }
+    if (strcmp(item, g_held_item)) { held_write(pkg, book, actor, "", 0); bump_view(pkg); } }
 static void sync_view(const char *pkg, const char *vop, const char *data, const char *led, const char *actor) {
     if (!pkg || !pkg[0]) return;
     char p[PATH_MAX + 160], ln[300], o[200]; int floor_z = -1, shift = 0, ay = 0, ax, az;
@@ -224,6 +229,7 @@ int main(int argc, char **argv) {
         if (once) return first_refusal;
         if (idle_pending && now_ms() - last_key >= idle_ms) { char o2[200]; char *av[] = { pop, "project", seed, desk, led, pose, hm, "--idle", "--no-marker", NULL }; run_out(av, o2, sizeof o2); idle_pending = 0; }
         if (stop_ || (owner > 0 && owner_gone(owner))) return 0;
+        held_poll(pkg, book, actor);
         if (g_swing_ms && now_ms() - g_swing_ms <= 450) bump_view(pkg);      /* the engine only redraws on a change: nudge it every tick of a swing and once after, so the arm swings and comes back (about 8 nudges per press) */
         usleep((useconds_t)poll_ms * 1000);
     }
