@@ -1,0 +1,67 @@
+# rmmc_aim (2026-11-27, D147): dig and place what the crosshair aims at. The ENGINE writes <pkg>/pieces/system/aim.txt in first person (cell=<col>,<row>,<level> face=<dcol>,<drow>,<dlevel>, level 0 = the floor
+# block; or cell=none); this case writes that file by hand (the engine side RAN live on debil, photos) and drives the REAL driver: it converts to vox cells (y = level + heightmap shift, 3 here), rmmc_verb mines
+# or places there, vox_op checks reach (RULE reach 4) and writes the row. Asa spawns at 140,6,100 (standing on the grass block y 5); the block east of her is 141,5,100 = level 2.
+# Controls: aim none writes nothing; a block beyond reach is refused by the GAME whatever the aim file says; with no aim file the old front-column rule still works.
+RESULTS | ../results/rmmc_aim.txt
+CASE | b-digs-and-g-places-on-the-aimed-block
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+RUN | rm | -f | $T/h/@.apps/rmmc/play/creative.txt
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/h/@.apps/rmmc/ops/+x/rmmc_pick_op.+x | $HOUSE/@.apps/rmmc/ops/rmmc_pick_op.c
+EXPECT_EXIT | 0 | the hotbar pick op compiles
+COPY | @.apps/rmmc/hotbar.pdl | h/@.apps/rmmc/hotbar.pdl
+MKDIR | h/@.apps/rmmc/play/world
+MKDIR | pkg/pieces/world_01
+MKDIR | pkg/pieces/xelector_01
+MKDIR | pkg/pieces/system
+WRITE | pkg/pieces/world_01/state.txt | desk_id=rmmc-0001\n
+WRITE | pkg/pieces/xelector_01/state.txt | possessed_id=rig:asa\npos_z=17\n
+WRITE | pkg/pieces/system/board_manifest.txt | floor_z=16\n
+ENV | MUCHI_TARGET_ENT | $T/h/@.apps/rmmc/play/world
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_beat_op.+x | $T/h | $T/h/@.apps/rmmc/beats.pdl | 1
+EXPECT_OUT | spawn 140 100 | Asa on the grass plain at 140,6,100
+WRITE | relay.txt |
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --editor-pkg | $T/pkg
+EXPECT_HAS | led.txt | SEAT \p asa \p human | the possession gives the player the seat
+# --- dig the aimed block: the grass block east of her (level 2 = vox y 5)
+WRITE | pkg/pieces/system/aim.txt | cell=141,100,2\nface=0,0,1\n
+WRITE | relay.txt | 98 0\n
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --editor-pkg | $T/pkg
+EXPECT_EXIT | 0 | the first swing is accepted
+EXPECT_HAS | led.txt | DAMAGE \p asa \p hand \p 141 \p 5 \p 100 | it hit the AIMED cell (engine level 2 + shift 3 = vox y 5)
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --editor-pkg | $T/pkg
+EXPECT_HAS | led.txt | MINE \p asa \p 141 \p 5 \p 100 | the second swing broke it
+EXPECT_HAS | led.txt | DROP \p asa \p dirt \p 1 | and grass dropped dirt into the bag
+# --- place through a SIDE face: aim at the next block (142,5,100) on its west face (-1,0,0): the block goes into the hole at 141,5,100
+WRITE | h/@.apps/rmmc/play/pick.txt | dirt\n
+WRITE | pkg/pieces/system/aim.txt | cell=142,100,2\nface=-1,0,0\n
+WRITE | relay.txt | 103 0\n
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --editor-pkg | $T/pkg
+EXPECT_EXIT | 0 | the place is accepted
+EXPECT_HAS | led.txt | PLACE \p asa \p dirt \p 141 \p 5 \p 100 | the dirt went into the cell on the face she looked at (the hole), not on top of the aimed block
+EXPECT_LACKS | led.txt | PLACE \p asa \p dirt \p 142 | CONTROL: not into the aimed block itself
+# --- nothing under the crosshair: refused, nothing written
+WRITE | pkg/pieces/system/aim.txt | cell=none\n
+RUN | grep | -cE | ^(DAMAGE\pMINE\pPLACE\pDROP\pSEAT) | $T/led.txt
+CAPTURE | n_none
+WRITE | relay.txt | 98 0\n
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --editor-pkg | $T/pkg
+EXPECT_EXIT | 13 | CONTROL: aiming at the sky is refused (13: nothing under the crosshair)
+EXPECT_HAS | h/@.apps/rmmc/play/result.txt | nothing under the crosshair | and the reason says so
+RUN | grep | -cE | ^(DAMAGE\pMINE\pPLACE\pDROP\pSEAT) | $T/led.txt
+EXPECT_OUT_IS | $n_none | and no row was written (not even a repeated SEAT row by the fresh driver)
+# --- the GAME holds reach, whatever the aim file says: a block 6 cells away is refused
+WRITE | pkg/pieces/system/aim.txt | cell=146,100,2\nface=0,0,1\n
+RUN | grep | -cE | ^(DAMAGE\pMINE\pPLACE\pDROP\pSEAT) | $T/led.txt
+CAPTURE | n_far
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --editor-pkg | $T/pkg
+EXPECT_EXIT | 12 | CONTROL: out of reach (RULE reach 4) is refused by vox_op even with an aim file naming the block
+RUN | grep | -cE | ^(DAMAGE\pMINE\pPLACE\pDROP\pSEAT) | $T/led.txt
+EXPECT_OUT_IS | $n_far | and nothing was written
+# --- no aim file (third person, a board without aim=1): the old front-column rule still applies
+RUN | rm | -f | $T/pkg/pieces/system/aim.txt
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --editor-pkg | $T/pkg
+EXPECT_EXIT | 0 | with no aim file the swing is accepted (the column in front of her)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | verify | $T/h/@.apps/rmmc/vox | $T/led.txt
+EXPECT_OUT | verified | the ledger written through the aim replays byte for byte
+CLEAN |

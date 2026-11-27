@@ -86,7 +86,7 @@ EXPECT_EXIT | 0 | the jump key is accepted
 EXPECT_HAS | feed.txt | stat_line2=4/7 B: dig dirt | one space press: the bar is on step 4
 WRITE | relay.txt |
 RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --feed | $T/feed.txt | --editor-pkg | $T/pkg
-EXPECT_HAS | feed.txt | stat_line=Face grass. Press B twice to dig dirt. | LOOK: the sentence of step 4
+EXPECT_HAS | feed.txt | stat_line=Aim at grass. Press B twice to dig dirt. | LOOK: the sentence of step 4
 # --- step 4: dig dirt. "Press B" = the letter b, code 98. The sentence promises: the SECOND swing breaks it, and grass gives DIRT (the dirt steps 5 and 6 need; creative is off).
 WRITE | relay.txt | 98 0\n
 RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --feed | $T/feed.txt | --editor-pkg | $T/pkg
@@ -108,7 +108,7 @@ WRITE | relay.txt | 49 0\n
 RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --feed | $T/feed.txt | --editor-pkg | $T/pkg
 EXPECT_FILE | h/@.apps/rmmc/play/pick.txt | dirt\n | the 1 key picked dirt
 EXPECT_HAS | feed.txt | gmbar_title=Blocks  (picked: dirt) | the hotbar title says dirt is picked
-EXPECT_HAS | feed.txt | stat_line=Press G to place the dirt in front. | the bar says step 6
+EXPECT_HAS | feed.txt | stat_line=Press G to place dirt where you aim. | the bar says step 6
 EXPECT_HAS | feed.txt | stat_line2=6/7 G: place | with its key
 # --- step 6: place. "Press G" = code 103. Creative is OFF: the dirt must have come from the mined block (the bag), and the place costs it.
 WRITE | relay.txt | 103 0\n

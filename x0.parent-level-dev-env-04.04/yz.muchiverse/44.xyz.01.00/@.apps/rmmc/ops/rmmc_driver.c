@@ -235,7 +235,8 @@ int main(int argc, char **argv) {
                 if (desk_ok && poss_actor[0]) { setenv("RMMC_ACTOR", poss_actor, 1); char m2[200]; rmmc_play_verb(house, book, "seat", "harness", "human", m2, sizeof m2); }      /* released, or switched to another token: the old actor goes back to the harness */
                 poss_actor[0] = 0; snprintf(cur_poss, sizeof cur_poss, "%s", pid_);
                 if (!strncmp(pid_, "rig:", 4) && pid_[4] && strlen(pid_ + 4) < sizeof poss_actor) { int ok = 1; for (const char *c = pid_ + 4; *c; c++) if (!((*c >= 'a' && *c <= 'z') || (*c >= '0' && *c <= '9') || *c == '_')) ok = 0; if (ok) snprintf(poss_actor, sizeof poss_actor, "%s", pid_ + 4); }
-                if (poss_actor[0]) { snprintf(actor_b, sizeof actor_b, "%s", poss_actor); if (desk_ok) { setenv("RMMC_ACTOR", poss_actor, 1); char m2[200]; rmmc_play_verb(house, book, "seat", "human", "human", m2, sizeof m2); } }
+                if (poss_actor[0]) { snprintf(actor_b, sizeof actor_b, "%s", poss_actor); if (desk_ok) { setenv("RMMC_ACTOR", poss_actor, 1); char so[100]; char *as[] = { vop, "seat", data, led, poss_actor, NULL }; run_out(as, so, sizeof so);
+                    if (strcmp(so, "seat=human")) { char m2[200]; rmmc_play_verb(house, book, "seat", "human", "human", m2, sizeof m2); } } }      /* a SEAT row only when the seat really changes (2026-11-27: every driver restart appended a SEAT human the ledger already said) */
                 if (poss_actor[0] && desk_ok) sync_view(pkg, vop, data, led, poss_actor);      /* a fresh possession frames the actor at once */
                 last_feed = 0; }
             setenv("RMMC_ACTOR", actor_b, 1); }

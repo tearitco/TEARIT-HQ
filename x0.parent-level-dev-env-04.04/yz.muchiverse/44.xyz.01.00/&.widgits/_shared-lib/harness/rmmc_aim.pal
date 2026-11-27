@@ -1,0 +1,4 @@
+# rmmc_aim.pal - dig and place what the crosshair aims at (D147): aim.txt -> driver -> vox cells -> mine/place, reach held by the game
+exec ./ops/+x/harness_case_op.+x cases/rmmc_aim.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/rmmc_aim.pdl
+halt
