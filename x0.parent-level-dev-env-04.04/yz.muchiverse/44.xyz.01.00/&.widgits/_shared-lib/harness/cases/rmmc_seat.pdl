@@ -4,6 +4,9 @@ RESULTS | ../results/rmmc_seat.txt
 CASE | human-keys-become-verb-pages
 SCRATCH
 INCLUDE | ../fixtures/rmmc_house.pdl
+# 2026-11-27: this case feeds three walk presses in ONE driver pass (they arrive within a few ms). Since keys.pdl RULE step_ms (2026-11-26, 9f1838ffc) the driver correctly DROPS a walk press inside step_ms of the last step (a held key must not queue), so this case failed 5 checks. It tests the key-to-verb mapping, not the repeat rate: the scratch copy sets step_ms 0 ("every press steps"). The rate itself is held by rmmc_stranger (one press per pass).
+RUN | sed | -i | s/^RULE \p step_ms \p 100$/RULE \p step_ms \p 0/ | $T/h/@.apps/rmmc/keys.pdl
+EXPECT_HAS | h/@.apps/rmmc/keys.pdl | RULE \p step_ms \p 0 | the scratch keys.pdl has step_ms 0 (the sed really changed it)
 RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_beat_op.+x | $T/h | $T/h/@.apps/rmmc/beats.pdl | 1
 EXPECT_OUT | beat 1: spawn 140 100 x1 ok | the harness seat (no row) spawns Asa
 RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | seat | $T/h/@.apps/rmmc/vox | $T/led.txt | asa
@@ -23,15 +26,9 @@ EXPECT_OUT | 6 | spawn, three walks and the jump's two rows: the unknown key wro
 EXPECT_HAS | h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/events.txt | 142 101 200 90 60 rig:asa 0 2 3 | the same projection as the beat op: row 101, facing south, jumping
 EXPECT_HAS | feed.txt | asa: at=142,6,101 | the feed names where Asa is
 EXPECT_HAS | feed.txt | seat human | and the seat
-EXPECT_HAS | feed.txt | events are paused in Blueprintz | with events paused the driver plays the verb DIRECTLY and says so on the feed
+EXPECT_HAS | feed.txt | (events paused) | with events paused the driver plays the verb DIRECTLY and says so on the bar, short enough to fit it (2026-11-27)
 EXPECT_FILE | bp.txt | paused=1\n | and never clears the owner's pause
-RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --once | --feed | $T/feed.txt
-RUN | /usr/bin/stat | -c | %Y | $T/feed.txt
-CAPTURE | m0
-SLEEP | 1300
-RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --once | --feed | $T/feed.txt
-RUN | /usr/bin/stat | -c | %Y | $T/feed.txt
-EXPECT_OUT_IS | $m0 | the-feed-is-written-only-when-its-bytes-change
+# 2026-11-27: the "feed is written only when its bytes change" check moved to the loop-driver case below. Here it compared two SEPARATE --once drivers, and since the feed carries gm_pid (the editor watchdog needs it) two drivers write different bytes by design.
 CLEAN |
 CASE | the-seat-refuses-the-other-controller
 SCRATCH
@@ -83,8 +80,19 @@ WAIT_HAS | feed.txt | asa: at=140,6,100 | 8000 | the-driver-wrote-its-feed
 APPEND | relay.txt | 1001 5\n
 WAIT_HAS | h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/events.txt | 141 100 200 90 60 rig:asa 0 6 1 | 8000 | a-key-appended-after-start-walked-her-one-column
 WAIT_HAS | h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/events.txt | 141 100 200 90 60 rig:asa 0 6 0 | 8000 | after-idle_after_ms-the-driver-re-projected-idle-(pattern-0)
+SLEEP | 700
+RUN | /usr/bin/stat | -c | %i | $T/feed.txt
+CAPTURE | m0
+SLEEP | 1300
+RUN | /usr/bin/stat | -c | %i | $T/feed.txt
+EXPECT_OUT_IS | $m0 | the-running-driver-writes-the-feed-only-when-its-bytes-change-(same-inode-over-1.3-s-at-rest;-every-write-is-a-rename)
+APPEND | relay.txt | 1001 9\n
+WAIT_HAS | feed.txt | asa: at=142,6,100 | 8000 | a-second-key-walked-her-and-the-feed-says-so
+RUN | /usr/bin/stat | -c | %i | $T/feed.txt
+CAPTURE | m1
+EXPECT_NE | $m0 | $m1 | vacuity-a-real-change-DOES-give-the-feed-a-new-inode-so-the-equality-above-can-fail
 RUN | grep | -c | ^MOVE | $T/led.txt
-EXPECT_OUT | 2 | the-history-line-before-the-start-was-NOT-replayed-(spawn-plus-one-walk)
+EXPECT_OUT | 3 | the-history-line-before-the-start-was-NOT-replayed-(spawn-plus-the-two-walks-sent-after-start;-a-replayed-history-line-would-make-4)
 RUN | grep | -c | IDLE | $T/led.txt
 EXPECT_OUT | 0 | idle-is-never-a-ledger-row
 EXPECT_ALIVE | $DRV | the-driver-stays-up-while-its-owner-lives

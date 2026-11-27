@@ -5,6 +5,8 @@
  *   rmmc_tutorial_op stop   <book>                     delete play/tutorial.txt. Prints  stopped
  *   rmmc_tutorial_op status <book> <ledger> [actor]    prints one line:  off  |  step=<i>/<n> id=<id> short=<text> have=<k> need=<m> goal=<text>  |  done=<n>/<n> lesson=<id>
  *   rmmc_tutorial_op list   <book>                     the lessons: one line per LESSON row
+ *   rmmc_tutorial_op check  <book>                     every STEP fits the left bar: the goal word-wraps into <= RULE goal_lines lines of RULE bar_width chars, the step line (as the driver draws it) fits one. Prints  ok: ...  or one  too long: ...  line per row; exit 1 when any is too long
+ * Check kinds: seat_human, moves N, jump, mine N, mined <item> (a DROP of <item> after a MINE), place N, reset, picked <item>; see tutorial.pdl.
  * Steps are checked IN ORDER by one pass over the ledger rows after the offset: a row that matches the CURRENT step's check counts toward it, and when the step is full the next one starts with the NEXT row (a row never counts twice).
  *   seat_human is the exception: it is a STATE, not an event (the last SEAT row of the actor, from the whole ledger, says human), so a player who is already in control passes it at once.
  * Exit: 0 ok | 2 usage / unreadable / unknown lesson.   Build: gcc -std=gnu11 -Wall -Wextra -O2 -o ops/+x/rmmc_tutorial_op.+x ops/rmmc_tutorial_op.c */
@@ -27,7 +29,7 @@ static int load_lesson(const char *book, const char *lesson) {
     char p[4200]; snprintf(p, sizeof p, "%.4000s/tutorial.pdl", book); FILE *f = fopen(p, "r"); if (!f) return 2; char l[600], *x[8]; int on = 0; nst = 0; lesson_title[0] = 0;
     while (fgets(l, sizeof l, f)) { if (l[0] == '#') continue; int n = split(l, x, 8);
         if (n >= 3 && !strcmp(x[0], "LESSON")) { on = !strcmp(x[1], lesson); if (on) snprintf(lesson_title, sizeof lesson_title, "%s", x[2]); continue; }
-        if (on && n >= 6 && !strcmp(x[0], "STEP") && nst < MAXSTEP) { Step *s = &ST[nst++]; snprintf(s->id, sizeof s->id, "%s", x[1]); snprintf(s->shortt, sizeof s->shortt, "%s", x[2]); snprintf(s->goal, sizeof s->goal, "%s", x[3]); snprintf(s->kind, sizeof s->kind, "%s", x[4]); snprintf(s->arg, sizeof s->arg, "%.39s", x[5]); s->need = n >= 6 ? atoi(x[5]) : 1; if (s->need < 1) s->need = 1; } }
+        if (on && n >= 6 && !strcmp(x[0], "STEP") && nst < MAXSTEP) { Step *s = &ST[nst++]; snprintf(s->id, sizeof s->id, "%s", x[1]); snprintf(s->shortt, sizeof s->shortt, "%s", x[2]); snprintf(s->goal, sizeof s->goal, "%s", x[3]); snprintf(s->kind, sizeof s->kind, "%s", x[4]); snprintf(s->arg, sizeof s->arg, "%.39s", x[5]); s->need = n >= 6 ? atoi(x[5]) : 1; if (s->need < 1) s->need = 1; } }      /* an item argument (picked dirt, mined dirt) reads as need 1 */
     fclose(f); return nst ? 0 : 2; }
 
 static int read_pref(const char *book, char *lesson, size_t ln, long *off, const char *ledger) {      /* offset_<ledger file name>= wins over the generic offset=: a lesson started with a ledger FOLDER remembers the start of every page ledger in it */
@@ -60,15 +62,30 @@ static int progress(const char *book, const char *ledger, const char *actor, lon
             if (!strcmp(k, "jump") && mx == px && mz == pz && my == py + 1) hit = 1;
             px = mx; py = my; pz = mz; }
         else if (!strcmp(x[0], "MINE") && !strcmp(k, "mine") && n >= 2 && !strcmp(x[1], actor)) hit = 1;
+        else if (!strcmp(x[0], "DROP") && !strcmp(k, "mined") && n >= 3 && !strcmp(x[1], actor) && !strcmp(x[2], ST[cur].arg)) hit = 1;      /* mined <item>: a broken block that put <item> in the bag (the DROP row vox_op writes after MINE). Stranger QA 2026-11-27: "mine any block" let a player break sand, then "pick dirt, place it" was refused with creative off */
         else if (!strcmp(x[0], "PLACE") && !strcmp(k, "place") && n >= 2 && !strcmp(x[1], actor)) hit = 1;
         else if (!strcmp(x[0], "RESET") && !strcmp(k, "reset") && n >= 2 && !strcmp(x[1], actor)) hit = 1;
         if (hit && ++*have >= ST[cur].need) { cur++; *have = 0; while (cur < nst && is_state(&ST[cur]) && state_ok(&ST[cur], book, ledger, actor)) cur++; } }
     fclose(f); return cur; }
 
 int main(int argc, char **argv) {
-    if (argc < 3) { fprintf(stderr, "usage: rmmc_tutorial_op start|stop|status|list <book> [ledger] [lesson|actor]\n"); return 2; }
+    if (argc < 3) { fprintf(stderr, "usage: rmmc_tutorial_op start|stop|status|list|check <book> [ledger] [lesson|actor]\n"); return 2; }
     const char *verb = argv[1], *book = argv[2];
     if (!strcmp(verb, "list")) { char p[4200]; snprintf(p, sizeof p, "%.4000s/tutorial.pdl", book); FILE *f = fopen(p, "r"); if (!f) return 2; char l[600], *x[8]; while (fgets(l, sizeof l, f)) { if (l[0] == '#') continue; int n = split(l, x, 8); if (n >= 3 && !strcmp(x[0], "LESSON")) printf("%s\t%s\n", x[1], x[2]); } fclose(f); return 0; }
+    if (!strcmp(verb, "check")) {      /* every line must FIT the screen (STRANGER QA 2026-11-27, live photos): the editor's left bar is 190 px, about 20 characters a line, word-wrapped; the goal sentence gets two lines (a third is clipped:
+                                         * "Press B to swing the pickaxe. The second swing..." lost its point) and the step line ONE (its wrapped count "0/5" hid under the party box). RULE rows of tutorial.pdl: bar_width, goal_lines.
+                                         * The step line is checked exactly as rmmc_driver draws it: "<i>/<n> <short>" plus " <k> of <need>" when need > 1, at its widest. */
+        char p[4200]; snprintf(p, sizeof p, "%.4000s/tutorial.pdl", book); FILE *f = fopen(p, "r"); if (!f) return 2; char l[600], *x[8]; int width = 20, glines = 2, rows = 0, bad = 0, per[32] = {0}, nl = -1;
+        while (fgets(l, sizeof l, f)) { if (l[0] == '#') continue; int n = split(l, x, 8); if (n >= 3 && !strcmp(x[0], "RULE") && !strcmp(x[1], "bar_width")) width = atoi(x[2]); else if (n >= 3 && !strcmp(x[0], "RULE") && !strcmp(x[1], "goal_lines")) glines = atoi(x[2]);
+            else if (n >= 3 && !strcmp(x[0], "LESSON") && nl < 31) nl++; else if (n >= 6 && !strcmp(x[0], "STEP") && nl >= 0) per[nl]++; }
+        if (width < 8) width = 8;
+        rewind(f); nl = -1; while (fgets(l, sizeof l, f)) { if (l[0] == '#') continue; int n = split(l, x, 8); if (n >= 3 && !strcmp(x[0], "LESSON") && nl < 31) { nl++; continue; } if (n < 6 || strcmp(x[0], "STEP") || nl < 0) continue; rows++;
+            int lines = 1, cur = 0; char g[300]; snprintf(g, sizeof g, "%s", x[3]);      /* greedy word wrap, as the renderer does */
+            for (char *w = strtok(g, " "); w; w = strtok(NULL, " ")) { int wl = (int)strlen(w); if (!cur) cur = wl; else if (cur + 1 + wl <= width) cur += 1 + wl; else { lines++; cur = wl; } while (cur > width) { lines++; cur -= width; } }
+            if (lines > glines) { printf("too long: step %s goal takes %d lines of %d chars (max %d): %s\n", x[1], lines, width, glines, x[3]); bad++; }
+            int need = atoi(x[5]); char sl[200]; int k = snprintf(sl, sizeof sl, "%d/%d %s", per[nl], per[nl], x[2]); if (need > 1) k += snprintf(sl + k, sizeof sl - (size_t)k, " %d of %d", need, need);
+            if (k > width) { printf("too long: step %s step line %d > %d chars: %s\n", x[1], k, width, sl); bad++; } }
+        fclose(f); if (!bad) printf("ok: %d steps fit (goal <= %d lines, step line <= 1 line, %d chars a line)\n", rows, glines, width); return bad ? 1 : 0; }
     char pp[4200]; snprintf(pp, sizeof pp, "%.4000s/play/tutorial.txt", book);
     if (!strcmp(verb, "stop")) { unlink(pp); puts("stopped"); return 0; }
     if (argc < 4) { fprintf(stderr, "rmmc_tutorial_op: %s needs a ledger\n", verb); return 2; }

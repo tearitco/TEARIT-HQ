@@ -21,7 +21,10 @@ EXPECT_OUT | id=walk short=arrows have=3 need=5 | seat human passes step 1, thre
 WRITE | led.txt | SEAT | asa | harness\nMOVE | asa | 142 | 6 | 100\nTURN | 1 | move\nSEAT | asa | human\nMOVE | asa | 143 | 6 | 100\nMOVE | asa | 144 | 6 | 100\nMOVE | asa | 145 | 6 | 100\nMOVE | ava | 9 | 6 | 9\nMOVE | ava | 10 | 6 | 9\nMOVE | asa | 145 | 7 | 100\nMOVE | asa | 145 | 6 | 100\n
 RUN | $T/book/ops/+x/rmmc_tutorial_op.+x | status | $T/book | $T/led.txt
 EXPECT_OUT | id=walk short=arrows have=3 need=5 | CONTROL: another actor's moves and a hop do not count as steps
-WRITE | led.txt | SEAT | asa | harness\nMOVE | asa | 142 | 6 | 100\nTURN | 1 | move\nSEAT | asa | human\nMOVE | asa | 143 | 6 | 100\nMOVE | asa | 144 | 6 | 100\nMOVE | asa | 145 | 6 | 100\nMOVE | asa | 146 | 6 | 100\nMOVE | asa | 147 | 6 | 100\nMOVE | asa | 147 | 7 | 100\nMOVE | asa | 147 | 6 | 100\nMINE | asa | 148 | 6 | 100 | dirt\n
+WRITE | led.txt | SEAT | asa | harness\nMOVE | asa | 142 | 6 | 100\nTURN | 1 | move\nSEAT | asa | human\nMOVE | asa | 143 | 6 | 100\nMOVE | asa | 144 | 6 | 100\nMOVE | asa | 145 | 6 | 100\nMOVE | asa | 146 | 6 | 100\nMOVE | asa | 147 | 6 | 100\nMOVE | asa | 147 | 7 | 100\nMOVE | asa | 147 | 6 | 100\nMINE | asa | 148 | 6 | 100 | sand\nDROP | asa | sand | 1\n
+RUN | $T/book/ops/+x/rmmc_tutorial_op.+x | status | $T/book | $T/led.txt
+EXPECT_OUT | id=mine | CONTROL: a broken block that dropped SAND does not pass "dig dirt" (the place step later needs dirt in the bag; creative is off)
+WRITE | led.txt | SEAT | asa | harness\nMOVE | asa | 142 | 6 | 100\nTURN | 1 | move\nSEAT | asa | human\nMOVE | asa | 143 | 6 | 100\nMOVE | asa | 144 | 6 | 100\nMOVE | asa | 145 | 6 | 100\nMOVE | asa | 146 | 6 | 100\nMOVE | asa | 147 | 6 | 100\nMOVE | asa | 147 | 7 | 100\nMOVE | asa | 147 | 6 | 100\nMINE | asa | 148 | 6 | 100 | grass_top\nDROP | asa | dirt | 1\n
 RUN | $T/book/ops/+x/rmmc_tutorial_op.+x | status | $T/book | $T/led.txt
 EXPECT_OUT | id=pick | five steps, a hop and a mine in order reach the hotbar step
 WRITE | book/play/pick.txt | axe\n
@@ -30,10 +33,10 @@ EXPECT_OUT | id=pick | CONTROL: the axe is picked, the pick step waits
 WRITE | book/play/pick.txt | dirt\n
 RUN | $T/book/ops/+x/rmmc_tutorial_op.+x | status | $T/book | $T/led.txt
 EXPECT_OUT | id=place | dirt picked: the place step is next
-WRITE | led.txt | SEAT | asa | harness\nMOVE | asa | 142 | 6 | 100\nTURN | 1 | move\nSEAT | asa | human\nMOVE | asa | 143 | 6 | 100\nMOVE | asa | 144 | 6 | 100\nMOVE | asa | 145 | 6 | 100\nMOVE | asa | 146 | 6 | 100\nMOVE | asa | 147 | 6 | 100\nMOVE | asa | 147 | 7 | 100\nMOVE | asa | 147 | 6 | 100\nMINE | asa | 148 | 6 | 100 | dirt\nRESET | asa | spawn\n
+WRITE | led.txt | SEAT | asa | harness\nMOVE | asa | 142 | 6 | 100\nTURN | 1 | move\nSEAT | asa | human\nMOVE | asa | 143 | 6 | 100\nMOVE | asa | 144 | 6 | 100\nMOVE | asa | 145 | 6 | 100\nMOVE | asa | 146 | 6 | 100\nMOVE | asa | 147 | 6 | 100\nMOVE | asa | 147 | 7 | 100\nMOVE | asa | 147 | 6 | 100\nMINE | asa | 148 | 6 | 100 | grass_top\nDROP | asa | dirt | 1\nRESET | asa | spawn\n
 RUN | $T/book/ops/+x/rmmc_tutorial_op.+x | status | $T/book | $T/led.txt
 EXPECT_OUT | id=place | CONTROL: a RESET before the place step does not skip it (steps are in order)
-WRITE | led.txt | SEAT | asa | harness\nMOVE | asa | 142 | 6 | 100\nTURN | 1 | move\nSEAT | asa | human\nMOVE | asa | 143 | 6 | 100\nMOVE | asa | 144 | 6 | 100\nMOVE | asa | 145 | 6 | 100\nMOVE | asa | 146 | 6 | 100\nMOVE | asa | 147 | 6 | 100\nMOVE | asa | 147 | 7 | 100\nMOVE | asa | 147 | 6 | 100\nMINE | asa | 148 | 6 | 100 | dirt\nPLACE | asa | dirt | 148 | 6 | 100\nRESET | asa | spawn\n
+WRITE | led.txt | SEAT | asa | harness\nMOVE | asa | 142 | 6 | 100\nTURN | 1 | move\nSEAT | asa | human\nMOVE | asa | 143 | 6 | 100\nMOVE | asa | 144 | 6 | 100\nMOVE | asa | 145 | 6 | 100\nMOVE | asa | 146 | 6 | 100\nMOVE | asa | 147 | 6 | 100\nMOVE | asa | 147 | 7 | 100\nMOVE | asa | 147 | 6 | 100\nMINE | asa | 148 | 6 | 100 | grass_top\nDROP | asa | dirt | 1\nPLACE | asa | dirt | 148 | 6 | 100\nRESET | asa | spawn\n
 RUN | $T/book/ops/+x/rmmc_tutorial_op.+x | status | $T/book | $T/led.txt
 EXPECT_OUT | done=7/7 lesson=lesson1 | place then reset finishes the lesson
 RUN | $T/book/ops/+x/rmmc_tutorial_op.+x | stop | $T/book

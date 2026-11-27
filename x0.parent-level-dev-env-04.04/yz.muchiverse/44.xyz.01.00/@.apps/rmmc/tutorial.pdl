@@ -2,14 +2,19 @@
 # A lesson is a list of steps; the checker op (ops/rmmc_tutorial_op.c) reads the LEDGER from the row where the lesson was started and decides which step the player is on. Nothing here changes the game, and the progress is never stored:
 # it is derived from the ledger every time (no ghost data). Only the START point (a byte offset) is kept, as a PREFERENCE in play/tutorial.txt.
 # LESSON | id | title
-# STEP   | id | short (left bar, <= 18 chars) | goal (the sentence a narrator says) | check kind | need
+# STEP   | id | short (the left bar step line, after "<i>/<n> ") | goal (the sentence on the left bar's message line) | check kind | need
 #   check kinds:  seat_human  the last SEAT row of Asa says human (nothing to do if you already are)    moves N  N MOVE rows that change the column or row     jump  a MOVE that gains one level on the same cell
-#                 mine N      N MINE rows by Asa    place N  N PLACE rows by Asa    reset  a RESET row    picked <item>  the hotbar choice (play/pick.txt, a preference) is that item: a state like seat_human, passed at once if it already is
+#                 mine N      N MINE rows by Asa    mined <item>  a broken block put <item> in the bag (a DROP row; grass drops dirt)    place N  N PLACE rows by Asa    reset  a RESET row    picked <item>  the hotbar choice (play/pick.txt, a preference) is that item: a state like seat_human, passed at once if it already is
+# SCREEN FIT (stranger QA 2026-11-27, case rmmc_stranger, live photos): the editor's left bar is 190 px wide, about 20 characters a line; text past two lines is clipped, so a longer goal loses its end on screen ("...The second swing..." lost the point).
+# `rmmc_tutorial_op check <book>` word-wraps each goal at bar_width characters and refuses one that needs more than goal_lines lines, and a step line ("2/7 arrows 0 of 5", as the driver draws it) longer than one line. Name the key in the sentence the way it is printed on the key (B, G, ], Home), so a stranger can find it.
+# The narrated video has its own words (tutorial_narration.pdl), so these can stay short.
+RULE | bar_width  | 20
+RULE | goal_lines | 2
 LESSON | lesson1 | Drive Asa
-STEP | take  | press ]            | Press the right bracket key to take control of Asa.                  | seat_human | 1
-STEP | walk  | arrows            | Walk with the arrow keys. Five steps.                                  | moves      | 5
-STEP | jump  | space: jump       | Press the space bar to jump up one block.                              | jump       | 1
-STEP | mine  | B: mine           | Press B to swing the pickaxe. The second swing breaks the block.      | mine       | 1
-STEP | pick  | 1: pick dirt       | Press the number one to pick dirt in the hotbar.                      | picked     | dirt
-STEP | place | G: place          | Press G to place the block you picked, in front of Asa.               | place      | 1
-STEP | reset | Home x2: back     | Stuck? Press Home twice to go back to the start.                      | reset      | 1
+STEP | take  | press ]         | Press the ] key to drive Asa.           | seat_human | 1
+STEP | walk  | arrows          | Walk five steps with the arrow keys.    | moves      | 5
+STEP | jump  | space: jump     | Press space to jump up one block.       | jump       | 1
+STEP | mine  | B: dig dirt     | Face grass. Press B twice to dig dirt.  | mined      | dirt
+STEP | pick  | 1: pick dirt    | Press 1 to pick dirt in the hotbar.     | picked     | dirt
+STEP | place | G: place        | Press G to place the dirt in front.     | place      | 1
+STEP | reset | Home x2: back   | Stuck? Press Home twice to go back.     | reset      | 1
