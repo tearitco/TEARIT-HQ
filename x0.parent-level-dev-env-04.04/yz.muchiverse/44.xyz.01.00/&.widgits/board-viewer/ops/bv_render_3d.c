@@ -3538,6 +3538,85 @@ static void write_overlay_receipt(const char *path, int ov_w, int ov_h) {
  * a loop with the GPU context kept resident (Path A v2). */
 #ifdef BV_HAVE_GPU
 static double g_prof_load_ms = 0, g_prof_gpu_ms = 0, g_prof_write_ms = 0;
+/* AIM (D147, owner 2026-11-27: "digging should be what hand literally contacts, or that mine pointer is pointed on. there should be a aim for that like in game"). Opt-in per board: `aim=1` in the host's
+ * pieces/system/arrow_config.txt (no per-book code here; `aim_reach=<cells>`, default 5). In first person the engine casts the SCREEN-CENTRE ray with the same voxel walk as bv_ray_click (world X = column, Y = up,
+ * Z = row), stops at the first solid voxel within reach, remembers the face the ray came in through, outlines that block and draws a crosshair. The hit is a PROJECTION of the camera, written to
+ * pieces/system/aim.txt only when it changes:  cell=<col>,<row>,<level>  face=<dcol>,<drow>,<dlevel>  (the side you look at: a place goes into cell+face)  or  cell=none. Not in first person, or aim off:
+ * the file is deleted, so a game falls back to its own rule. Nothing is decided here: the game reads the file, checks reach and writes the ledger row. */
+static int g_aim_hit = 0, g_aim_x = 0, g_aim_y = 0, g_aim_z = 0, g_aim_fx = 0, g_aim_fy = 0, g_aim_fz = 0;
+static int bv_aim_cfg(const char *root, int *reach) {
+    *reach = 5; if (!root || !root[0]) return 0;
+    char cfg[PATH_BUF]; snprintf(cfg, sizeof(cfg), "%s/pieces/system/arrow_config.txt", root);
+    int r = read_kv_int(cfg, "aim_reach", 5); if (r >= 1 && r <= 32) *reach = r;
+    return read_kv_int(cfg, "aim", 0) == 1;
+}
+static void bv_aim_write(const char *root, int on) {      /* rewrite aim.txt only when what it says changes (a file per frame would be a disk writer at 30 fps) */
+    static char last[PATH_BUF + 96] = ""; char p[PATH_BUF], want[96];
+    snprintf(p, sizeof(p), "%s/pieces/system/aim.txt", root);
+    if (!on) { if (strcmp(last, "off")) { unlink(p); snprintf(last, sizeof(last), "off"); } return; }
+    if (g_aim_hit) snprintf(want, sizeof(want), "cell=%d,%d,%d\nface=%d,%d,%d\n", g_aim_x, g_aim_y, g_aim_z, g_aim_fx, g_aim_fy, g_aim_fz);
+    else snprintf(want, sizeof(want), "cell=none\n");
+    char key[PATH_BUF + 96]; snprintf(key, sizeof(key), "%.900s|%s", root, want);
+    if (!strcmp(key, last)) return;
+    char t[PATH_BUF + 8]; snprintf(t, sizeof(t), "%s.tmp", p); FILE *f = fopen(t, "w"); if (!f) return;
+    fputs(want, f); fclose(f); if (rename(t, p) == 0) snprintf(last, sizeof(last), "%s", key);
+}
+/* the cast walks the grid the GPU path RENDERS (sc.grid), so the block you see is the block you aim at: grid index col + row*W + lvl*W*H, the eye in grid space (x = col, y = level, z = row), a maker
+ * (painted) map cropped by vox/voy and lifted by zo (= sc.zoff; 0 otherwise). Results in world cells: column = col + vox, row = row + voy, level = lvl - zo (0 = the floor level, the convention ADDWIRE uses). */
+static void bv_aim_cast(const unsigned char *grid, int W, int H, int Z, int maker, double ex, double ey, double ez, double dx, double dy, double dz, int reach, int vox, int voy, int zo) {
+    g_aim_hit = 0;
+    if (!grid || W < 1 || H < 1 || Z < 1) return;
+    double ox = ex, oy = ez, oz = ey; double rx = dx, ry = dz, rz = dy;      /* DDA axes: x = col, y = row, z = level */
+    if (rx == 0) rx = 1e-9;
+    if (ry == 0) ry = 1e-9;
+    if (rz == 0) rz = 1e-9;
+    int x = (int)floor(ox), y = (int)floor(oy), z = (int)floor(oz), sx0 = x, sy0 = y, sz0 = z;
+    int sx = rx > 0 ? 1 : -1, sy = ry > 0 ? 1 : -1, sz = rz > 0 ? 1 : -1, axis = -1;
+    double tdx = fabs(1.0 / rx), tdy = fabs(1.0 / ry), tdz = fabs(1.0 / rz);
+    double tmx = ((rx > 0 ? (x + 1) : x) - ox) / rx, tmy = ((ry > 0 ? (y + 1) : y) - oy) / ry, tmz = ((rz > 0 ? (z + 1) : z) - oz) / rz, tcur = 0;
+    for (int n = 0; n < 128 && tcur <= (double)reach; n++) {
+        if (!(x == sx0 && y == sy0 && z == sz0) && x >= 0 && x < W && y >= 0 && y < H && z >= 0 && z < Z) {
+            unsigned char b = grid[(size_t)x + (size_t)y * W + (size_t)z * W * H];
+            if (b && (maker || !voxel_is_air((char)b))) {
+                g_aim_hit = 1; g_aim_x = x + vox; g_aim_y = y + voy; g_aim_z = z - zo;
+                g_aim_fx = axis == 0 ? -sx : 0; g_aim_fy = axis == 1 ? -sy : 0; g_aim_fz = axis == 2 ? -sz : 0;      /* the face the ray came in through: back along the last step */
+                if (axis < 0) g_aim_fz = 1;
+                return;
+            }
+        }
+        if (tmx <= tmy && tmx <= tmz) { tcur = tmx; x += sx; tmx += tdx; axis = 0; }
+        else if (tmy <= tmz) { tcur = tmy; y += sy; tmy += tdy; axis = 1; }
+        else { tcur = tmz; z += sz; tmz += tdz; axis = 2; }
+    }
+}
+static int g_aim_on = 0, g_aim_wired = 0;      /* this frame: aim active / the GPU path already outlined the block in 3D */
+static void bv_aim_line(int x0, int y0, int x1, int y1) {      /* a 2-pixel dark line into the frame (Bresenham), clipped to the frame */
+    int dx = abs(x1 - x0), dy = -abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1, err = dx + dy;
+    for (int n = 0; n < 8192; n++) {
+        for (int t = 0; t < 2; t++) { int px = x0 + (dy < -dx ? t : 0), py = y0 + (dy < -dx ? 0 : t); if (px >= 0 && px < g_fw && py >= 0 && py < g_fh) { unsigned char *p = FB(px, py); p[0] = p[1] = p[2] = 20; p[3] = 255; } }
+        if (x0 == x1 && y0 == y1) break;
+        int e2 = 2 * err; if (e2 >= dy) { err += dy; x0 += sx; } if (e2 <= dx) { err += dx; y0 += sy; }
+    }
+}
+static void bv_draw_aim_outline(const Camera *cam) {      /* CPU path: the aimed block's 12 edges projected with the click round-trip maths (bv_write_click_proj); skipped when a corner is behind the eye */
+    if (!g_fbuf || !g_aim_hit) return;
+    double tt = tan(g_fov_deg * M_PI_LOCAL / 180.0 / 2.0), asp = (double)g_fw / (double)g_fh; int px[8], py[8];
+    for (int k = 0; k < 8; k++) {
+        Vec3 v = { g_aim_x + ((k & 1) ? 1.0 : 0.0) - cam->eye.x, g_aim_z + ((k & 4) ? 1.0 : 0.0) - cam->eye.y, g_aim_y + ((k & 2) ? 1.0 : 0.0) - cam->eye.z };      /* world X = column, Y = level, Z = row */
+        double d = v3_dot(v, cam->forward); if (d <= 0.05) return;
+        px[k] = (int)((1.0 - v3_dot(v, cam->right) / (d * tt * asp)) * 0.5 * g_fw); py[k] = (int)((1.0 - v3_dot(v, cam->up) / (d * tt)) * 0.5 * g_fh);
+    }
+    static const int E[12][2] = { {0,1},{2,3},{4,5},{6,7},{0,2},{1,3},{4,6},{5,7},{0,4},{1,5},{2,6},{3,7} };
+    for (int e = 0; e < 12; e++) bv_aim_line(px[E[e][0]], py[E[e][0]], px[E[e][1]], py[E[e][1]]);
+}
+static void bv_draw_crosshair(void) {      /* a Minecraft-style "+" at the centre: light with a dark edge, so it shows on sky and on snow */
+    if (!g_fbuf) return;
+    int cx = g_fw / 2, cy = g_fh / 2, arm = g_fh / 60 < 6 ? 6 : g_fh / 60;
+    for (int pass = 0; pass < 2; pass++) for (int d = -arm; d <= arm; d++) for (int w = -1 - (pass == 0); w <= 1 + (pass == 0); w++) {
+        int pts[2][2] = { { cx + d, cy + w }, { cx + w, cy + d } };
+        for (int k = 0; k < 2; k++) { int px = pts[k][0], py = pts[k][1]; if (px < 0 || px >= g_fw || py < 0 || py >= g_fh) continue; unsigned char *p = FB(px, py);
+            unsigned char v = pass == 0 ? 20 : 235; if (pass == 1 && (w < -1 || w > 1)) continue; p[0] = v; p[1] = v; p[2] = v; p[3] = 255; } }
+}
 static double bv_now_ms_(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t);
     return t.tv_sec * 1e3 + t.tv_nsec / 1e6; }
 #endif
@@ -4207,6 +4286,8 @@ static int render_one_frame(void) {
      * if the box has no working EGL. v1: terrain + flat-colour AABBs
      * (no phymoji voxel detail, no shadow rays). ---- */
     int gpu_done = 0;
+    static int g_aim_reach = 5;      /* AIM (D147): decided once per frame here; the cast runs in the GPU path where the rendered grid exists (no grid = no aim: the CPU path keeps the game's own rule) */
+    g_aim_on = camera_mode == 1 && bv_aim_cfg(focused_project_root, &g_aim_reach); g_aim_wired = 0; g_aim_hit = 0;
 #ifdef BV_HAVE_GPU
     g_prof_load_ms = bv_now_ms_() - prof_t0;
     if (use_gpu_render) {
@@ -4806,6 +4887,11 @@ static int render_one_frame(void) {
                 sc.eye[0] = (float)eyp[0]; sc.eye[1] = (float)(eyp[1] - zo); sc.eye[2] = (float)eyp[2];
                 cam.eye.x = eyp[0] + vox; cam.eye.y = eyp[1] - zo; cam.eye.z = eyp[2] + voy;
             }
+        }
+        if (g_aim_on && sc.grid) {      /* AIM (D147): the screen-centre ray through the grid this frame RENDERS (after the camera is final), then a dark outline round the hit block in world cells */
+            double azo = sc.maker ? (double)sc.zoff : 0.0;
+            bv_aim_cast(sc.grid, sc.board_w, sc.board_h, sc.z_count, sc.maker, sc.eye[0], sc.eye[1] + azo, sc.eye[2], cam.forward.x, cam.forward.y, cam.forward.z, g_aim_reach, vox, voy, (int)azo);
+            if (g_aim_hit) { ADDWIRE(g_aim_x - 0.01, g_aim_z - 0.01, g_aim_y - 0.01, g_aim_x + 1.01, g_aim_z + 1.01, g_aim_y + 1.01, 20, 20, 20); g_aim_wired = 1; }
         }
         /* See-through cutaway (owner 2026-10-27: "make the wall in front of the camera where the character is highly translucent so we can
          * see through the building"). view.pdl (this map) or #.desktop/hq_ui.pdl: view_cut_on=1, view_cut_alpha=<percent, default 30>,
@@ -5521,6 +5607,8 @@ static int render_one_frame(void) {
     }
     bv_draw_hud(focused_project_root, current_z, selector_x, selector_y);
     if (camera_mode == 1) bv_draw_hand(focused_project_root);      /* first-person held item and arm (held.txt), after the HUD so it paints over the world only */
+    bv_aim_write(focused_project_root, g_aim_on);      /* AIM (D147): publish what the crosshair is on (rewritten only on change) */
+    if (g_aim_on) { if (g_aim_hit && !g_aim_wired) bv_draw_aim_outline(&cam); bv_draw_crosshair(); }      /* AIM (D147): the crosshair (and on the CPU path the block outline), only where aim is on */
 
     size_t byte_count = (size_t)g_fw * (size_t)g_fh * 4;
 

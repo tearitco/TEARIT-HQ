@@ -12,6 +12,8 @@ export PCHQ_PKG="$APP/rpg-edit-hq-pchq"
 export PCHQ_NO_HERO=1   # this editor drives its own characters (rig: tokens): no hero_01 placeholder in its instance (owner 2026-11-26; pchq_instance_init.sh)
 sh "$HOUSE/@.apps/piececraft-hq/ops/pchq_instance_init.sh" "$PCHQ_PKG" >/dev/null 2>&1
 mkdir -p "$HERE/state"; [ -f "$HERE/state/sides.txt" ] || printf "side_left=1\nside_right=1\n" > "$HERE/state/sides.txt"
+# AIM (D147, owner 2026-11-27: dig what the crosshair points at): first person in this editor casts the screen-centre ray and writes pieces/system/aim.txt. Seeded only when the line is MISSING, so an edit you make stays (aim=0 turns it off); aim_reach matches the game's RULE reach (rmmc vox/rules.pdl)
+AIMCFG="$PCHQ_PKG/pieces/system/arrow_config.txt"; [ -f "$AIMCFG" ] && { grep -q '^aim=' "$AIMCFG" || printf '# AIM (D147): crosshair + aim.txt in first person (aim=0 = off)\naim=1\naim_reach=4\n' >> "$AIMCFG"; }
 "$APP/ops/+x/rpg_edit_hq.+x" export3d >/dev/null 2>&1
 # the ONE rpg-edit-hq daemon (walks the pets, chat, clock, writes ../state/ui.txt): not a <module> of this window, a module runs with THIS folder as its app dir and would start a second house in board/state
 # Registered through the spawn funnel (AGENTS.md: every process the house starts is recorded in #.desktop/proc_registry.pdl); it starts as lifetime keep and is handed to the window below.

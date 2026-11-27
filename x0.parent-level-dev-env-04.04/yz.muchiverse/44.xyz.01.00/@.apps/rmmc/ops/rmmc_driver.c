@@ -145,6 +145,19 @@ static void sync_view(const char *pkg, const char *vop, const char *data, const 
     }
     bump_view(pkg);
 }
+/* AIM (D147): the engine writes <pkg>/pieces/system/aim.txt in first person when the board says aim=1 (cell=<col>,<row>,<level> face=<dc>,<dr>,<dl>, or cell=none; no file = no aim). The engine's level is
+ * relative to the floor (0 = the floor block), so vox y = level + heightmap shift; its column is vox x and its row vox z. Sets RMMC_AIM for rmmc_verb ("x,y,z,fx,fy,fz" in vox cells, or "none"), or
+ * clears it so the verb falls back to the column in front. Returns 1 when an aim was set. */
+static int aim_env(const char *pkg, const char *data) {
+    unsetenv("RMMC_AIM"); if (!pkg || !pkg[0]) return 0;
+    char p[PATH_MAX + 160], ln[200]; int cx, cr, cl, fc = 0, fr = 0, fl = 0, have = 0, none = 0, floor_z = -1, shift = 0;
+    snprintf(p, sizeof p, "%.4000s/pieces/system/aim.txt", pkg); FILE *f = fopen(p, "r"); if (!f) return 0;
+    while (fgets(ln, sizeof ln, f)) { if (sscanf(ln, "cell=%d,%d,%d", &cx, &cr, &cl) == 3) have = 1; else if (!strncmp(ln, "cell=none", 9)) none = 1; else sscanf(ln, "face=%d,%d,%d", &fc, &fr, &fl); }
+    fclose(f); if (none) { setenv("RMMC_AIM", "none", 1); return 1; } if (!have) return 0;
+    snprintf(p, sizeof p, "%.4000s/pieces/system/board_manifest.txt", pkg); f = fopen(p, "r"); while (f && fgets(ln, sizeof ln, f)) if (!strncmp(ln, "floor_z=", 8)) floor_z = atoi(ln + 8); if (f) fclose(f);
+    snprintf(p, sizeof p, "%.4000s/terrain.heightmap", data); f = fopen(p, "r"); while (f && fgets(ln, sizeof ln, f)) if (!strncmp(ln, "META | shift |", 14)) shift = atoi(ln + 14); if (f) fclose(f);
+    if (floor_z < 0) return 0;      /* no board manifest: not an editor board, no aim */
+    (void)floor_z; char v[96]; snprintf(v, sizeof v, "%d,%d,%d,%d,%d,%d", cx, cl + shift, cr, fc, fl, fr); setenv("RMMC_AIM", v, 1); return 1; }      /* the engine writes the level RELATIVE to the floor (0 = the floor block, as its xelector ring: feet on block level ay-1-shift), so vox y = level + shift */
 static long g_last_step = 0;      /* when the last walk step finished (RULE step_ms) */
 static const char HINT[] = "ready: the Help menu lists the keys";      /* the idle message line; while a lesson runs the tutorial sentence shows in its place (chrome_feed) */
 static const char *g_tut_led = NULL;      /* the ledger the tutorial op reads (set by main; the lesson progress is derived from it, never stored) */
@@ -244,6 +257,7 @@ int main(int argc, char **argv) {
                     static long reset_asked = 0; long tn = now_ms();
                     if (!reset_asked || tn - reset_asked > 2000) { reset_asked = tn; snprintf(msg, sizeof msg, "key %.20s: reset? press it again", gk); last_key = tn; last_feed = 0; continue; }
                     reset_asked = 0; }
+                if (!strcmp(KV[kv].verb, "mine") || !strcmp(KV[kv].verb, "place")) aim_env(pkg, data); else unsetenv("RMMC_AIM");      /* AIM (D147): what the crosshair is on, when the board aims */
                 int rc = rmmc_play_verb(house, book, KV[kv].verb, KV[kv].arg, "human", msg, sizeof msg); held_write(pkg, book, actor, KV[kv].verb, rc); if (!rc && (!strcmp(KV[kv].verb, "mine") || !strcmp(KV[kv].verb, "place"))) mine_say(led, actor, msg, sizeof msg); if (!strcmp(KV[kv].verb, "walk")) g_last_step = now_ms(); if (rc && !first_refusal) first_refusal = rc; { char kt[200]; const char *mm = msg; if (!strncmp(mm, "refused: refused: ", 18)) mm += 9; snprintf(kt, sizeof kt, "key %.20s: %.150s", gk, mm); { char *cut = strstr(kt, " (direct"); if (cut) { int paused = strstr(cut, "events are paused in Blueprintz") != NULL; *cut = 0; if (paused) snprintf(cut, sizeof kt - (size_t)(cut - kt), " (events paused)"); } cut = strstr(kt, " ["); if (cut) *cut = 0; }   /* the long "(direct: the page did not run)" tail is noise on the bar, but a PAUSE is the owner's switch and must stay visible (case rmmc_seat, 2026-11-27) */ snprintf(msg, sizeof msg, "%s", kt); }   /* the last key and what came of it, on screen (owner 2026-11-26: a silent key is a bug; the browser-style debug console replaces this later, plan section 15) */ last_key = now_ms(); idle_pending = 1; sync_view(pkg, vop, data, led, actor); }
             fclose(f); }
         if (strcmp(msg, shown)) { snprintf(shown, sizeof shown, "%s", msg); shown_at = now_ms(); } else if (now_ms() - shown_at > 8000 && strncmp(msg, "page ", 5) && strcmp(msg, HINT) && strcmp(msg, "waiting for keys")) { snprintf(msg, sizeof msg, "%s", HINT); last_feed = 0; }

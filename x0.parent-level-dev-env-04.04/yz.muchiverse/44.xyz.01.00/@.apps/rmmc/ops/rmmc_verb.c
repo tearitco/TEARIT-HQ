@@ -72,7 +72,17 @@ int main(int argc, char **argv) {
     else if (!strcmp(v, "face")) { char *av[] = { vop, "face", data, led, (char *)actor, a1, NULL }; code = run(av, out, sizeof out); }
     else if (!strcmp(v, "jump")) { char *av[] = { vop, "jump", data, led, (char *)actor, NULL }; code = run(av, out, sizeof out); }
     else if (!strcmp(v, "reset")) { char *av[] = { vop, "reset", data, led, (char *)actor, NULL }; code = run(av, out, sizeof out); }
-    else if (!strcmp(v, "mine") || !strcmp(v, "place")) {   /* the column IN FRONT of her: where (her cell + facing) -> that column's top -> MINE it / PLACE on top of it (one ledger row each, vox_op) */
+    else if ((!strcmp(v, "mine") || !strcmp(v, "place")) && getenv("RMMC_AIM") && *getenv("RMMC_AIM")) {      /* AIM (D147): the block under the crosshair, "x,y,z,fx,fy,fz" in vox cells (the driver converts the engine's aim.txt). mine digs x,y,z; place fills the cell on the face you look at. vox_op checks reach and writes the row */
+        int x, y, z, fx, fy, fz; const char *am = getenv("RMMC_AIM");
+        if (!strcmp(am, "none")) { snprintf(out, sizeof out, "nothing under the crosshair"); code = 13; }
+        else if (sscanf(am, "%d,%d,%d,%d,%d,%d", &x, &y, &z, &fx, &fy, &fz) != 6) { snprintf(out, sizeof out, "bad aim %.60s", am); code = 2; }
+        else if (!strcmp(v, "mine")) { char cell[96], tool[64] = "hand"; snprintf(cell, sizeof cell, "%d,%d,%d", x, y, z);
+            if (picked_tool(book, data, tool, sizeof tool) && creative_on(book)) { char one[8] = "1", og[200]; char *gv[] = { vop, "give", data, led, (char *)actor, tool, one, "hotbar", NULL }; run(gv, og, sizeof og); }
+            char *av[] = { vop, "mine", data, led, (char *)actor, tool, cell, NULL }; code = run(av, out, sizeof out); }
+        else { char item[64] = "dirt", pp[PATH_MAX + 96]; snprintf(pp, sizeof pp, "%s/play/pick.txt", book); FILE *pf = fopen(pp, "r"); if (pf) { if (fgets(item, sizeof item, pf)) item[strcspn(item, "\r\n'| ")] = 0; fclose(pf); } if (!item[0]) snprintf(item, sizeof item, "dirt");
+            char cell[96], one[8] = "1"; snprintf(cell, sizeof cell, "%d,%d,%d", x + fx, y + fy, z + fz); char *gv[] = { vop, "give", data, led, (char *)actor, item, one, "hotbar", NULL }; char og[200]; if (creative_on(book)) run(gv, og, sizeof og);
+            char *av[] = { vop, "place", data, led, (char *)actor, item, cell, NULL }; code = run(av, out, sizeof out); } }
+    else if (!strcmp(v, "mine") || !strcmp(v, "place")) {   /* NO AIM (third person, a board without aim=1, a harness): the column IN FRONT of her: where (her cell + facing) -> that column's top -> MINE it / PLACE on top of it (one ledger row each, vox_op) */
         char o2[200]; char *wa[] = { vop, "where", data, led, (char *)actor, NULL }; int ax = 0, ay = 0, az = 0; char fc = '-';
         if (run(wa, o2, sizeof o2) != 0 || sscanf(o2, "at=%d,%d,%d", &ax, &ay, &az) != 3) { snprintf(out, sizeof out, "no such actor"); code = 10; }
         else { char *fp = strstr(o2, "face="); if (fp) fc = fp[5]; if (!strchr("nesw", fc)) fc = facing_of(led, actor); if (!strchr("nesw", fc)) fc = 's';
