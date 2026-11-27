@@ -15,6 +15,8 @@ RULE | idle_poll_ms | 120
 RULE | idle_after_ms | 400
 # step_ms: the shortest time between two walk steps (a held arrow key repeats ~55 times a second); a press inside it is dropped, not queued. 120 = about 8 cells a second; 0 = every press steps (the old behaviour, a backlog builds)
 RULE | step_ms | 100
+# reset_confirm_ms: Home asks "reset? press it again"; a second Home within this many ms resets (2026-11-27: was 2000 in C; a stranger reading the bar pressed again after about 2 s and was asked again)
+RULE | reset_confirm_ms | 4000
 KEYVERB | slot1 | pick | 1
 KEYVERB | slot2 | pick | 2
 KEYVERB | slot3 | pick | 3

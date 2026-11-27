@@ -16,8 +16,9 @@ WRITE   | bv/pieces/keyboard/history.txt |
 
 RUN         | sh | $T/@.apps/piececraft-hq/ops/pchq_board_action.sh | $T/bv | interact
 EXPECT_EXIT | 0 | interact-runs
-EXPECT_HAS  | bv/pieces/apps/player_app/interact_relay.txt | 13 | off-then-click-engages-with-Enter
-EXPECT_HAS  | bv/pieces/keyboard/history.txt | KEY_PRESSED: 13 | and-the-history-gets-Enter
+EXPECT_HAS  | bv/pieces/keyboard/history.txt | KEY_PRESSED: 13 | off-then-click-engages-with-Enter-in-the-history
+# 2026-11-27 (D149): the engaging Enter must NOT reach the game relay: the engine read it as a game Enter and the editor (possess_enter_anywhere 1) took Asa at every launch. In: engaged from the history line alone (debil).
+EXPECT_LACKS | bv/pieces/apps/player_app/interact_relay.txt | 13 | NEGATIVE-the-engaging-Enter-is-not-a-game-key
 EXPECT_LACKS | bv/pieces/keyboard/history.txt | KEY_PRESSED: 27 | NEGATIVE-engaging-sends-no-Esc
 
 WRITE   | bv/pieces/display/active_gui_is_typing.txt | 1\n

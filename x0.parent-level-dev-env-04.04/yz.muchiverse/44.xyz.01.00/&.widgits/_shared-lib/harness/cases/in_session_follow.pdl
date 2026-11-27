@@ -42,10 +42,11 @@ SCRATCH |
 MKDIR   | bv/pieces/apps/player_app
 MKDIR   | bv/pieces/keyboard
 MKDIR   | bv/pieces/display
+WRITE   | bv/pieces/apps/player_app/interact_relay.txt |
 RUN     | sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $T/bv | interact
 EXPECT_EXIT | 0 | the-In-click-action-runs
 EXPECT_HAS  | bv/pieces/keyboard/history.txt | KEY_PRESSED: 13 | In-click-while-off-writes-the-engage-key-13-to-the-bound-session
-EXPECT_HAS  | bv/pieces/apps/player_app/interact_relay.txt | 13 | and-the-relay-line-13
+EXPECT_LACKS | bv/pieces/apps/player_app/interact_relay.txt | 13 | NEGATIVE-the-engaging-13-is-not-sent-to-the-game-relay-D149
 WRITE   | bv/pieces/display/active_gui_is_typing.txt | 1
 RUN     | sh | $HOUSE/@.apps/piececraft-hq/ops/pchq_board_action.sh | $T/bv | interact
 EXPECT_HAS  | bv/pieces/keyboard/history.txt | KEY_PRESSED: 27 | In-click-while-ON-writes-Esc-27-(the-way-out)

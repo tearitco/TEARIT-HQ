@@ -99,6 +99,12 @@ append_key() {
     printf '%s\n' "$1" >> "$H1"
     printf 'KEY_PRESSED: %s\n' "$1" >> "$H2"
 }
+# The ENGAGING Enter goes to the board's parser only (keyboard history, H2), never to the game relay (H1) (2026-11-27, D149): the parser turns Interact on from the history line; a copy in the
+# relay reached the engine as an ordinary Enter, and with KEY possess_enter_anywhere | 1 (the editor) it took the first rig: token, so every editor launch with INT on wrote SEAT asa human
+# before the player pressed anything (tutorial step 1 skipped, "YOU CONTROL ASA" while the arrows moved the cursor). Proven on debil: with the history line only, In: still engaged.
+engage_key() {
+    printf 'KEY_PRESSED: 13\n' >> "$H2"
+}
 
 interact_on() {
     [ -f "$TYPING" ] && [ "$(head -c 8 "$TYPING" 2>/dev/null | tr -dc 0-9)" != "" ] \
@@ -112,7 +118,7 @@ engage_if_needed() {
     if interact_on; then
         ENGAGED=0
     else
-        append_key 13
+        engage_key
         ENGAGED=1
     fi
 }
@@ -138,7 +144,7 @@ restore_interact() {
 case "$VERB" in
     interact)
         # A real toggle (owner 2026-11-18: In: must behave like the desktop rpg-edit and pc-hq tab): Enter engages Interact Mode, but once engaged Enter is only a game key, so the way OUT is Esc (27) in the session's keyboard history (the same line petslike_core writes to leave INT). Before this a second click did nothing and only Esc on the keyboard left it.
-        if interact_on; then printf 'KEY_PRESSED: 27\n' >> "$H2"; else append_key 13; fi
+        if interact_on; then printf 'KEY_PRESSED: 27\n' >> "$H2"; else engage_key; fi
         ;;
     autotick)
         # The clock tab of the toolbar: play / pause the game clock of THIS board's world (the same flag the pc-hq ']' key flips, world_01 autotick_enabled;
