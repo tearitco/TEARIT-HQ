@@ -5809,7 +5809,7 @@ int main(int argc, char **argv) {
      * keep the same real ~270s orphan-cleanup exit at the new rate. */
     #define BV_IDLE_POLL_USEC 30000
     #define BV_IDLE_EXIT_TICKS (270000000 / BV_IDLE_POLL_USEC)
-    long idle_exit_ticks = BV_IDLE_EXIT_TICKS; { const char *ie = getenv("BV_IDLE_EXIT_S"); if (ie && atoi(ie) > 0) idle_exit_ticks = (long)atoi(ie) * 1000000L / BV_IDLE_POLL_USEC; }      /* BV_IDLE_EXIT_S: test override (seconds) */
+    long idle_exit_ticks = 0;   /* D150: 0 = never exit on idle (owner 2026-11-27); the 270 s orphan exit is gone, loop_guard and cpu_guard end an engine whose window is gone */ { const char *ie = getenv("BV_IDLE_EXIT_S"); if (ie && atoi(ie) > 0) idle_exit_ticks = (long)atoi(ie) * 1000000L / BV_IDLE_POLL_USEC; }      /* BV_IDLE_EXIT_S: test override (seconds), the only way to get an idle exit */
     { char ip[PATH_BUF]; snprintf(ip, sizeof ip, "%s/pieces/display/.engine_idle_exit", project_root); unlink(ip); }      /* a NEW engine: the last exit is no longer "idle" */
     int idle_ticks = 0;
     while (!g_daemon_stop) {
@@ -5881,7 +5881,7 @@ int main(int argc, char **argv) {
             served++;
             { FILE *af = fopen(ackp, "w"); if (af) { fprintf(af, "%lld\n", served); fclose(af); } }
             if (rc == 0) { FILE *mf = fopen(mkp, "a"); if (mf) { fputc('F', mf); fputc('\n', mf); fclose(mf); } }
-        } else if (++idle_ticks > idle_exit_ticks) {
+        } else if (idle_ticks < 100000000 && ++idle_ticks > 0 && idle_exit_ticks > 0 && idle_ticks > idle_exit_ticks) {
             fprintf(stderr, "bv_gpu daemon: idle timeout, exiting\n");
             /* An IDLE self-exit is not a death (owner 2026-10-27: the board froze after ~4.5 min untouched). Say so: .engine_idle_exit tells loop_guard that the dispatcher's keep-alive will respawn the engine on the next request, so a board whose window is still open must keep its loops. */
             { char ip[PATH_BUF]; snprintf(ip, sizeof ip, "%s/pieces/display/.engine_idle_exit", project_root); FILE *xf = fopen(ip, "w"); if (xf) { fputs("idle\n", xf); fclose(xf); } }
@@ -5890,7 +5890,8 @@ int main(int argc, char **argv) {
         }
         /* Bottom of every pass, not the idle else. house_wait_us
          * refuses a zero wait. 30ms is this loop's own floor. */
-        house_wait_us(BV_IDLE_POLL_USEC);
+        /* D150 backoff: after about 21 s with no request poll every 120 ms instead of 30 ms (a click or key is read on the next pass, so a wake costs at most 0.12 s) */
+        house_wait_us(idle_ticks > 700 ? 4 * BV_IDLE_POLL_USEC : BV_IDLE_POLL_USEC);
     }
 
     remove(pidp);
