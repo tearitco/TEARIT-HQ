@@ -124,3 +124,36 @@ EXPECT_HAS | out/events.txt | rig:asa 0 2 5 | a place is pattern 5
 RUN | awk | NR==110{split($0,a," "); print a[141]} | $T/out/cells.txt
 EXPECT_OUT_IS | 5,5,3 | the column shows the placed sand tile (slot 5) on top again
 CLEAN |
+CASE | a-block-dug-out-of-a-wall-side-is-a-voxedit-row-D148
+# 2026-11-27: first person aims at the SIDE of a hill (D147). A column desk cell is one solid run, so before D148 such a MINE was ignored by the projection and the wall never changed on screen.
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | shovel | 1 | test-seed
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | 140 | 6 | 100
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
+EXPECT_FILE | out/voxedit.txt | the projection always writes voxedit.txt
+RUN | wc | -c | $T/out/voxedit.txt
+EXPECT_OUT | 0 | CONTROL: empty while nothing is dug
+RUN | sh | -c | for i in 1 2 3 4; do $0 mine $1 $2 asa shovel 141 4 100 \p\p true; done | $T/h/@.apps/vox/ops/+x/vox_op.+x | $T/h/@.apps/rmmc/vox | $T/led.txt
+EXPECT_HAS | led.txt | MINE \p asa \p 141 \p 4 \p 100 | the block UNDER the top of column 141 (vox y 4, its top is 5) is dug out of the side
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
+EXPECT_HAS | out/voxedit.txt | 141 100 1 0 | it is a voxedit row: column 141, row 100, level 1 (= vox y 4 - shift 3), slot 0 = air
+RUN | awk | NR==101{print substr($0,142,1)} | $T/out/map.txt
+EXPECT_OUT_IS | 3 | and the column keeps its height (the top block at y 5 still stands over the hole)
+RUN | cp | $T/out/voxedit.txt | $T/ve_keep.txt
+RUN | rm | -f | $T/out/voxedit.txt | $T/out/cells.txt | $T/out/map.txt | $T/out/events.txt
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
+RUN | cmp | $T/out/voxedit.txt | $T/ve_keep.txt
+EXPECT_EXIT | 0 | deleted and regenerated: identical bytes (a projection)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | sand | 1 | test-seed
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | place | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | sand | 141 | 4 | 100
+EXPECT_EXIT | 0 | sand put back into the hole in the side
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
+EXPECT_HAS | out/voxedit.txt | 141 100 1 5 | the same cell is now a solid single block with the sand tile slot (last row per cell wins)
+EXPECT_LACKS | out/voxedit.txt | 141 100 1 0 | CONTROL: the air row is gone, not kept beside it
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | mine | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | shovel | 139 | 5 | 100
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/out | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
+RUN | awk | NR==101{print substr($0,140,1)} | $T/out/map.txt
+EXPECT_OUT_IS | 2 | CONTROL: a TOP block is still a column change (column 139 is level 2 now)
+EXPECT_LACKS | out/voxedit.txt | 139 100 | and it writes no voxedit row
+CLEAN |

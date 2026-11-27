@@ -1,14 +1,14 @@
 /* rmmc_project_op - fold the vox LEDGER over the SEED island and write the PROJECTION the engine reads (plan 6 and 7.3, gate G3, D137).
  *   rmmc_project_op project <seed_dir> <out_dir> <ledger> <pose.pdl> <terrain.heightmap> [--idle] [--no-marker]
  * Seed (CONFIG, never written here): <seed_dir>/{cells.txt, map.txt, events.txt, legend.txt, extrusion.pdl, cells.rgba, skin.txt, rig_*.pdl}.
- * Projection (safe to delete, rewritten byte for byte; NEVER read back as input): <out_dir>/{cells.txt, map.txt, events.txt, cells.marker} are regenerated; extrusion.pdl legend.txt cells.rgba skin.txt rig_*.pdl are COPIES of the seed
+ * Projection (safe to delete, rewritten byte for byte; NEVER read back as input): <out_dir>/{cells.txt, map.txt, events.txt, voxedit.txt, cells.marker} are regenerated; extrusion.pdl legend.txt cells.rgba skin.txt rig_*.pdl are COPIES of the seed
  * (the engine reads this folder, so they must be here; they are rewritten only when they differ). Order: the support files, then cells.txt, map.txt, events.txt, and cells.marker LAST (the engine must see a whole desk).
  * What it does with the ledger (rows of vox_op: MOVE FACE RESET SPAWNPOINT DAMAGE MINE PLACE; every other row is ignored here):
  *   events.txt   each seed row `x y r g b rig:<actor> 0 dir pattern` whose actor has ledger MOVE rows is rewritten with the actor's position (x, vox z = desk row), direction and pattern; other seed rows are kept.
  *                direction = the last MOVE delta (n 8, e 6, s 2, w 4) or the last FACE row, whichever is later (DIR rows of pose.pdl); pattern from pose.pdl by the LAST pose row of that actor (MOVE_ODD/MOVE_EVEN alternate with the
  *                count of ground MOVEs, MOVE_LEVEL, DAMAGE, MINE, PLACE, FACE, RESET). --idle writes pattern 0 for every actor (IDLE): the expiry belongs to the driver, never to a ledger row.
  *   cells.txt, map.txt  the seed bytes, except a MINE of the top block of a column (level H -> H-1, the floor becomes the wall tile) and a PLACE on top of it (H+1, floor and wall = the placed item's tile): NOT VERIFIED on the island yet
- *                (break and place are priority 3); overhangs and tunnels are not representable (a MINE or PLACE that is not at the column top is ignored).
+ *                (break and place are priority 3); a MINE or PLACE that is not at the column top goes to voxedit.txt (D148, 2026-11-27: before that it was ignored and a dug wall never changed on screen).
  *   cells.marker grows: new size = (old size mod 4000) + 1 byte of '1', on EVERY run (the engine reloads the desk when the SIZE changes, never on mtime). --no-marker skips it (an events-only refresh if a full reload hitches).
  * `event_lift=1` stays because cells.txt is the seed's header. Axes: desk(x, row) = vox(x, y height, z = row). Prints: projected actors=<n> pattern=<last> marker=<size>.
  * Exit: 0 ok, 2 usage, 3 a seed file is missing, 4 a bad row, 5 cannot write.
@@ -85,11 +85,23 @@ static int load_seed(const char *dir) {
         if (*s == '\n') s++; }
     free(ct); free(mp); snprintf(p, sizeof p, "%s/events.txt", dir); seed_events = slurp(p, NULL); return seed_events ? 0 : 3;
 }
-static void edit_col(int x, int z, int y, int mine, const char *item) {   /* NOT VERIFIED on the island (break and place are later): only the top block of a column */
-    if (x < 0 || z < 0 || x >= W || z >= Hh || glyph[z][x] == '.' || !gh_ok[(unsigned char)glyph[z][x]]) return;
-    int H = gh[(unsigned char)glyph[z][x]], top = H - 1 + shift; int fl, wl, dp; if (sscanf(tok[z][x], "%d,%d,%d", &fl, &wl, &dp) < 3) return;
-    if (mine) { if (y != top || H - 1 < 0 || !h2g_ok[H - 1]) return; glyph[z][x] = h2g[H - 1]; snprintf(tok[z][x], 20, "%d,%d,%d", wl ? wl : fl, wl ? wl : fl, dp); }
-    else { int sl = slot_by_name(item); if (y != top + 1 || !sl || H + 1 >= 64 || !h2g_ok[H + 1]) return; glyph[z][x] = h2g[H + 1]; snprintf(tok[z][x], 20, "%d,%d,%d", sl, sl, dp); }
+/* VOXEDIT (D148, 2026-11-27): a column desk cell is ONE solid run, so a MINE in the side of a hill (first person aims at a wall, D147) or a PLACE in the air beside one had no picture. What edit_col
+ * cannot say as a column goes to <out>/voxedit.txt, rows `x z level slot` (level = vox y - shift: 0 = the floor block; slot 0 = air, else the placed item's atlas slot, 1 when unknown), last row per cell
+ * wins; the engine applies them over the columns (bv_render_3d maker_read_voxedit). Capped at MAXVE rows. */
+#define MAXVE 4096
+static struct { int x, y, z, slot; } VE[MAXVE]; static int nve;
+static void ve_set(int x, int y, int z, int slot) { for (int i = 0; i < nve; i++) if (VE[i].x == x && VE[i].y == y && VE[i].z == z) { VE[i].slot = slot; return; } if (nve < MAXVE) { VE[nve].x = x; VE[nve].y = y; VE[nve].z = z; VE[nve++].slot = slot; } }
+static void ve_drop(int x, int y, int z) { for (int i = 0; i < nve; i++) if (VE[i].x == x && VE[i].y == y && VE[i].z == z) { VE[i] = VE[--nve]; return; } }
+static int edit_col_top(int x, int z, int y, int mine, const char *item) {   /* the top block of a column (or one on top of it): the column changes height. 1 = done */
+    if (x < 0 || z < 0 || x >= W || z >= Hh || glyph[z][x] == '.' || !gh_ok[(unsigned char)glyph[z][x]]) return 0;
+    int H = gh[(unsigned char)glyph[z][x]], top = H - 1 + shift; int fl, wl, dp; if (sscanf(tok[z][x], "%d,%d,%d", &fl, &wl, &dp) < 3) return 0;
+    for (int i = 0; i < nve; i++) if (VE[i].x == x && VE[i].z == z && VE[i].y > top - (mine ? 1 : 0)) return 0;      /* a single block already sits at or over the new top: keep it a single block */
+    if (mine) { if (y != top || H - 1 < 0 || !h2g_ok[H - 1]) return 0; glyph[z][x] = h2g[H - 1]; snprintf(tok[z][x], 20, "%d,%d,%d", wl ? wl : fl, wl ? wl : fl, dp); return 1; }
+    int sl = slot_by_name(item); if (y != top + 1 || !sl || H + 1 >= 64 || !h2g_ok[H + 1]) return 0; glyph[z][x] = h2g[H + 1]; snprintf(tok[z][x], 20, "%d,%d,%d", sl, sl, dp); return 1;
+}
+static void edit_col(int x, int z, int y, int mine, const char *item) {
+    if (edit_col_top(x, z, y, mine, item)) { ve_drop(x, y, z); return; }
+    int sl = mine ? 0 : slot_by_name(item); ve_set(x, y, z, mine ? 0 : (sl ? sl : 1));
 }
 static int fold_ledger(const char *p) {
     FILE *f = fopen(p, "r"); if (!f) return 3; char l[512], *x[10];
@@ -136,6 +148,8 @@ int main(int argc, char **argv) {
     snprintf(p, sizeof p, "%s/cells.txt", out); if (write_atomic(p, cb, cn)) return 5;
     snprintf(p, sizeof p, "%s/map.txt", out); if (write_atomic(p, mb, mn)) return 5;
     snprintf(p, sizeof p, "%s/events.txt", out); if (write_atomic(p, ev, en)) return 5;
+    { char *vb = malloc((size_t)nve * 48 + 1); if (!vb) return 5; size_t vn = 0; for (int i = 0; i < nve; i++) vn += (size_t)snprintf(vb + vn, 48, "%d %d %d %d\n", VE[i].x, VE[i].z, VE[i].y - shift, VE[i].slot);
+      snprintf(p, sizeof p, "%s/voxedit.txt", out); if (write_atomic(p, vb, vn)) { free(vb); return 5; } free(vb); }      /* D148: always written (empty = none), before the marker */
     long msz = -1;
     if (!nomarker) { snprintf(p, sizeof p, "%s/cells.marker", out); struct stat st; long old = stat(p, &st) == 0 ? (long)st.st_size : 0; msz = old % 4000 + 1; char *mk = malloc((size_t)msz); memset(mk, '1', (size_t)msz); if (write_atomic(p, mk, (size_t)msz)) return 5; free(mk); }
     printf("projected actors=%d pattern=%d marker=%ld\n", projected, lastpat, msz); free(cb); free(mb); free(ev); return 0;

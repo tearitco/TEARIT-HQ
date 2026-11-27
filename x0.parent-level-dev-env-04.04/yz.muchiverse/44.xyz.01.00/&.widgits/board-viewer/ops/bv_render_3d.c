@@ -436,6 +436,23 @@ static void maker_read_hotspots(const char *dir) {
     fclose(f);
 }
 
+/* The desk's voxedit.txt (opt-in, D148): single blocks a column desk cannot say. A desk cell is ONE solid run (its glyph height), so a block dug out of the SIDE of a hill, or a block placed in the air
+ * beside one, had no picture (the game's ledger had the row, the screen did not change). Rows `x z level slot`: column x, desk row z, level relative to the floor block (0 = the floor block, the aim
+ * convention), slot 0 = air (carve), >0 = solid (fill; drawn with its column's tiles). Applied to the grid AFTER the columns are built, in file order. Written by the game's projection (rmmc_project_op),
+ * read with the desk (the cells.marker reload); a missing file = no edits, every other desk unchanged. Capped at BV_VOXEDIT_MAX rows. */
+#define BV_VOXEDIT_MAX 4096
+static struct { short x, z, lvl; unsigned short slot; } g_ve[BV_VOXEDIT_MAX]; static int g_ve_n = 0;
+static void maker_read_voxedit(const char *dir) {
+    char path[4400], line[128]; snprintf(path, sizeof(path), "%s/voxedit.txt", dir); g_ve_n = 0;
+    FILE *f = fopen(path, "r"); if (!f) return;
+    while (fgets(line, sizeof(line), f) && g_ve_n < BV_VOXEDIT_MAX) {
+        int x, z, l, s; if (line[0] == '#' || sscanf(line, "%d %d %d %d", &x, &z, &l, &s) != 4) continue;
+        if (x < 0 || z < 0 || x > 32000 || z > 32000 || l < -1000 || l > 1000 || s < 0) continue;
+        g_ve[g_ve_n].x = (short)x; g_ve[g_ve_n].z = (short)z; g_ve[g_ve_n].lvl = (short)l; g_ve[g_ve_n].slot = (unsigned short)(s > 65535 ? 65535 : s); g_ve_n++;
+    }
+    fclose(f);
+}
+
 /* The desk's lights.pdl (see MakerAtlas.light_n). Read again every frame like parallax.pdl, so a skin can change a lamp without a rebuild; a missing file means no lights and no ambient override, the old picture exactly. */
 static void maker_read_lights(const char *dir) {
     char path[4400], line[256]; snprintf(path, sizeof(path), "%s/lights.pdl", dir);
@@ -627,7 +644,7 @@ static int maker_load_base(const char *root) {
     g_mk.atlas = (unsigned char *)malloc(need);
     if (!g_mk.atlas || fread(g_mk.atlas, 1, need, f) != need) { fclose(f); return 0; }
     fclose(f);
-    g_mk.para_stamp = -1; maker_read_parallax(dir); maker_read_lights(dir); maker_read_hotspots(dir);
+    g_mk.para_stamp = -1; maker_read_parallax(dir); maker_read_lights(dir); maker_read_hotspots(dir); maker_read_voxedit(dir);
     maker_read_events(dir);
     g_mk.glyph = (char *)malloc((size_t)g_mk.w * (size_t)g_mk.h);
     if (g_mk.glyph) {
@@ -4411,6 +4428,7 @@ static int render_one_frame(void) {
                     if (h > MAX_VOXEL_Z - g_mk.zoff) h = MAX_VOXEL_Z - g_mk.zoff;
                     if (h + g_mk.zoff > z_count) z_count = h + g_mk.zoff;
                 }
+            for (int i = 0; i < g_ve_n; i++) if (g_ve[i].slot) { int top = g_mk.zoff + g_ve[i].lvl + 1; if (top > MAX_VOXEL_Z) top = MAX_VOXEL_Z; if (top > z_count) z_count = top; }      /* voxedit (D148): room for a block placed above every column */
             memset(gpu_grid, 0, (size_t)vww * (size_t)vwh * (size_t)z_count);
             for (int row = 0; row < vwh; row++)
                 for (int col = 0; col < vww; col++) {
@@ -4451,6 +4469,11 @@ static int render_one_frame(void) {
                     }
                 }
             sc.board_w = vww; sc.board_h = vwh; sc.z_count = z_count;
+            for (int i = 0; i < g_ve_n; i++) {      /* voxedit (D148): single blocks the columns cannot say, after the columns, in file order */
+                int col = g_ve[i].x - vox, row = g_ve[i].z - voy, lvl = g_mk.zoff + g_ve[i].lvl;
+                if (col < 0 || row < 0 || col >= vww || row >= vwh || lvl < 0 || lvl >= z_count) continue;
+                gpu_grid[col + row * vww + lvl * vww * vwh] = g_ve[i].slot ? 1 : 0;
+            }
             sc.grid = gpu_grid;
             sc.legend_n = 1; sc.legend_glyph[0] = 1;
             sc.legend_rgb[0][0] = sc.legend_rgb[0][1] = sc.legend_rgb[0][2] = 0.5f;
