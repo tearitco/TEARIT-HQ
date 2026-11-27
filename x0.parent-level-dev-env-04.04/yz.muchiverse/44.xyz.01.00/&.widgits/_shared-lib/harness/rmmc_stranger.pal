@@ -1,0 +1,4 @@
+# rmmc_stranger.pal - lesson 1 played as a stranger: the screen feed says each step, the key the sentence names is pressed through the real driver, the next step must show (D146)
+exec ./ops/+x/harness_case_op.+x cases/rmmc_stranger.pdl
+exec ./ops/+x/harness_verdict_op.+x cases/rmmc_stranger.pdl
+halt

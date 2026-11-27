@@ -1,0 +1,106 @@
+# rmmc_stranger (2026-11-27, D146; sprint plan 16.game/HEAVY-SPRINT-PLAN-SHIPPABLE-TUTORIAL-AND-VEHICLES-2026-11-27.md track A): play lesson 1 as a STRANGER who may only use what the screen says.
+# The screen is the driver's game feed (the projection the editor draws: gmt_2_text = the tutorial sentence, stat_line2 = the left bar's short text). Each step: (1) the feed must SAY the step, (2) the case presses the
+# key the sentence NAMES, by its own physical code (B = 98, the letter's code, never looked up in keybinds.pdl: a stranger does not read config), through the REAL driver (rmmc_driver --once, relay lines `<code> <ms>`),
+# (3) the feed must show the next step. So a rebound key, a reworded sentence, a changed verb row or a broken grader each fails at the step it breaks (mutation table in the case doc, D146).
+# rmmc_tutorial proves the grader on hand-written ledgers; rmmc_help ties the Help rows to keybinds.pdl; THIS case ties the tutorial's words to what the keys really do. Default game settings: creative OFF (D142: no play/creative.txt).
+# Not covered here (needs the live window): that the engine turns the ] key into the possession (the case sets possessed_id the way the engine's possess_next does) and that the editor DRAWS the feed lines; the live run checks those with a photo.
+RESULTS | ../results/rmmc_stranger.txt
+CASE | a-stranger-finishes-lesson-1-from-the-screen-words-only
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+RUN | rm | -f | $T/h/@.apps/rmmc/play/creative.txt
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/h/@.apps/rmmc/ops/+x/rmmc_tutorial_op.+x | $HOUSE/@.apps/rmmc/ops/rmmc_tutorial_op.c
+EXPECT_EXIT | 0 | the tutorial op compiles
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -O2 | -o | $T/h/@.apps/rmmc/ops/+x/rmmc_pick_op.+x | $HOUSE/@.apps/rmmc/ops/rmmc_pick_op.c
+EXPECT_EXIT | 0 | the hotbar pick op compiles
+COPY | @.apps/rmmc/tutorial.pdl | h/@.apps/rmmc/tutorial.pdl
+COPY | @.apps/rmmc/hotbar.pdl | h/@.apps/rmmc/hotbar.pdl
+MKDIR | h/@.apps/rmmc/play/world
+MKDIR | pkg/pieces/world_01
+MKDIR | pkg/pieces/xelector_01
+WRITE | pkg/pieces/world_01/state.txt | desk_id=rmmc-0001\n
+WRITE | pkg/pieces/xelector_01/state.txt | possessed_id=\npos_z=17\n
+ENV | MUCHI_TARGET_ENT | $T/h/@.apps/rmmc/play/world
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_beat_op.+x | $T/h | $T/h/@.apps/rmmc/beats.pdl | 1
+EXPECT_OUT | spawn 140 100 | the game starts the way the book does: beat 1 puts Asa on the grass plain (the harness holds her seat)
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_tutorial_op.+x | start | $T/h/@.apps/rmmc | $T/led.txt | lesson1
+EXPECT_OUT | started lesson1 | the Tools row "Lesson 1: drive Asa" runs this
+# --- step 1: take control. The screen says "]"; that key is the engine's possess_next (keybinds KEY row 93 = ']'), which sets possessed_id; the driver turns that into a SEAT row.
+WRITE | relay.txt |
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --feed | $T/feed.txt | --editor-pkg | $T/pkg
+EXPECT_EXIT | 0 | the driver draws the screen with no key yet
+EXPECT_HAS | feed.txt | gmt_2_text=TUTORIAL: Press the right bracket key to take control of Asa. | the screen says the first step
+EXPECT_HAS | feed.txt | stat_line2=press ] | and the left bar names the key ]
+EXPECT_HAS | feed.txt | nick_line=asa (not controlled) | and that nobody controls Asa yet
+# (--once returns at a refused key before it rewrites the feed; the loop the editor runs goes on and shows the refusal. So the refusal is checked by its exit code and the ledger.)
+WRITE | relay.txt | 98 0\n
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --feed | $T/feed.txt | --editor-pkg | $T/pkg
+EXPECT_EXIT | 24 | CONTROL: before taking control a game key is refused (exit 24: the seat is the harness)
+EXPECT_LACKS | led.txt | DAMAGE \p asa | CONTROL: the refused key wrote nothing
+EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | possess_next            \p 93 | the key the screen names, ] (code 93), is the take-control key of this book
+WRITE | pkg/pieces/xelector_01/state.txt | possessed_id=rig:asa\npos_z=17\n
+WRITE | relay.txt |
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --feed | $T/feed.txt | --editor-pkg | $T/pkg
+EXPECT_EXIT | 0 | the driver follows the possession
+EXPECT_HAS | led.txt | SEAT \p asa \p human | a SEAT human row: the player controls Asa (a ledger row, not a flag)
+EXPECT_HAS | feed.txt | nick_line=YOU CONTROL ASA | the screen says so
+EXPECT_HAS | feed.txt | gmt_2_text=TUTORIAL: Walk with the arrow keys. Five steps. | the screen moved on to step 2
+# --- step 2: walk. "arrow keys": the right arrow (relay code 1001). One driver run per press: the driver drops a press inside step_ms of the last step (a held key must not queue), as a person's separate taps.
+WRITE | relay.txt | 1001 0\n
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --feed | $T/feed.txt | --editor-pkg | $T/pkg
+EXPECT_EXIT | 0 | step 1 of 5
+EXPECT_HAS | feed.txt | stat_line2=arrows 1/5 | the left bar counts 1/5
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --feed | $T/feed.txt | --editor-pkg | $T/pkg
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --feed | $T/feed.txt | --editor-pkg | $T/pkg
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --feed | $T/feed.txt | --editor-pkg | $T/pkg
+EXPECT_HAS | feed.txt | stat_line2=arrows 4/5 | four taps, four steps
+EXPECT_LACKS | feed.txt | Press the space bar | CONTROL: four steps are not five, the jump step has not started
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --feed | $T/feed.txt | --editor-pkg | $T/pkg
+EXPECT_HAS | feed.txt | gmt_2_text=TUTORIAL: Press the space bar to jump up one block. | five steps: the screen says step 3
+EXPECT_HAS | feed.txt | stat_line2=space: jump | and the left bar
+# --- step 3: jump. "space bar" = code 32.
+WRITE | relay.txt | 32 0\n
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --feed | $T/feed.txt | --editor-pkg | $T/pkg
+EXPECT_EXIT | 0 | the jump key is accepted
+EXPECT_HAS | feed.txt | gmt_2_text=TUTORIAL: Press B to swing the pickaxe. The second swing breaks the block. | one space press: the screen says step 4
+# --- step 4: mine. "Press B" = the letter b, code 98. The sentence promises: the SECOND swing breaks the block.
+WRITE | relay.txt | 98 0\n
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --feed | $T/feed.txt | --editor-pkg | $T/pkg
+EXPECT_EXIT | 0 | the first swing is accepted
+EXPECT_HAS | led.txt | DAMAGE \p asa | the first swing hits the block (a DAMAGE row)
+EXPECT_HAS | feed.txt | stat_line=key mine: hit with | and the bar tells the player the hit landed
+EXPECT_HAS | feed.txt | stat_line2=B: mine | CONTROL: one swing is not enough, the step waits, as the sentence says
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --feed | $T/feed.txt | --editor-pkg | $T/pkg
+EXPECT_HAS | led.txt | MINE \p asa | the second swing breaks it (a MINE row)
+EXPECT_HAS | feed.txt | stat_line=key mine: broke | the bar says what broke
+EXPECT_HAS | feed.txt | gmt_2_text=TUTORIAL: Press the number one to pick dirt in the hotbar. | the screen says step 5
+# --- step 5: pick. "number one" = the 1 key, code 49. A wrong number first (2) must not pass it.
+WRITE | relay.txt | 50 0\n
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --feed | $T/feed.txt | --editor-pkg | $T/pkg
+EXPECT_HAS | feed.txt | gmt_2_text=TUTORIAL: Press the number one | CONTROL: the 2 key picks another slot, the step waits
+WRITE | relay.txt | 49 0\n
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --feed | $T/feed.txt | --editor-pkg | $T/pkg
+EXPECT_FILE | h/@.apps/rmmc/play/pick.txt | dirt\n | the 1 key picked dirt
+EXPECT_HAS | feed.txt | gmbar_title=Blocks  (picked: dirt) | the hotbar title says dirt is picked
+EXPECT_HAS | feed.txt | gmt_2_text=TUTORIAL: Press G to place the block you picked, in front of Asa. | the screen says step 6
+# --- step 6: place. "Press G" = code 103. Creative is OFF: the dirt must have come from the mined block (the bag), and the place costs it.
+WRITE | relay.txt | 103 0\n
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --feed | $T/feed.txt | --editor-pkg | $T/pkg
+EXPECT_EXIT | 0 | the place is accepted with creative off
+EXPECT_HAS | led.txt | PLACE \p asa \p dirt | a PLACE row for dirt
+EXPECT_LACKS | led.txt | hotbar | CONTROL: no free creative GIVE row: the block came from the bag
+EXPECT_HAS | feed.txt | stat_line=key place: placed dirt | the bar says what was placed
+EXPECT_HAS | feed.txt | gmt_2_text=TUTORIAL: Stuck? Press Home twice to go back to the start. | the screen says step 7
+# --- step 7: reset. "Home twice" = X key Home (65360) two presses; ONE press only asks (a stray tap never teleports).
+WRITE | relay.txt | 65360 0\n
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --feed | $T/feed.txt | --editor-pkg | $T/pkg
+EXPECT_HAS | feed.txt | reset? press it again | CONTROL: one press asks first
+EXPECT_LACKS | led.txt | RESET \p asa | and writes nothing
+WRITE | relay.txt | 65360 0\n65360 0\n
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_driver.+x | $T/h | $T/relay.txt | --from-start | --once | --feed | $T/feed.txt | --editor-pkg | $T/pkg
+EXPECT_HAS | led.txt | RESET \p asa | two presses: a RESET row
+EXPECT_HAS | feed.txt | gmt_2_text=TUTORIAL: lesson complete. Well done. | the screen says the lesson is complete
+EXPECT_HAS | feed.txt | stat_line2=lesson done! | and the left bar
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | verify | $T/h/@.apps/rmmc/vox | $T/led.txt
+EXPECT_OUT | verified | the ledger the stranger wrote replays byte for byte
+CLEAN |

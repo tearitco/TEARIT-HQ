@@ -20,6 +20,7 @@ Companions: `RMMC-TUTORIAL-FIRST-PERSON-DRIVE-HANDOFF-AND-ROADMAP-2026-11-26.md`
 | **D. Pad as intents** | `pad_map_op` generating the map from a style profile and the book's `keybinds.pdl` (D143), `cycle` op, Start enters In, L/R cycle the hotbar | case `joy_map` grows: every intent in the profile resolves to a key the book handles | Sonnet |
 | **E. Vehicles, first cut** | section 4 to 6: enter, drive, exit a car on a flat gym map, doors that open | section 6 invariants | Fable or Opus (design heavy, then rows) |
 Order: A first (it tells the others what to fix), then B and C together, D beside them, E last because it needs B's seats/bag and D's pad intents (`interact`, `aim`, `crouch`).
+**Progress (OBS 2026-11-27):** track A's first stretch is BUILT: case `rmmc_stranger` (D146) plays lesson 1 from the screen feed's words through the real driver, 51 checks PASS, six mutations each fail at their step; Tools row "Check lesson 1 as a stranger". It passes to the end of lesson 1; the next stretch is a lesson that reaches "craft a tool" (needs track C).
 **Honest scope:** tracks A to D are a sprint; E is the next sprint's spine if A to D take the time. Do not start E's physics before the stranger case reaches "craft a tool".
 
 ## 4. Vehicles: the model (DOC; extends, does not replace, the 2026-11-05 docs)
