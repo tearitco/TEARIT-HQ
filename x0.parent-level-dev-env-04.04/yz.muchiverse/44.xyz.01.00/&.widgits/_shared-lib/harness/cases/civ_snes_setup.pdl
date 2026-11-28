@@ -6,7 +6,7 @@ CASE | setup
 SCRATCH
 MKDIR | app/ops/+x
 MKDIR | #.NNEST_ASSETS/rta-sources/earth-moth
-RUN | sh | -c | ln -s "$(find $HOUSE/../../.. -maxdepth 4 -name ETOPO5.DAT \p head -1)" "$T/#.NNEST_ASSETS/rta-sources/earth-moth/ETOPO5.DAT"
+RUN | sh | -c | for d in "$HOUSE/../../../#.NNEST_ASSETS" "$HOUSE/../../#.NNEST_ASSETS"; do if [ -f "$d/rta-sources/earth-moth/ETOPO5.DAT" ]; then ln -s "$d/rta-sources/earth-moth/ETOPO5.DAT" "$T/#.NNEST_ASSETS/rta-sources/earth-moth/ETOPO5.DAT"; fi; done
 COPY | @.apps/civ-snes/rules.pdl | app/rules.pdl
 COPY | @.apps/civ-snes/text.pdl | app/text.pdl
 RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/app/ops/+x/civ_op.+x | $HOUSE/@.apps/civ-snes/ops/civ_op.c

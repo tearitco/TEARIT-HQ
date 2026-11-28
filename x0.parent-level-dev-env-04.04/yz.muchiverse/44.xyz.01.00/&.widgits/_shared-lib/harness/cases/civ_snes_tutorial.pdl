@@ -35,7 +35,7 @@ RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | lesson | $T/app/tutorial.pdl | civ1
 EXPECT_OUT | label=2/5 arrows: step | step 1: the bar says what to do (label)
 EXPECT_OUT | goal=Press an arrow key to walk one step with your settler. | and the sentence names the key
 RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | ui | civ1
-EXPECT_OUT | next=Next: press ] to pick your settler | the side panel's NEXT line at the very start (the settler is not selected yet)
+EXPECT_OUT | next=Next: press N to pick your settler | the side panel's NEXT line at the very start (the settler is not selected yet)
 RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | ui | civ1 | u1
 EXPECT_OUT | stat_line=u1 settler  moves 1 | once u1 is picked the bar says what it is and its moves
 EXPECT_OUT | next=Next: press B to found a city here | the NEXT line for a settler on open land
