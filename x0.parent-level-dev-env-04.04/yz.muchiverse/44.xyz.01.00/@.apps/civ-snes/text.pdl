@@ -5,3 +5,4 @@ TEXT | next_found | Next: press B to found a city here
 TEXT | next_endturn | Next: press Space to end the turn
 TEXT | next_move | Next: move a unit, or Space to end the turn
 TEXT | next_end | Next: press Space to end the turn
+TEXT | setup_next | Up/Down pick, Left/Right change, Enter starts

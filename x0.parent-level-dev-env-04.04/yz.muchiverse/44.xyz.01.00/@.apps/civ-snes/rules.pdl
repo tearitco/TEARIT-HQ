@@ -1,14 +1,62 @@
 # rules.pdl - the numbers of civ-snes (CONFIG: an input, never written by the game). Read by ops/civ_op.c; the harness may point CIV_RULES at a copy.
 # Integer only (D93). The hash of every RULE row is in the first ledger row: edit a number after a game began and the ledger is refused (exit 14).
 # RULE | name | integer
-# map
-RULE | map_w | 20
-RULE | map_h | 14
-RULE | min_land | 60
-# terrain from a seeded value noise: lattice spacing, fine noise amplitude, border sinking, thresholds (sea < hill < mount), forest share of the rest
-RULE | noise_cell | 4
+# ---- setup presets (the owner's setup step: size, difficulty, rivals, map, seed). Index 0 small, 1 medium, 2 large; the default is the BIGGEST (large).
+# Why 40 x 30 = 1200 tiles: the reference SNES Civilization map is 80 x 50 = 4000 tiles; 202.snes-civ (the repo's own reference) uses 40 x 30; the desk page limit is 64 x 64; the engine stays interactive at that size (measured in the build log).
+RULE | size_small_w | 20
+RULE | size_small_h | 14
+RULE | size_small_noise | 4
+RULE | size_small_edge | 3
+RULE | size_small_land | 60
+RULE | size_medium_w | 30
+RULE | size_medium_h | 22
+RULE | size_medium_noise | 5
+RULE | size_medium_edge | 3
+RULE | size_medium_land | 130
+RULE | size_large_w | 40
+RULE | size_large_h | 30
+RULE | size_large_noise | 6
+RULE | size_large_edge | 4
+RULE | size_large_land | 250
+RULE | default_size | 2
+RULE | default_diff | 1
+RULE | default_rivals | 1
+RULE | default_map | 0
+RULE | default_seed | 4
+RULE | seed_max | 99999999
+# ---- difficulty (easy normal hard): what each level really changes. normal is the base game.
+# rival_shield_add: extra shields a turn in every city of an agent civ; rival_settlers: extra settlers each rival starts with; human_warriors: extra warriors the human starts with; agent_actions: the actions an agent may take a turn
+RULE | diff_easy_rival_shield_add | 0
+RULE | diff_easy_rival_settlers | 0
+RULE | diff_easy_human_warriors | 1
+RULE | diff_easy_agent_actions | 3
+RULE | diff_normal_rival_shield_add | 0
+RULE | diff_normal_rival_settlers | 0
+RULE | diff_normal_human_warriors | 0
+RULE | diff_normal_agent_actions | 6
+RULE | diff_hard_rival_shield_add | 1
+RULE | diff_hard_rival_settlers | 1
+RULE | diff_hard_human_warriors | 0
+RULE | diff_hard_agent_actions | 8
+# ---- the real Earth map (the setup option "map: earth"): sampled from ETOPO5 (the file @.apps/earth-moth reads), the sea level and the sampling are data
+# the map covers earth_lat_north down to earth_lat_south (degrees) over 360 degrees of longitude; a tile is the mean of earth_sub x earth_sub samples (metres); water below earth_sea, hills from earth_hill, mountains from earth_mount
+RULE | earth_lat_north | 75
+RULE | earth_lat_south | -60
+RULE | earth_sub | 3
+RULE | earth_sea | 0
+RULE | earth_hill | 600
+RULE | earth_mount | 1800
+# where each civ wants to start on the earth (the nearest grass to this latitude and longitude): Europe, East Asia, North America, Australia
+RULE | earth_start1_lat | 49
+RULE | earth_start1_lon | 8
+RULE | earth_start2_lat | 35
+RULE | earth_start2_lon | 108
+RULE | earth_start3_lat | 40
+RULE | earth_start3_lon | -98
+RULE | earth_start4_lat | -27
+RULE | earth_start4_lon | 135
+# ---- terrain from a seeded value noise (random maps): fine noise amplitude, border sinking, thresholds (sea < hill < mount), forest share of the rest
 RULE | noise_fine | 14
-RULE | edge_margin | 3
 RULE | edge_pen | 7
 RULE | sea | 42
 RULE | hill | 70
@@ -34,8 +82,7 @@ RULE | sight | 1
 # calendar
 RULE | year0 | -4000
 RULE | year_step | 20
-# the basic agent (civ2): actions per turn, weights (the highest score wins, the first in the list on a tie); it wants ai_cities cities, then builds warriors
-RULE | agent_actions | 6
+# the basic agent (every rival civ): the actions per turn are the difficulty rows above; weights (the highest score wins, the first in the list on a tie); it wants ai_cities cities, then builds warriors
 RULE | aiw_found | 100
 RULE | aiw_explore | 4
 RULE | aiw_walk | 1

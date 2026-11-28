@@ -25,7 +25,7 @@ EXPECT_HAS | house/@.apps/civ-snes/events/endturn/event_pkg/pages/page_1/conditi
 ENV | CIV_LEDGER | $T/led.txt
 ENV | CIV_DESK | $T/desk
 ENV | CIV_SEE | civ1
-RUN | $T/house/@.apps/civ-snes/ops/+x/civ_op.+x | $T/led.txt | new | 4
+RUN | $T/house/@.apps/civ-snes/ops/+x/civ_op.+x | $T/led.txt | new | 4 | small
 EXPECT_EXIT | 0 | seed-4 ledger
 ENV | MUCHI_TARGET_ENT | $T/house/@.apps/civ-snes/play/world
 ENV | GAME_ARG | u2 n
@@ -84,7 +84,7 @@ RUN | cp | $T/house/@.apps/civ-snes/ops/+x/civ_op.+x | $T/h2/@.apps/civ-snes/ops
 RUN | cp | $T/house/@.apps/civ-snes/rules.pdl | $T/h2/@.apps/civ-snes/rules.pdl
 ENV | CIV_LEDGER | $T/l2.txt
 ENV | CIV_DESK | $T/desk2
-RUN | $T/h2/@.apps/civ-snes/ops/+x/civ_op.+x | $T/l2.txt | new | 4
+RUN | $T/h2/@.apps/civ-snes/ops/+x/civ_op.+x | $T/l2.txt | new | 4 | small
 ENV | GAME_ARG | u2 n
 RUN | $T/h2/@.apps/civ-snes/ops/+x/civ_verb.+x | move
 EXPECT_EXIT | 0 | the sabotaged engine still accepts the move

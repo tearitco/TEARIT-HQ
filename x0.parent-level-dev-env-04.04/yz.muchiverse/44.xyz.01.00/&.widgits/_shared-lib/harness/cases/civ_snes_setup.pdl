@@ -1,0 +1,280 @@
+# civ_snes_setup - the SETUP step of civ-snes before play (decision D157, owner 2026-11-27): the map size presets (the large 40 x 30 map is the default), difficulty, number of rivals, map kind (random or the real Earth from ETOPO5) and the seed.
+# The choices are a PREFERENCE (setup.txt, a cursor) until `start` commits them as ONE ledger row (NEW carries size, difficulty, rivals, map, seed and the hash of the map grid); replay reproduces them and a forged setup row is refused (exit 14).
+# Pins: HAND = forced by the rules rows or by geography I know independently of the op; PIN = observed once and kept. Everything runs in a scratch folder under $T.
+RESULTS | ../results/civ_snes_setup.txt
+CASE | setup
+SCRATCH
+MKDIR | app/ops/+x
+MKDIR | #.NNEST_ASSETS/rta-sources/earth-moth
+RUN | sh | -c | ln -s "$(find $HOUSE/../../.. -maxdepth 4 -name ETOPO5.DAT \p head -1)" "$T/#.NNEST_ASSETS/rta-sources/earth-moth/ETOPO5.DAT"
+COPY | @.apps/civ-snes/rules.pdl | app/rules.pdl
+COPY | @.apps/civ-snes/text.pdl | app/text.pdl
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/app/ops/+x/civ_op.+x | $HOUSE/@.apps/civ-snes/ops/civ_op.c
+EXPECT_EXIT | 0 | the op compiles with -Wall -Wextra -Werror
+# ---- presets: the default is the BIGGEST; the sizes are RULE rows (HAND: w x h)
+RUN | grep | -c | RULE \p size_ | $T/app/rules.pdl
+EXPECT_OUT | 15 | HAND: three presets x five rows (w h noise edge land) are RULE rows
+RUN | grep | -c | default_size \p 2 | $T/app/rules.pdl
+EXPECT_OUT | 1 | HAND: default_size 2 = large, the biggest preset
+RUN | $T/app/ops/+x/civ_op.+x | - | world | 4
+EXPECT_OUT | land=599 of 1200 | HAND: the default world is 40 x 30 = 1200 tiles (PIN: 599 land)
+RUN | $T/app/ops/+x/civ_op.+x | - | world | 4 | small
+EXPECT_OUT | of 280 | HAND: small is 20 x 14 = 280 (the original slice map)
+RUN | $T/app/ops/+x/civ_op.+x | - | world | 4 | medium
+EXPECT_OUT | of 660 | HAND: medium is 30 x 22 = 660
+RUN | $T/app/ops/+x/civ_op.+x | - | world | 4 | huge
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-size-is-not-a-world
+MKDIR | g
+RUN | $T/app/ops/+x/civ_op.+x | $T/g/ledger.txt | new | 4
+EXPECT_EXIT | 0 | new with only a seed uses the RULE defaults
+EXPECT_HAS | $T/g/ledger.txt | NEW\p4\p40\p30\p | the NEW row names the large map
+RUN | grep | -c | \plarge\pnormal\p1\prandom\p | $T/g/ledger.txt
+EXPECT_OUT | 1 | the NEW row carries size, difficulty, rivals and map kind
+EXPECT_HAS | $T/g/ledger.txt | UNIT\pu1\pciv1\psettler\p10\p15\n | HAND: the target for civ1 is w/4,h/2 = 10,15 and row 15 of the seed-4 world has grass at x=10 (the world print starts with "~~.TT^." and index 10 is a dot)
+RUN | $T/app/ops/+x/civ_op.+x | $T/g/ledger.txt | fog | civ1
+EXPECT_OUT | seen=12 of 1200 | HAND: 4 columns x 3 rows around the two civ1 units, out of 40 x 30
+RUN | $T/app/ops/+x/civ_op.+x | $T/g/ledger.txt | verify
+EXPECT_EXIT | 0 | the large game replays
+# ---- the setup draft: a cursor, never a game fact
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | show
+EXPECT_OUT | stat_line=Size: large 40x30 | the first option is Size, the default is large 40x30
+EXPECT_OUT | option2=  Map: random | the options are listed (the focus mark is the greater-than sign)
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | inc
+EXPECT_OUT | stat_line=Size: small 20x14 | inc wraps: large to small
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | dec
+EXPECT_OUT | stat_line=Size: large 40x30 | dec wraps back
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | next
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | inc
+EXPECT_OUT | stat_line=Map: earth | the second option switches the map to earth
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | next
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | inc
+EXPECT_OUT | stat_line=Difficulty: hard | normal to hard
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | next
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | inc
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | inc
+EXPECT_OUT | stat_line=Rivals: 3 | 1 to 3
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | inc
+EXPECT_OUT | stat_line=Rivals: 1 | wraps 3 to 1
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | digit | 5
+EXPECT_EXIT | 4 | NEGATIVE-digits-type-only-into-the-Seed-option
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | next
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | back
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | digit | 7
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | digit | 3
+EXPECT_OUT | stat_line=Seed: 73 | typing a seed: 4 back = 0, then 7, then 3
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | digit | x
+EXPECT_EXIT | 4 | NEGATIVE-a-non-digit-is-refused
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | random | 123456789
+EXPECT_OUT | stat_line=Seed: 23456789 | random n is n modulo (seed_max + 1) = 123456789 mod 100000000 (HAND)
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | digit | 1
+EXPECT_EXIT | 4 | NEGATIVE-a-seed-longer-than-seed_max-is-refused
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | random | 4
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | bogus
+EXPECT_EXIT | 4 | NEGATIVE-an-unknown-action-is-refused
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | show
+EXPECT_OUT | stat_line2=large 40x30, earth | the summary line shows size and map
+# ---- start commits the draft as the NEW row (Size large, Map earth, Difficulty hard, Rivals 1, Seed 4)
+MKDIR | s
+RUN | $T/app/ops/+x/civ_op.+x | $T/s/ledger.txt | start | $T/dr.txt
+EXPECT_EXIT | 0 | start writes the NEW row from the draft
+RUN | grep | -c | NEW\p4\p40\p30\p.*\plarge\phard\p1\pearth\p | $T/s/ledger.txt
+EXPECT_OUT | 1 | the committed row carries the draft
+RUN | $T/app/ops/+x/civ_op.+x | $T/s/ledger.txt | start | $T/dr.txt
+EXPECT_EXIT | 4 | NEGATIVE-start-over-a-game-is-refused
+RUN | $T/app/ops/+x/civ_op.+x | $T/s/ledger.txt | verify
+EXPECT_EXIT | 0 | the earth game replays
+# ---- 2D and 3D read the SAME data: the setup preview and the started game write the identical desk
+RUN | $T/app/ops/+x/civ_op.+x | - | preview | $T/dr.txt | $T/dprev
+EXPECT_EXIT | 0 | the preview projects the draft to a desk
+RUN | $T/app/ops/+x/civ_op.+x | $T/s/ledger.txt | project | all | $T/dgame
+RUN | cmp | $T/dprev/cells.txt | $T/dgame/cells.txt
+EXPECT_EXIT | 0 | PARITY: the preview cells.txt (the setup screen) is byte-identical to the started game's cells.txt
+RUN | cmp | $T/dprev/extrusion.pdl | $T/dgame/extrusion.pdl
+EXPECT_EXIT | 0 | PARITY: the 3D extrusion rows are the same file content
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr2.txt | inc
+RUN | $T/app/ops/+x/civ_op.+x | - | preview | $T/dr2.txt | $T/dprev2
+RUN | cmp | -s | $T/dprev/cells.txt | $T/dprev2/cells.txt
+EXPECT_EXIT | 1 | CONTROL: another draft (small, random) previews another desk
+# ---- difficulty is real and measurable (RULE rows diff_*): same seed, same map
+MKDIR | de
+MKDIR | dn
+MKDIR | dh
+RUN | $T/app/ops/+x/civ_op.+x | $T/de/l.txt | new | 4 | small | easy | 1
+RUN | $T/app/ops/+x/civ_op.+x | $T/dn/l.txt | new | 4 | small | normal | 1
+RUN | $T/app/ops/+x/civ_op.+x | $T/dh/l.txt | new | 4 | small | hard | 1
+RUN | grep | -c | UNIT | $T/de/l.txt
+EXPECT_OUT | 5 | HAND easy: the human gets diff_easy_human_warriors 1 extra warrior: 3 + 2 start units
+RUN | grep | -c | UNIT | $T/dn/l.txt
+EXPECT_OUT | 4 | HAND normal: 2 + 2
+RUN | grep | -c | UNIT | $T/dh/l.txt
+EXPECT_OUT | 5 | HAND hard: the rival gets diff_hard_rival_settlers 1 extra settler: 2 + 3
+RUN | grep | -c | UNIT.u5.civ2.settler | $T/dh/l.txt
+EXPECT_OUT | 1 | the extra piece on hard is a rival SETTLER
+RUN | $T/app/ops/+x/civ_op.+x | $T/de/l.txt | endturn
+RUN | $T/app/ops/+x/civ_op.+x | $T/dn/l.txt | endturn
+RUN | $T/app/ops/+x/civ_op.+x | $T/dh/l.txt | endturn
+RUN | grep | -c | AGENT | $T/de/l.txt
+EXPECT_OUT | 3 | easy: the rival may act diff_easy_agent_actions 3 times a turn and uses all 3 (found, move, build)
+RUN | grep | -c | AGENT | $T/dn/l.txt
+EXPECT_OUT | 4 | normal: found, move, build, move (its units run out of moves under the limit of 6)
+RUN | grep | -c | AGENT | $T/dh/l.txt
+EXPECT_OUT | 5 | hard: more units, more actions (limit 8 not reached)
+RUN | $T/app/ops/+x/civ_op.+x | $T/dn/l.txt | endturn
+RUN | $T/app/ops/+x/civ_op.+x | $T/dh/l.txt | endturn
+RUN | grep | -c | PROD.c1.2.2 | $T/dn/l.txt
+EXPECT_OUT | 1 | normal: the rival capital makes 2 shields a turn (PIN: city_shields 1 + 1 from rough neighbours)
+RUN | grep | -c | PROD.c1.3.3 | $T/dh/l.txt
+EXPECT_OUT | 1 | hard: the same capital makes 3 (HAND: normal 2 + diff_hard_rival_shield_add 1)
+RUN | $T/app/ops/+x/civ_op.+x | $T/dh/l.txt | verify
+EXPECT_EXIT | 0 | the hard game replays
+# ---- rivals: up to 3, each a civ with its own fog
+MKDIR | r3
+RUN | $T/app/ops/+x/civ_op.+x | $T/r3/l.txt | new | 4 | large | normal | 3
+EXPECT_EXIT | 0 | three rivals
+RUN | grep | -c | UNIT | $T/r3/l.txt
+EXPECT_OUT | 8 | HAND: four civs x (settler + warrior)
+RUN | grep | -c | SEAT.civ[234].agent:basic | $T/r3/l.txt
+EXPECT_OUT | 3 | the three rivals are agent seats
+RUN | $T/app/ops/+x/civ_op.+x | $T/r3/l.txt | fog | civ4
+EXPECT_OUT | of 1200 | civ4 has a fog of its own
+RUN | $T/app/ops/+x/civ_op.+x | $T/r3/l.txt | seat | civ4 | human
+EXPECT_EXIT | 0 | civ4 exists in a three-rival game
+RUN | $T/app/ops/+x/civ_op.+x | $T/r3/l.txt | seat | civ5 | human
+EXPECT_EXIT | 4 | NEGATIVE-civ5-does-not-exist
+RUN | $T/app/ops/+x/civ_op.+x | $T/r3/l.txt | endturn
+EXPECT_OUT | AGENT\pciv3 | civ3 plays its turn (an agent seat)
+RUN | $T/app/ops/+x/civ_op.+x | $T/r3/l.txt | verify
+EXPECT_EXIT | 0 | the four-civ game replays
+RUN | $T/app/ops/+x/civ_op.+x | $T/g/ledger.txt | seat | civ3 | human
+EXPECT_EXIT | 4 | NEGATIVE-civ3-does-not-exist-in-a-one-rival-game
+RUN | $T/app/ops/+x/civ_op.+x | $T/r3/x.txt | new | 4 | large | normal | 4
+EXPECT_EXIT | 4 | NEGATIVE-four-rivals-are-refused
+# ---- forged setup rows are refused (exit 14), the original is untouched
+RUN | cp | $T/s/ledger.txt | $T/fa.txt
+RUN | sed | -i | 1s/\phard\p/\peasy\p/ | $T/fa.txt
+RUN | grep | -c | \peasy\p | $T/fa.txt
+EXPECT_OUT | 1 | the forged row is in the file
+RUN | $T/app/ops/+x/civ_op.+x | $T/fa.txt | verify
+EXPECT_EXIT | 14 | NEGATIVE-a-hand-edited-difficulty-is-refused
+RUN | cp | $T/g/ledger.txt | $T/fb.txt
+RUN | sed | -i | 1s/\plarge\p/\psmall\p/ | $T/fb.txt
+RUN | $T/app/ops/+x/civ_op.+x | $T/fb.txt | verify
+EXPECT_EXIT | 14 | NEGATIVE-a-hand-edited-size-is-refused
+RUN | cp | $T/g/ledger.txt | $T/fc.txt
+RUN | sed | -i | 1s/\plarge\p/\phuge\p/ | $T/fc.txt
+RUN | $T/app/ops/+x/civ_op.+x | $T/fc.txt | verify
+EXPECT_EXIT | 14 | NEGATIVE-an-unknown-size-name-is-refused
+RUN | cp | $T/g/ledger.txt | $T/fd.txt
+RUN | sed | -i | 1s/\pnormal\p1\p/\pnormal\p3\p/ | $T/fd.txt
+RUN | $T/app/ops/+x/civ_op.+x | $T/fd.txt | verify
+EXPECT_EXIT | 14 | NEGATIVE-a-hand-edited-rival-count-is-refused
+RUN | cp | $T/g/ledger.txt | $T/fe.txt
+RUN | sed | -i | 1s/\prandom\p.*/\prandom\p0000000000000000/ | $T/fe.txt
+RUN | $T/app/ops/+x/civ_op.+x | $T/fe.txt | verify
+EXPECT_EXIT | 14 | NEGATIVE-a-forged-map-grid-hash-is-refused
+EXPECT_OUT | ledger refused | and it says so
+# ---- the real Earth (ETOPO5, the file @.apps/earth-moth reads; not copied)
+RUN | $T/app/ops/+x/civ_op.+x | - | earthprobe | 280 | 870
+EXPECT_OUT | class=mountain | HAND (geography): 28.0 N 87.0 E is the Himalaya (Everest)
+RUN | $T/app/ops/+x/civ_op.+x | - | earthprobe | 0 | -300
+EXPECT_OUT | class=water | HAND: 0 N 30 W is the mid-Atlantic
+RUN | $T/app/ops/+x/civ_op.+x | - | earthprobe | 0 | -1600
+EXPECT_OUT | class=water | HAND: 0 N 160 W is the central Pacific
+RUN | $T/app/ops/+x/civ_op.+x | - | earthprobe | 490 | 100
+EXPECT_OUT | class=land | HAND: 49 N 10 E is Bavaria, Germany
+RUN | $T/app/ops/+x/civ_op.+x | - | earthprobe | 250 | 150
+EXPECT_OUT | class=land | HAND: 25 N 15 E is the Sahara (Libya)
+RUN | $T/app/ops/+x/civ_op.+x | - | world | 4 | large | earth
+CAPTURE | e1
+RUN | $T/app/ops/+x/civ_op.+x | - | world | 4 | large | earth
+CAPTURE | e2
+EXPECT_EQ | $e1 | $e2 | the earth map is deterministic
+RUN | $T/app/ops/+x/civ_op.+x | - | world | 4 | large | random
+CAPTURE | e3
+EXPECT_NE | $e1 | $e3 | CONTROL: the earth map is not the random map
+RUN | $T/app/ops/+x/civ_op.+x | - | world | 99 | large | earth
+EXPECT_OUT | land=350 of 1200 | the earth has the same land and water for any seed (only the forest and grass split uses the seed); PIN 350
+EXPECT_HAS | $T/s/ledger.txt | UNIT\pu1\pciv1\psettler\p20\p5\n | HAND: civ1 targets 49 N 8 E = tile x (8+180)*40/360 = 20, y (75-49)*30/135 = 5; that tile is grass in the earth world, so it is the start
+MKDIR | e
+RUN | $T/app/ops/+x/civ_op.+x | $T/e/l.txt | new | 4 | large | normal | 3 | earth
+RUN | grep | -c | UNIT.u7.civ4.settler | $T/e/l.txt
+EXPECT_OUT | 1 | civ4 (Australia) has a settler
+# changed source data is refused: a copy of the ETOPO file with a swath zeroed (zero metres is land, so the grid changes)
+RUN | $T/app/ops/+x/civ_op.+x | $T/e/l.txt | verify
+EXPECT_EXIT | 0 | CONTROL: the real data verifies the earth game
+RUN | cp | -L | $T/#.NNEST_ASSETS/rta-sources/earth-moth/ETOPO5.DAT | $T/etopo.dat
+RUN | dd | if=/dev/zero | of=$T/etopo.dat | bs=1M | count=6 | seek=2 | conv=notrunc
+RUN | env | CIV_ETOPO=$T/etopo.dat | $T/app/ops/+x/civ_op.+x | $T/e/l.txt | verify
+EXPECT_EXIT | 14 | NEGATIVE-changed-ETOPO-data-refuses-the-earth-ledger
+EXPECT_OUT | ledger refused | and it says so
+RUN | env | CIV_ETOPO=$T/none.dat | $T/app/ops/+x/civ_op.+x | $T/e/l.txt | verify
+EXPECT_EXIT | 14 | NEGATIVE-missing-ETOPO-data-refuses-the-earth-ledger
+RUN | env | CIV_ETOPO=$T/none.dat | $T/app/ops/+x/civ_op.+x | $T/zz.txt | new | 4 | large | normal | 1 | earth
+EXPECT_EXIT | 4 | NEGATIVE-a-new-earth-game-without-the-data-is-refused
+RUN | env | CIV_ETOPO=$T/etopo.dat | $T/app/ops/+x/civ_op.+x | $T/zz.txt | new | 4 | large | normal | 1 | random
+EXPECT_EXIT | 0 | CONTROL: a RANDOM game does not need the ETOPO file
+RUN | $T/app/ops/+x/civ_op.+x | $T/zz.txt | verify
+EXPECT_EXIT | 0 | and replays with the file gone from the random game's point of view
+# the sea level is data: a different earth_sea changes the grid hash and so refuses the ledger
+MKDIR | e2/ops/+x
+COPY | @.apps/civ-snes/rules.pdl | e2/rules.pdl
+COPY | @.apps/civ-snes/text.pdl | e2/text.pdl
+RUN | cp | $T/app/ops/+x/civ_op.+x | $T/e2/ops/+x/civ_op.+x
+RUN | sed | -i | s/earth_sea \p 0/earth_sea \p 500/ | $T/e2/rules.pdl
+RUN | $T/e2/ops/+x/civ_op.+x | $T/e/l.txt | verify
+EXPECT_EXIT | 14 | NEGATIVE-the-sea-level-is-a-RULE-row-hashed-into-the-game
+# ================= SABOTAGE: each clause broken on purpose must turn a scene red
+MKDIR | q1/ops/+x
+COPY | @.apps/civ-snes/rules.pdl | q1/rules.pdl
+COPY | @.apps/civ-snes/text.pdl | q1/text.pdl
+COPY | @.apps/civ-snes/ops/civ_op.c | q1/civ_op.c
+RUN | sed | -i | s/ + (W->seat_agent\[c->civ\] ? rule_diff(W->diff, "rival_shield_add") : 0)// | $T/q1/civ_op.c
+RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_op.c | $T/q1/civ_op.c
+EXPECT_EXIT | 1 | SABOTAGE q1: the mutant source differs (the sed matched)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/q1/ops/+x/civ_op.+x | $T/q1/civ_op.c
+EXPECT_EXIT | 0 | SABOTAGE q1: compiles
+MKDIR | q1h
+RUN | $T/q1/ops/+x/civ_op.+x | $T/q1h/l.txt | new | 4 | small | hard | 1
+RUN | $T/q1/ops/+x/civ_op.+x | $T/q1h/l.txt | endturn
+RUN | $T/q1/ops/+x/civ_op.+x | $T/q1h/l.txt | endturn
+RUN | grep | -c | PROD.c1.2.2 | $T/q1h/l.txt
+EXPECT_OUT | 1 | SABOTAGE q1 CAUGHT: without the shield clause hard makes 2 shields like normal (the real op: PROD.c1.3.3, shown above)
+MKDIR | q2/ops/+x
+COPY | @.apps/civ-snes/rules.pdl | q2/rules.pdl
+COPY | @.apps/civ-snes/text.pdl | q2/text.pdl
+COPY | @.apps/civ-snes/ops/civ_op.c | q2/civ_op.c
+RUN | sed | -i | s/lim = rule_diff(W->diff, "agent_actions")/lim = rule_diff(1, "agent_actions")/ | $T/q2/civ_op.c
+RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_op.c | $T/q2/civ_op.c
+EXPECT_EXIT | 1 | SABOTAGE q2: the mutant source differs
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/q2/ops/+x/civ_op.+x | $T/q2/civ_op.c
+EXPECT_EXIT | 0 | SABOTAGE q2: compiles
+MKDIR | q2e
+RUN | $T/q2/ops/+x/civ_op.+x | $T/q2e/l.txt | new | 4 | small | easy | 1
+RUN | $T/q2/ops/+x/civ_op.+x | $T/q2e/l.txt | endturn
+RUN | grep | -c | AGENT | $T/q2e/l.txt
+EXPECT_OUT | 4 | SABOTAGE q2 CAUGHT: the easy rival ignoring its action limit acts 4 times (the real op: 3, shown above)
+MKDIR | q3/ops/+x
+COPY | @.apps/civ-snes/rules.pdl | q3/rules.pdl
+COPY | @.apps/civ-snes/text.pdl | q3/text.pdl
+COPY | @.apps/civ-snes/ops/civ_op.c | q3/civ_op.c
+RUN | sed | -i | s/if (gh != (unsigned long long)grid_hash(W)) return bad(0, "the map grid differs from the one the game began with (source data changed)");// | $T/q3/civ_op.c
+RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_op.c | $T/q3/civ_op.c
+EXPECT_EXIT | 1 | SABOTAGE q3: the mutant source differs
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/q3/ops/+x/civ_op.+x | $T/q3/civ_op.c
+EXPECT_EXIT | 0 | SABOTAGE q3: compiles
+RUN | env | CIV_ETOPO=$T/etopo.dat | $T/q3/ops/+x/civ_op.+x | $T/e/l.txt | verify
+EXPECT_OUT | ledger refused | SABOTAGE q3 NOTE: with the grid-hash clause gone the NEW-row compare is a second guard (the hash is inside the NEW row), so the ledger is still refused: the clause's own message is what disappears
+RUN | env | CIV_ETOPO=$T/etopo.dat | $T/q3/ops/+x/civ_op.+x | $T/e/l.txt | verify
+EXPECT_OUT_LACKS | source data changed | SABOTAGE q3 CAUGHT: the refusal no longer names the changed source data
+MKDIR | q4/ops/+x
+COPY | @.apps/civ-snes/rules.pdl | q4/rules.pdl
+COPY | @.apps/civ-snes/text.pdl | q4/text.pdl
+COPY | @.apps/civ-snes/ops/civ_op.c | q4/civ_op.c
+RUN | sed | -i | s/if (S->rivals < 1 \p\p S->rivals > 3) return refuse("rivals are 1 to 3");// | $T/q4/civ_op.c
+RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_op.c | $T/q4/civ_op.c
+EXPECT_EXIT | 1 | SABOTAGE q4: the mutant source differs
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/q4/ops/+x/civ_op.+x | $T/q4/civ_op.c
+EXPECT_EXIT | 0 | SABOTAGE q4: compiles
+RUN | $T/q4/ops/+x/civ_op.+x | $T/q4/l.txt | new | 4 | large | normal | 0
+EXPECT_EXIT | 0 | SABOTAGE q4 CAUGHT: without the rival-count clause a game with no rival is accepted (the real op: exit 4)
+CLEAN |

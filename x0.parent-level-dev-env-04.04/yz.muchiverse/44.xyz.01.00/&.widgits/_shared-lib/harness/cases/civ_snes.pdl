@@ -11,18 +11,18 @@ COPY | @.apps/civ-snes/state.pdl | app/state.pdl
 RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/app/ops/+x/civ_op.+x | $HOUSE/@.apps/civ-snes/ops/civ_op.c
 EXPECT_EXIT | 0 | the op compiles with -Wall -Wextra -Werror
 MKDIR | g
-RUN | $T/app/ops/+x/civ_op.+x | - | world | 4
+RUN | $T/app/ops/+x/civ_op.+x | - | world | 4 | small
 EXPECT_OUT | ~~....T~~~...TT.^T~~ | HAND: row 7 of the seed-4 world
 EXPECT_OUT | land=145 of 280 | PIN: land count of seed 4
 CAPTURE | w4a
-RUN | $T/app/ops/+x/civ_op.+x | - | world | 4
+RUN | $T/app/ops/+x/civ_op.+x | - | world | 4 | small
 CAPTURE | w4b
 EXPECT_EQ | $w4a | $w4b | the same seed gives the same world (no clock, no rand)
-RUN | $T/app/ops/+x/civ_op.+x | - | world | 5
+RUN | $T/app/ops/+x/civ_op.+x | - | world | 5 | small
 CAPTURE | w5
 EXPECT_NE | $w4a | $w5 | CONTROL: another seed gives another world
 # ---- new
-RUN | $T/app/ops/+x/civ_op.+x | $T/g/ledger.txt | new | 4
+RUN | $T/app/ops/+x/civ_op.+x | $T/g/ledger.txt | new | 4 | small
 EXPECT_EXIT | 0 | new writes the start rows
 EXPECT_HAS | $T/g/ledger.txt | UNIT\pu1\pciv1\psettler\p5\p7\n | HAND: the civ1 settler starts on the grass nearest w/4,h/2 = 5,7
 EXPECT_HAS | $T/g/ledger.txt | UNIT\pu2\pciv1\pwarrior\p6\p7\n | HAND: the warrior starts east of the settler
@@ -30,7 +30,7 @@ EXPECT_HAS | $T/g/ledger.txt | UNIT\pu3\pciv2\psettler\p15\p7\n | HAND: the civ2
 EXPECT_HAS | $T/g/ledger.txt | UNIT\pu4\pciv2\pwarrior\p16\p7\n | HAND: the civ2 warrior starts east of its settler
 EXPECT_HAS | $T/g/ledger.txt | SEAT\pciv2\pagent:basic\n | the rival is an agent seat, a ledger row
 EXPECT_HAS | $T/g/ledger.txt | NEW\p4\p20\p14\p | the first row names the seed and the map
-RUN | $T/app/ops/+x/civ_op.+x | $T/g/ledger.txt | new | 4
+RUN | $T/app/ops/+x/civ_op.+x | $T/g/ledger.txt | new | 4 | small
 EXPECT_EXIT | 4 | NEGATIVE-a-second-new-over-a-ledger-is-refused
 RUN | $T/app/ops/+x/civ_op.+x | $T/g/ledger.txt | verify
 EXPECT_EXIT | 0 | the fresh ledger replays
@@ -170,7 +170,7 @@ EXPECT_EXIT | 0 | CONTROL: the audit of a clean state folder passes
 # ---- projection: one desk for the 2D and the 3D board; deleted, it regenerates byte for byte
 RUN | $T/app/ops/+x/civ_op.+x | $T/g/ledger.txt | project | civ1 | $T/d
 EXPECT_EXIT | 0 | project writes the desk
-EXPECT_HAS | $T/d/cells.txt | width=20\nheight=14\ntile_px=16\natlas_cols=1\natlas_tiles=8\ncells\n | the desk header
+EXPECT_HAS | $T/d/cells.txt | width=20\nheight=14\ntile_px=16\natlas_cols=1\natlas_tiles=10\ncells\n | the desk header
 EXPECT_HAS | $T/d/extrusion.pdl | EXTRUDE \p M \p 5 | mountains stand tall in the 3D view
 EXPECT_HAS | $T/d/cells.txt | 6,0 | the human city is its own tile
 SUMTREE | d1 | d
@@ -191,10 +191,10 @@ EXPECT_OUT | 2 | CONTROL: the all-seeing projection draws both living units (civ
 # ---- the rival is deterministic, and its weights are data
 MKDIR | da
 MKDIR | db
-RUN | $T/app/ops/+x/civ_op.+x | $T/da/ledger.txt | new | 4
+RUN | $T/app/ops/+x/civ_op.+x | $T/da/ledger.txt | new | 4 | small
 RUN | $T/app/ops/+x/civ_op.+x | $T/da/ledger.txt | endturn
 RUN | $T/app/ops/+x/civ_op.+x | $T/da/ledger.txt | endturn
-RUN | $T/app/ops/+x/civ_op.+x | $T/db/ledger.txt | new | 4
+RUN | $T/app/ops/+x/civ_op.+x | $T/db/ledger.txt | new | 4 | small
 RUN | $T/app/ops/+x/civ_op.+x | $T/db/ledger.txt | endturn
 RUN | $T/app/ops/+x/civ_op.+x | $T/db/ledger.txt | endturn
 SUMTREE | sa | da
@@ -209,7 +209,7 @@ RUN | cp | $T/app/ops/+x/civ_op.+x | $T/w0/ops/+x/civ_op.+x
 RUN | sed | -i | s/aiw_found \p 100/aiw_found \p 0/ | $T/w0/rules.pdl
 RUN | grep | -c | aiw_found . 0 | $T/w0/rules.pdl
 EXPECT_OUT | 1 | the edit really changed the weight
-RUN | $T/w0/ops/+x/civ_op.+x | $T/w0/ledger.txt | new | 4
+RUN | $T/w0/ops/+x/civ_op.+x | $T/w0/ledger.txt | new | 4 | small
 RUN | $T/w0/ops/+x/civ_op.+x | $T/w0/ledger.txt | endturn
 EXPECT_OUT_LACKS | FOUND | the weights are DATA: with aiw_found 0 the rival does not found on turn 1 (it walks instead)
 EXPECT_OUT | AGENT\pciv2\pmove | and it still does something (the agent lists the legal moves and plays the best)
@@ -221,7 +221,7 @@ RUN | sed | -i | s/cost_settler \p 5/cost_settler \p 1/ | $T/sc1/rules.pdl
 RUN | sed | -i | s/default_build \p 1/default_build \p 0/ | $T/sc1/rules.pdl
 RUN | sed | -i | s/mp_settler \p 1/mp_settler \p 6/ | $T/sc1/rules.pdl
 RUN | cp | $T/app/ops/+x/civ_op.+x | $T/sc1/ops/+x/civ_op.+x
-RUN | $T/sc1/ops/+x/civ_op.+x | $T/sc1/ledger.txt | new | 4
+RUN | $T/sc1/ops/+x/civ_op.+x | $T/sc1/ledger.txt | new | 4 | small
 RUN | $T/sc1/ops/+x/civ_op.+x | $T/sc1/ledger.txt | found | u1
 EXPECT_OUT | FOUND\pu1\pc1\p5\p7 | the capital at 5,7
 RUN | $T/sc1/ops/+x/civ_op.+x | $T/sc1/ledger.txt | endturn
@@ -258,7 +258,7 @@ RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_op.c | $T/m2/civ_op.c
 EXPECT_EXIT | 1 | SABOTAGE m2: the mutant source differs from the real source (the sed matched)
 RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m2/ops/+x/civ_op.+x | $T/m2/civ_op.c
 EXPECT_EXIT | 0 | SABOTAGE m2: the mutant compiles
-RUN | $T/m2/ops/+x/civ_op.+x | $T/m2/ledger.txt | new | 4
+RUN | $T/m2/ops/+x/civ_op.+x | $T/m2/ledger.txt | new | 4 | small
 RUN | $T/m2/ops/+x/civ_op.+x | $T/m2/ledger.txt | move | u2 | e
 EXPECT_EXIT | 0 | SABOTAGE m2 CAUGHT: without the water clause the warrior steps onto 7,7 (the real op: exit 4)
 # ---- M3 stacking
@@ -271,7 +271,7 @@ RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_op.c | $T/m3/civ_op.c
 EXPECT_EXIT | 1 | SABOTAGE m3: the mutant source differs from the real source (the sed matched)
 RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m3/ops/+x/civ_op.+x | $T/m3/civ_op.c
 EXPECT_EXIT | 0 | SABOTAGE m3: the mutant compiles
-RUN | $T/m3/ops/+x/civ_op.+x | $T/m3/ledger.txt | new | 4
+RUN | $T/m3/ops/+x/civ_op.+x | $T/m3/ledger.txt | new | 4 | small
 RUN | $T/m3/ops/+x/civ_op.+x | $T/m3/ledger.txt | move | u1 | e
 EXPECT_EXIT | 0 | SABOTAGE m3 CAUGHT: without the stacking clause the settler walks onto the warrior (the real op: exit 4)
 # ---- M4 move points
@@ -284,7 +284,7 @@ RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_op.c | $T/m4/civ_op.c
 EXPECT_EXIT | 1 | SABOTAGE m4: the mutant source differs from the real source (the sed matched)
 RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m4/ops/+x/civ_op.+x | $T/m4/civ_op.c
 EXPECT_EXIT | 0 | SABOTAGE m4: the mutant compiles
-RUN | $T/m4/ops/+x/civ_op.+x | $T/m4/ledger.txt | new | 4
+RUN | $T/m4/ops/+x/civ_op.+x | $T/m4/ledger.txt | new | 4 | small
 RUN | $T/m4/ops/+x/civ_op.+x | $T/m4/ledger.txt | move | u2 | n
 RUN | $T/m4/ops/+x/civ_op.+x | $T/m4/ledger.txt | move | u2 | n
 RUN | $T/m4/ops/+x/civ_op.+x | $T/m4/ledger.txt | move | u2 | n
@@ -299,12 +299,12 @@ RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_op.c | $T/m5/civ_op.c
 EXPECT_EXIT | 1 | SABOTAGE m5: the mutant source differs from the real source (the sed matched)
 RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m5/ops/+x/civ_op.+x | $T/m5/civ_op.c
 EXPECT_EXIT | 0 | SABOTAGE m5: the mutant compiles
-RUN | $T/m5/ops/+x/civ_op.+x | $T/m5/ledger.txt | new | 4
+RUN | $T/m5/ops/+x/civ_op.+x | $T/m5/ledger.txt | new | 4 | small
 RUN | $T/m5/ops/+x/civ_op.+x | $T/m5/ledger.txt | move | u2 | n
 RUN | $T/m5/ops/+x/civ_op.+x | $T/m5/ledger.txt | move | u1 | e
 EXPECT_EXIT | 4 | SABOTAGE m5 CAUGHT: forbidding the overspend refuses the forest step (the real op: exit 0, MOVE cost 2)
 # ---- M6 production threshold: a capital at 5,7 (rough neighbours 2, 2 divided by 3 is 0: 1 shield a turn) bears a warrior at stock 3 (cost_warrior 3), on the THIRD TURN row
-RUN | $T/app/ops/+x/civ_op.+x | $T/da/p.txt | new | 4
+RUN | $T/app/ops/+x/civ_op.+x | $T/da/p.txt | new | 4 | small
 RUN | $T/app/ops/+x/civ_op.+x | $T/da/p.txt | found | u1
 RUN | $T/app/ops/+x/civ_op.+x | $T/da/p.txt | endturn
 RUN | $T/app/ops/+x/civ_op.+x | $T/da/p.txt | endturn
@@ -319,7 +319,7 @@ RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_op.c | $T/m6/civ_op.c
 EXPECT_EXIT | 1 | SABOTAGE m6: the mutant source differs from the real source (the sed matched)
 RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m6/ops/+x/civ_op.+x | $T/m6/civ_op.c
 EXPECT_EXIT | 0 | SABOTAGE m6: the mutant compiles
-RUN | $T/m6/ops/+x/civ_op.+x | $T/m6/ledger.txt | new | 4
+RUN | $T/m6/ops/+x/civ_op.+x | $T/m6/ledger.txt | new | 4 | small
 RUN | $T/m6/ops/+x/civ_op.+x | $T/m6/ledger.txt | found | u1
 RUN | $T/m6/ops/+x/civ_op.+x | $T/m6/ledger.txt | endturn
 RUN | $T/m6/ops/+x/civ_op.+x | $T/m6/ledger.txt | endturn
@@ -335,7 +335,7 @@ RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_op.c | $T/m7/civ_op.c
 EXPECT_EXIT | 1 | SABOTAGE m7: the mutant source differs from the real source (the sed matched)
 RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m7/ops/+x/civ_op.+x | $T/m7/civ_op.c
 EXPECT_EXIT | 0 | SABOTAGE m7: the mutant compiles
-RUN | $T/m7/ops/+x/civ_op.+x | $T/m7/ledger.txt | new | 4
+RUN | $T/m7/ops/+x/civ_op.+x | $T/m7/ledger.txt | new | 4 | small
 RUN | $T/m7/ops/+x/civ_op.+x | $T/m7/ledger.txt | fog | civ1
 EXPECT_OUT_LACKS | seen=12 of 280 | SABOTAGE m7 CAUGHT: a sight window one column short changes the seen count (the real op: 12)
 # ---- M8 the rules hash
@@ -348,7 +348,7 @@ RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_op.c | $T/m8/civ_op.c
 EXPECT_EXIT | 1 | SABOTAGE m8: the mutant source differs from the real source (the sed matched)
 RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m8/ops/+x/civ_op.+x | $T/m8/civ_op.c
 EXPECT_EXIT | 0 | SABOTAGE m8: the mutant compiles
-RUN | $T/m8/ops/+x/civ_op.+x | $T/m8/ledger.txt | new | 4
+RUN | $T/m8/ops/+x/civ_op.+x | $T/m8/ledger.txt | new | 4 | small
 RUN | sed | -i | s/citygap \p 3/citygap \p 4/ | $T/m8/rules.pdl
 RUN | $T/m8/ops/+x/civ_op.+x | $T/m8/ledger.txt | verify
 EXPECT_OUT_LACKS | rules.pdl changed after the game began | SABOTAGE m8 CAUGHT: without the hash clause the ledger is still refused (the NEW row compare is a second guard) but with the wrong cause (the real op names the hash)
@@ -362,7 +362,7 @@ RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_op.c | $T/m9/civ_op.c
 EXPECT_EXIT | 1 | SABOTAGE m9: the mutant source differs from the real source (the sed matched)
 RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m9/ops/+x/civ_op.+x | $T/m9/civ_op.c
 EXPECT_EXIT | 0 | SABOTAGE m9: the mutant compiles
-RUN | $T/m9/ops/+x/civ_op.+x | $T/m9/ledger.txt | new | 4
+RUN | $T/m9/ops/+x/civ_op.+x | $T/m9/ledger.txt | new | 4 | small
 RUN | $T/m9/ops/+x/civ_op.+x | $T/m9/ledger.txt | found | u1
 RUN | $T/m9/ops/+x/civ_op.+x | $T/m9/ledger.txt | endturn
 RUN | sed | -i | s/PROD\pc1\p1\p1/PROD\pc1\p1\p9/ | $T/m9/ledger.txt
@@ -380,7 +380,7 @@ RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_op.c | $T/m10/civ_op.c
 EXPECT_EXIT | 1 | SABOTAGE m10: the mutant source differs from the real source (the sed matched)
 RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m10/ops/+x/civ_op.+x | $T/m10/civ_op.c
 EXPECT_EXIT | 0 | SABOTAGE m10: the mutant compiles
-RUN | $T/m10/ops/+x/civ_op.+x | $T/m10/ledger.txt | new | 4
+RUN | $T/m10/ops/+x/civ_op.+x | $T/m10/ledger.txt | new | 4 | small
 RUN | $T/m10/ops/+x/civ_op.+x | $T/m10/ledger.txt | endturn
 EXPECT_OUT_LACKS | FOUND | SABOTAGE m10 CAUGHT: an agent that picks the lowest score does not found its capital (the real op founds at 15,7, shown above)
 # ---- M11 fresh move points at the turn
@@ -393,7 +393,7 @@ RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_op.c | $T/m11/civ_op.c
 EXPECT_EXIT | 1 | SABOTAGE m11: the mutant source differs from the real source (the sed matched)
 RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m11/ops/+x/civ_op.+x | $T/m11/civ_op.c
 EXPECT_EXIT | 0 | SABOTAGE m11: the mutant compiles
-RUN | $T/m11/ops/+x/civ_op.+x | $T/m11/ledger.txt | new | 4
+RUN | $T/m11/ops/+x/civ_op.+x | $T/m11/ledger.txt | new | 4 | small
 RUN | $T/m11/ops/+x/civ_op.+x | $T/m11/ledger.txt | move | u2 | n
 RUN | $T/m11/ops/+x/civ_op.+x | $T/m11/ledger.txt | move | u2 | n
 RUN | $T/m11/ops/+x/civ_op.+x | $T/m11/ledger.txt | endturn
@@ -409,7 +409,7 @@ RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_op.c | $T/m13/civ_op.c
 EXPECT_EXIT | 1 | SABOTAGE m13: the mutant source differs from the real source (the sed matched)
 RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m13/ops/+x/civ_op.+x | $T/m13/civ_op.c
 EXPECT_EXIT | 0 | SABOTAGE m13: the mutant compiles
-RUN | $T/m13/ops/+x/civ_op.+x | $T/m13/ledger.txt | new | 4
+RUN | $T/m13/ops/+x/civ_op.+x | $T/m13/ledger.txt | new | 4 | small
 RUN | $T/m13/ops/+x/civ_op.+x | $T/m13/ledger.txt | seat | civ2 | human
 RUN | $T/m13/ops/+x/civ_op.+x | $T/m13/ledger.txt | endturn
 EXPECT_OUT | AGENT | SABOTAGE m13 CAUGHT: the agent plays a human seat (the real op writes no AGENT row, shown above)
@@ -423,7 +423,7 @@ RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_op.c | $T/m14/civ_op.c
 EXPECT_EXIT | 1 | SABOTAGE m14: the mutant source differs from the real source (the sed matched)
 RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m14/ops/+x/civ_op.+x | $T/m14/civ_op.c
 EXPECT_EXIT | 0 | SABOTAGE m14: the mutant compiles
-RUN | $T/m14/ops/+x/civ_op.+x | $T/m14/ledger.txt | new | 4
+RUN | $T/m14/ops/+x/civ_op.+x | $T/m14/ledger.txt | new | 4 | small
 RUN | $T/m14/ops/+x/civ_op.+x | $T/m14/ledger.txt | found | u2
 EXPECT_EXIT | 0 | SABOTAGE m14 CAUGHT: a warrior founds a city (the real op: exit 4)
 CLEAN |
