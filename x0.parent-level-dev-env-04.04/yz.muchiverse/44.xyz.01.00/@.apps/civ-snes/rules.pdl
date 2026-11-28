@@ -1,0 +1,43 @@
+# rules.pdl - the numbers of civ-snes (CONFIG: an input, never written by the game). Read by ops/civ_op.c; the harness may point CIV_RULES at a copy.
+# Integer only (D93). The hash of every RULE row is in the first ledger row: edit a number after a game began and the ledger is refused (exit 14).
+# RULE | name | integer
+# map
+RULE | map_w | 20
+RULE | map_h | 14
+RULE | min_land | 60
+# terrain from a seeded value noise: lattice spacing, fine noise amplitude, border sinking, thresholds (sea < hill < mount), forest share of the rest
+RULE | noise_cell | 4
+RULE | noise_fine | 14
+RULE | edge_margin | 3
+RULE | edge_pen | 7
+RULE | sea | 42
+RULE | hill | 70
+RULE | mount | 82
+RULE | forest_pct | 62
+# movement: cost of entering a tile (water is never entered by a land unit); move points per turn; the last step may overspend
+RULE | cost_grass | 1
+RULE | cost_forest | 2
+RULE | cost_hills | 2
+RULE | cost_mountain | 3
+RULE | mp_settler | 1
+RULE | mp_warrior | 2
+# cities and production: citygap = the smallest Manhattan distance between two cities; shields per turn = city_shields + (rough neighbours / rough_div)
+RULE | citygap | 3
+RULE | city_shields | 1
+RULE | rough_div | 3
+RULE | cost_warrior | 3
+RULE | cost_settler | 5
+# default_build: 0 settler, 1 warrior
+RULE | default_build | 1
+# fog: a unit or city sees this many tiles in every direction (Chebyshev), and remembers
+RULE | sight | 1
+# calendar
+RULE | year0 | -4000
+RULE | year_step | 20
+# the basic agent (civ2): actions per turn, weights (the highest score wins, the first in the list on a tie); it wants ai_cities cities, then builds warriors
+RULE | agent_actions | 6
+RULE | aiw_found | 100
+RULE | aiw_explore | 4
+RULE | aiw_walk | 1
+RULE | aiw_build | 20
+RULE | ai_cities | 2

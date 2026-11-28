@@ -1,0 +1,11 @@
+# verbs.pdl - the civ-snes manifest: which verbs are EVENT PAGES (BOOK 16.game/EVENT-VERB-PAGES-DESIGN.md; same grammar as @.apps/rmmc/verbs.pdl). Read by &.widgits/events-hq/ops/+x/verbgen.+x
+#   verbgen check @.apps/civ-snes   engine source <-> this file <-> events/ must agree
+#   verbgen gen   @.apps/civ-snes   write events/<verb>/ for every page=yes verb (never overwrites an edited package)
+# The rules are ONE op (civ_op, decision D157): every verb below is a rule of it, the ledger is the only authority.
+GAME | civ-snes | civ_verb | ops/+x/civ_verb.+x | ops/civ_verb.c
+#   VERB | name | page | trigger | args | what it does
+VERB | move    | yes | ui | unit dir  | one step n ne e se s sw w nw (terrain cost against the unit's move points, the last step may overspend; refused 4 on water, an occupied tile, an enemy city, no moves left)
+VERB | found   | yes | ui | unit      | a settler becomes a city on its tile (refused 4 within citygap of another city)
+VERB | build   | yes | ui | city kind | what a city makes: settler or warrior (refused 4 when it already makes that)
+VERB | endturn | yes | ui |           | Next turn: append TURN n+1, then production, births, fresh move points, then the rival agent plays (the only thing that advances time)
+VERB | seat    | yes | ui | civ who   | who plays a civ: human or agent:basic (a row; the last row wins)

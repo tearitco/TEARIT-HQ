@@ -1,0 +1,20 @@
+# state.pdl - every file civ-snes may leave, and what kind of fact it is (no ghost data, owner 2026-11-07).
+# FILE | name | kind | writer | regenerate_with       (name = the file's own name; `civ_op <ledger> audit <dir> <this file>` fails on any file of <dir> not named here)
+FILE | ledger.txt | LEDGER | civ_op verbs new move found build endturn seat append rows (civ_op.c append_rows, one fopen "a" write per verb); under the editor state tree state/games/civ-snes/game/ | - (the ledger is the authority; never delete, never hand-edit: verify refuses with 14)
+FILE | rules.pdl | CONFIG | nobody at run time: the RULE numbers (their hash is in the NEW row, so an edit after a game began refuses that ledger) | -
+FILE | text.pdl | CONFIG | nobody at run time: the words of the "next" line | -
+FILE | verbs.pdl | CONFIG | nobody at run time: the manifest verbgen reads | -
+FILE | state.pdl | CONFIG | this file | -
+FILE | keys.pdl | CONFIG | nobody at run time: what each key does (the driver reads it) | -
+FILE | tutorial.pdl | CONFIG | nobody at run time: lesson 1 | -
+# the desk the 2D and 3D boards read (one folder, one scene): a PROJECTION of the fold, safe to delete
+FILE | cells.txt | PROJECTION | civ_op project (atomic write) | civ_op <ledger> project <civ> <desk>
+FILE | map.txt | PROJECTION | civ_op project | civ_op <ledger> project <civ> <desk>
+FILE | events.txt | PROJECTION | civ_op project (the units as pieces) | civ_op <ledger> project <civ> <desk>
+FILE | extrusion.pdl | PROJECTION | civ_op project (glyph heights for the 3D view) | civ_op <ledger> project <civ> <desk>
+FILE | cells.rgba | PROJECTION | civ_op project (the flat-colour tile atlas, 8 tiles) | civ_op <ledger> project <civ> <desk>
+FILE | cells.marker | PROJECTION | civ_op project APPENDS one byte per run (the engine reloads when its SIZE grows, the house marker rule), restarts at 1 byte after 4096: not byte-identical on a re-run, identical after the folder is deleted | delete it and it restarts
+# the driver (a later step) writes: game_ui.txt (PROJECTION, the left bar, rewritten only when its bytes change), result.txt (PROJECTION, "ok" or "refused: <why>"), sel.txt (PREFERENCE: the selected unit id, changes no outcome)
+FILE | result.txt | PROJECTION | the verb page wrapper writes "ok" or "refused: <why>" after each verb | deleted any time
+FILE | sel.txt | PREFERENCE | the driver writes the selected unit id (a UI cursor; no outcome reads it) | deleted any time (nothing selected)
+FILE | game_ui.txt | PROJECTION | the driver writes the side panel keys (nick_line, stat_line, stat_line2, next) only when the bytes change | rewritten by the driver
