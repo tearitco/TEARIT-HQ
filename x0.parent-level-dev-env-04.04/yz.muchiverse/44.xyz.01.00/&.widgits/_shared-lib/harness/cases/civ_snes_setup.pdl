@@ -354,8 +354,8 @@ RUN | grep | -c | 210 40 40 | $T/dca/events.txt
 EXPECT_OUT | 1 | HAND: the rival Romans' warrior wears the Roman colour: the owner is shown by colour in the SAME desk the 2D and the 3D board read
 RUN | $T/app/ops/+x/civ_op.+x | $T/ca/l.txt | found | u1
 RUN | $T/app/ops/+x/civ_op.+x | $T/ca/l.txt | project | all | $T/dca2
-RUN | od | -An | -tu1 | -j | 6212 | -N | 3 | $T/dca2/cells.rgba
-EXPECT_OUT | 40 200 200 | HAND: atlas tile 6 (the city of civ1) is RGBA, pixel (1,1) at byte 6 x 1024 + (16 + 1) x 4 = 6212 (the border pixel is shaded), and holds the Aztec colour 40 200 200
+RUN | od | -An | -tu1 | -v | -w4 | -j | 6144 | -N | 61440 | $T/dca2/cells.rgba
+EXPECT_OUT | 40 200 200 255 | HAND: tiles 6 and up are the pieces drawn on terrain in each civ colour: the settler and city sprites of civ 1 (the Aztecs) are painted in exactly RULE civ_5 r g b 40 200 200
 RUN | $T/app/ops/+x/civ_op.+x | $T/ca/l.txt | project | all | $T/dca3
 RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/drc.txt | next
 RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/drc.txt | inc
@@ -438,6 +438,34 @@ EXPECT_EXIT | 1 | SABOTAGE s3: the mutant source differs
 RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/s3/ops/+x/civ_op.+x | $T/s3/civ_op.c
 EXPECT_EXIT | 0 | SABOTAGE s3: compiles
 RUN | $T/s3/ops/+x/civ_op.+x | $T/ca/l.txt | project | all | $T/ds3
-RUN | od | -An | -tu1 | -j | 6212 | -N | 3 | $T/ds3/cells.rgba
-EXPECT_OUT_LACKS | 40 200 200 | SABOTAGE s3 CAUGHT: a city tile that ignores the owner's colour no longer carries the Aztec red channel 40 (the real op: 40 200 200)
+RUN | od | -An | -tu1 | -v | -w4 | -j | 6144 | -N | 61440 | $T/ds3/cells.rgba
+EXPECT_OUT_LACKS | 40 200 200 255 | SABOTAGE s3 CAUGHT: a piece tile that ignores the owner colour no longer has the Aztec red channel 40 (the real op paints 40 200 200)
+# ================= the ledger is read into a GROWING array and a ledger over 400000 rows is REFUSED, never cut (it was a fixed 8192-row array that dropped rows silently: a 4-civ game passes that near turn 110)
+MKDIR | big
+RUN | $T/app/ops/+x/civ_op.+x | $T/big/l.txt | new | 4 | small | hard | 3 | random
+RUN | $T/app/ops/+x/civ_op.+x | $T/big/l.txt | seat | civ1 | agent:basic
+RUN | sh | -c | i=0; while [ $i -lt 118 ]; do $T/app/ops/+x/civ_op.+x $T/big/l.txt endturn >/dev/null; i=$((i+1)); done
+RUN | sh | -c | [ $(wc -l < $T/big/l.txt) -gt 8192 ]
+EXPECT_EXIT | 0 | HAND: the played ledger has MORE than 8192 rows (the old fixed array size)
+RUN | $T/app/ops/+x/civ_op.+x | $T/big/l.txt | verify
+EXPECT_EXIT | 0 | and it replays in full (the rows past 8192 are read, not cut)
+MKDIR | q5/ops/+x
+COPY | @.apps/civ-snes/rules.pdl | q5/rules.pdl
+COPY | @.apps/civ-snes/text.pdl | q5/text.pdl
+COPY | @.apps/civ-snes/ops/civ_op.c | q5/civ_op.c
+RUN | sed | -i | s/#define MAXLEDGER 400000/#define MAXLEDGER 8192/ | $T/q5/civ_op.c
+RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_op.c | $T/q5/civ_op.c
+EXPECT_EXIT | 1 | SABOTAGE q5: the mutant source differs (the sed matched)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/q5/ops/+x/civ_op.+x | $T/q5/civ_op.c
+EXPECT_EXIT | 0 | SABOTAGE q5: compiles
+RUN | $T/q5/ops/+x/civ_op.+x | $T/big/l.txt | verify
+EXPECT_EXIT | 14 | SABOTAGE q5 CAUGHT: with the old 8192 cap the same ledger is refused (the real op: exit 0)
+MKDIR | huge
+RUN | $T/app/ops/+x/civ_op.+x | $T/huge/l.txt | new | 4 | small
+RUN | sh | -c | yes 'MOVE\pu1' \p head -n 400001 >> $T/huge/l.txt
+RUN | $T/app/ops/+x/civ_op.+x | $T/huge/l.txt | verify
+EXPECT_EXIT | 14 | a ledger of more than 400000 rows is REFUSED with 14 (not read in part)
+EXPECT_OUT | ledger refused | and it says so
+RUN | $T/app/ops/+x/civ_op.+x | $T/huge/l.txt | endturn
+EXPECT_EXIT | 14 | NEGATIVE-no-verb-runs-on-it
 CLEAN |

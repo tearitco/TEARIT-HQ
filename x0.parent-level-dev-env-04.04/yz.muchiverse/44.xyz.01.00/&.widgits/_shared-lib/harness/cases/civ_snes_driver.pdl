@@ -26,7 +26,7 @@ EXPECT_OUT | 0 | the camera keys Y U I O P are bound to no verb in keys.pdl
 RUN | grep | -c | -E | GAMEKEY +[\p] +[a-z0-9]+ +[\p] +(121\p117\p105\p111\p112\p108)$ | $HOUSE/@.apps/civ-snes/civ-snes-pchq/pieces/system/keybinds.pdl
 EXPECT_OUT | 0 | and none of their codes (121 117 105 111 112) is a GAMEKEY, so the engine keeps them
 # ---- SETUP from keys: right right = size small; down down right = difficulty hard; down down down = the Seed option, 8 backspaces and 4 = seed 4; space = start
-WRITE | relay.txt | 121 1\n112 2\n1001 3\n1001 4\n1003 5\n1003 6\n1001 7\n1003 8\n1003 9\n1003 10\n65288 11\n65288 12\n65288 13\n65288 14\n65288 15\n65288 16\n65288 17\n65288 18\n52 19\n
+WRITE | relay.txt | 121 200\n112 400\n1001 600\n1001 800\n1003 1000\n1003 1200\n1001 1400\n1003 1600\n1003 1800\n1003 2000\n65288 2200\n65288 2400\n65288 2600\n65288 2800\n65288 3000\n65288 3200\n65288 3400\n65288 3600\n52 3800\n
 RUN | $T/house/@.apps/civ-snes/ops/+x/civ_driver.+x | $T/house | $T/relay.txt | --from-start | --once | --feed | $T/feed0.txt
 EXPECT_EXIT | 0 | the setup keys are all accepted
 EXPECT_HAS | $T/house/@.apps/civ-snes/play/setup.txt | size=0\ndiff=2\nrivals=1\nmap=0\nseed=4\npick=0\nopt=5\n | the draft after the keys: small, hard, 1 rival, random map, seed 4, Romans, focus on the Seed option
@@ -50,7 +50,7 @@ EXPECT_HAS | $T/desk/events.txt | rig:civ | the selected unit is the rig:civ TOK
 RUN | $T/house/@.apps/civ-snes/ops/+x/civ_op.+x | $T/led.txt | verify
 EXPECT_EXIT | 0 | the started ledger replays
 # ---- PLAY from keys: up = move the settler north, b = found, 2 = build settler, space = end turn; n and a camera key change nothing
-WRITE | relay3.txt | 1002 1\n98 2\n50 3\n32 4\n121 5\n
+WRITE | relay3.txt | 1002 100\n98 300\n50 500\n50 594\n32 800\n121 1000\n
 RUN | $T/house/@.apps/civ-snes/ops/+x/civ_driver.+x | $T/house | $T/relay3.txt | --from-start | --once | --feed | $T/feed2.txt
 EXPECT_EXIT | 0 | the play keys are accepted
 EXPECT_HAS | $T/led.txt | MOVE\pu1\p5\p7\p5\p6\p | up moved the selected settler u1 north from 5,7 to 5,6 (the cost is the terrain rule, PIN 2: a rough tile)
@@ -117,4 +117,22 @@ RUN | rm | -rf | $T/house/@.apps/civ-snes/play
 RUN | $T/m1/civ_driver.+x | $T/house | $T/relay6.txt | --from-start | --once
 RUN | grep | -c | ^MOVE | $T/led3.txt
 EXPECT_OUT | 0 | SABOTAGE d1 CAUGHT: the mutant driver writes no MOVE for the up arrow (the real driver does, shown above)
+# ---- the engine echoes one key press a second time about 90 ms later (seen live for 1 and 2: 94 ms): the same code again inside RULE dup_ms is dropped; the relay of relay3 above carries such an echo of `2` (50 at 500 and 594) and the driver still exits 0
+RUN | grep | -c | -E | ^RULE +[\p] +dup_ms +[\p] +100 | $HOUSE/@.apps/civ-snes/keys.pdl
+EXPECT_OUT | 1 | dup_ms is a RULE row of keys.pdl
+MKDIR | m2
+COPY | @.apps/civ-snes/ops/civ_driver.c | m2/civ_driver.c
+RUN | sed | -i | s/code == lc &&/0 \&\&/ | $T/m2/civ_driver.c
+RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_driver.c | $T/m2/civ_driver.c
+EXPECT_EXIT | 1 | SABOTAGE d2: the mutant source differs (the sed matched)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m2/civ_driver.+x | $T/m2/civ_driver.c
+EXPECT_EXIT | 0 | SABOTAGE d2: compiles
+ENV | CIV_LEDGER | $T/led7.txt
+ENV | CIV_DESK | $T/desk7
+RUN | $T/house/@.apps/civ-snes/ops/+x/civ_op.+x | $T/led7.txt | new | 4 | small
+RUN | $T/house/@.apps/civ-snes/ops/+x/civ_op.+x | $T/led7.txt | found | u1
+WRITE | relay7.txt | 50 100\n50 194\n
+RUN | rm | -rf | $T/house/@.apps/civ-snes/play
+RUN | $T/m2/civ_driver.+x | $T/house | $T/relay7.txt | --from-start | --once
+EXPECT_EXIT | 4 | SABOTAGE d2 CAUGHT: without the echo filter the second `2` is refused (already building that), the real driver accepts it (exit 0 above)
 CLEAN |

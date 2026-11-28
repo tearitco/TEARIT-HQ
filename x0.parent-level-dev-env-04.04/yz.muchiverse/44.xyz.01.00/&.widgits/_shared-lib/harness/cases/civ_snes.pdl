@@ -170,9 +170,9 @@ EXPECT_EXIT | 0 | CONTROL: the audit of a clean state folder passes
 # ---- projection: one desk for the 2D and the 3D board; deleted, it regenerates byte for byte
 RUN | $T/app/ops/+x/civ_op.+x | $T/g/ledger.txt | project | civ1 | $T/d
 EXPECT_EXIT | 0 | project writes the desk
-EXPECT_HAS | $T/d/cells.txt | width=20\nheight=14\ntile_px=16\natlas_cols=1\natlas_tiles=10\ncells\n | the desk header
+EXPECT_HAS | $T/d/cells.txt | width=20\nheight=14\ntile_px=16\natlas_cols=1\natlas_tiles=66\ncells\n | the desk header
 EXPECT_HAS | $T/d/extrusion.pdl | EXTRUDE \p M \p 5 | mountains stand tall in the 3D view
-EXPECT_HAS | $T/d/cells.txt | 6,0 | the human city is its own tile
+EXPECT_HAS | $T/d/cells.txt | 18,0 | the human city is its own tile (HAND: 6 + ((civ 1 - 1) x 3 + kind city 2) x 5 + terrain forest 2 = 18)
 SUMTREE | d1 | d
 RUN | rm | -r | $T/d
 RUN | $T/app/ops/+x/civ_op.+x | $T/g/ledger.txt | project | civ1 | $T/d

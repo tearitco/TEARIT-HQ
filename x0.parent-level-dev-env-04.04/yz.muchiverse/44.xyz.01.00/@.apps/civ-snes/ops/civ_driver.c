@@ -26,14 +26,14 @@ static volatile sig_atomic_t stop_; static void on_term(int s) { (void)s; stop_ 
 static int split(char *line, char **f, int max) { int n = 0; char *s = line; while (n < max) { while (*s == ' ') s++; f[n++] = s; char *b = strchr(s, '|'); if (!b) break; *b = 0; s = b + 1; } for (int i = 0; i < n; i++) { char *e = f[i] + strlen(f[i]); while (e > f[i] && isspace((unsigned char)e[-1])) *--e = 0; } return n; }
 static struct { char name[24]; int code; } GK[48]; static int ngk;
 static struct { char name[24], verb[24], arg[24]; } KV[48]; static int nkv; static struct { char name[24], act[24], arg[24]; } SK[24]; static int nsk;
-static int poll_ms = 100, idle_poll_ms = 0, step_ms = 120;
+static int poll_ms = 100, idle_poll_ms = 0, step_ms = 120, dup_ms = 100;
 static int load_keys(const char *kb, const char *kv) { char l[300], *x[6]; FILE *f = fopen(kb, "r"); if (!f) return 2;
     while (fgets(l, sizeof l, f)) { int n = split(l, x, 6); if (n >= 3 && !strcmp(x[0], "GAMEKEY") && ngk < 48) { snprintf(GK[ngk].name, 24, "%s", x[1]); GK[ngk++].code = atoi(x[2]); } } fclose(f);
     f = fopen(kv, "r"); if (!f) return 2;
     while (fgets(l, sizeof l, f)) { int n = split(l, x, 6);
         if (n >= 4 && !strcmp(x[0], "KEYVERB") && nkv < 48) { snprintf(KV[nkv].name, 24, "%s", x[1]); snprintf(KV[nkv].verb, 24, "%s", x[2]); snprintf(KV[nkv].arg, 24, "%s", !strcmp(x[3], "-") ? "" : x[3]); nkv++; }
         else if (n >= 4 && !strcmp(x[0], "SETUPKEY") && nsk < 24) { snprintf(SK[nsk].name, 24, "%s", x[1]); snprintf(SK[nsk].act, 24, "%s", x[2]); snprintf(SK[nsk].arg, 24, "%s", !strcmp(x[3], "-") ? "" : x[3]); nsk++; }
-        else if (n >= 3 && !strcmp(x[0], "RULE")) { if (!strcmp(x[1], "poll_ms")) poll_ms = atoi(x[2]); else if (!strcmp(x[1], "idle_poll_ms")) idle_poll_ms = atoi(x[2]); else if (!strcmp(x[1], "step_ms")) step_ms = atoi(x[2]); } }
+        else if (n >= 3 && !strcmp(x[0], "RULE")) { if (!strcmp(x[1], "poll_ms")) poll_ms = atoi(x[2]); else if (!strcmp(x[1], "idle_poll_ms")) idle_poll_ms = atoi(x[2]); else if (!strcmp(x[1], "step_ms")) step_ms = atoi(x[2]); else if (!strcmp(x[1], "dup_ms")) dup_ms = atoi(x[2]); } }
     fclose(f); return ngk && (nkv || nsk) ? 0 : 2; }
 static int owner_gone(long pid) { if (kill((pid_t)pid, 0) != 0) return 1; char p[64], b[512]; snprintf(p, sizeof p, "/proc/%ld/stat", pid); FILE *f = fopen(p, "r"); if (!f) return 1; size_t n = fread(b, 1, sizeof b - 1, f); fclose(f); b[n] = 0; char *r = strrchr(b, ')'); return r && r[1] == ' ' && r[2] == 'Z'; }
 static long now_ms(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec * 1000L + t.tv_nsec / 1000000L; }
@@ -48,6 +48,14 @@ static void kv(const char *text, const char *key, char *out, size_t osz) { out[0
 static void bump_view(const char *pkg) { if (!pkg || !pkg[0]) return; char p[P + 160], ln[P + 40], ses[P] = ""; snprintf(p, sizeof p, "%.4000s/../board/state/ui.txt", pkg); FILE *f = fopen(p, "r"); if (!f) return;
     while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, "bv_session=", 11)) { snprintf(ses, sizeof ses, "%.4000s", ln + 11); ses[strcspn(ses, "\r\n")] = 0; }
     fclose(f); if (!ses[0]) return; snprintf(p, sizeof p, "%.4000s/pieces/display/bv_screen_changed.txt", ses); FILE *m = fopen(p, "a"); if (m) { fputc('.', m); fclose(m); } }
+/* the flat view (bv_render_2d p2d_atlas_main) draws the slice at the cursor's z: a cell shows only when pos_z == floor_z + 1 (every civ cell is one level high). The editor's pos_z for a possessed token is its own default (18 over floor_z 16), which drew a blank field: the driver puts the cursor on the level of the map, as rmmc_driver sync_view does for its character. Written only when it differs. */
+static void sync_z(const char *pkg) { if (!pkg || !pkg[0]) return; char p[P + 160], ln[300]; int floor_z = -1; snprintf(p, sizeof p, "%.4000s/pieces/system/board_manifest.txt", pkg); FILE *f = fopen(p, "r");
+    while (f && fgets(ln, sizeof ln, f)) { if (!strncmp(ln, "floor_z=", 8)) floor_z = atoi(ln + 8); }
+    if (f) fclose(f);
+    if (floor_z < 0) return;
+    snprintf(p, sizeof p, "%.4000s/pieces/xelector_01/state.txt", pkg); f = fopen(p, "r"); if (!f) return; char out[4096]; size_t on = 0; int poss = 0, same = 0, have = 0; int z = floor_z + 1;
+    while (fgets(ln, sizeof ln, f) && on < sizeof out - 400) { if (!strncmp(ln, "possessed_id=rig:civ", 20)) poss = 1; if (!strncmp(ln, "pos_z=", 6)) { have = 1; if (atoi(ln + 6) == z) same = 1; on += (size_t)snprintf(out + on, sizeof out - on, "pos_z=%d\n", z); } else on += (size_t)snprintf(out + on, sizeof out - on, "%s", ln); }
+    fclose(f); if (poss && have && !same) { f = fopen(p, "w"); if (f) { fwrite(out, 1, on, f); fclose(f); bump_view(pkg); } } }
 static char house[P], book[P], opb[P], verbb[P], led[P], desk[P], draft[P], selp[P], tut[P], play_dir[P];
 static char sel[24] = "";
 static int ledger_started(void) { struct stat st; return stat(led, &st) == 0 && st.st_size > 0; }
@@ -127,13 +135,16 @@ int main(int argc, char **argv) {
     for (;;) {
         FILE *f = fopen(relay, "r"); char ln[200];
         if (f) { struct stat st; if (!fstat(fileno(f), &st) && st.st_size < cur) cur = 0; fseek(f, cur, SEEK_SET);
-            while (fgets(ln, sizeof ln, f)) { if (!strchr(ln, '\n')) break; cur += (long)strlen(ln); int code = 0; long ms = 0; if (sscanf(ln, "%d %ld", &code, &ms) < 1) continue; (void)ms;
+            while (fgets(ln, sizeof ln, f)) { if (!strchr(ln, '\n')) break; cur += (long)strlen(ln); int code = 0; long ms = 0; if (sscanf(ln, "%d %ld", &code, &ms) < 1) continue;
+                { static int lc = -1; static long lm = 0; if (dup_ms > 0 && code == lc && ms - lm >= 0 && ms - lm < dup_ms) { continue; } lc = code; lm = ms; }      /* the engine appends one key press TWICE about 90 ms apart (seen for 1 and 2, 94 ms): the same code again inside dup_ms is the engine's echo, not a second press */
                 const char *gk = NULL; for (int i = 0; i < ngk; i++) if (GK[i].code == code) gk = GK[i].name; if (!gk) continue;
                 int rc = ledger_started() ? game_key(gk) : setup_key(gk, pkg); if (rc && !first_refusal) first_refusal = rc;
                 { char kt[520]; snprintf(kt, sizeof kt, "key %.20s: %.150s", gk, msg); snprintf(msg, sizeof msg, "%s", kt); }
-                last_key = now_ms(); last_feed = 0; bump_view(pkg); }
+                last_key = now_ms(); last_feed = 0; bump_view(pkg); sync_z(pkg); }
             fclose(f); }
         if (strcmp(msg, shown)) { snprintf(shown, sizeof shown, "%s", msg); shown_at = now_ms(); } else if (now_ms() - shown_at > 8000 && strcmp(msg, HINT) && strcmp(msg, "waiting for keys")) { snprintf(msg, sizeof msg, "%s", HINT); last_feed = 0; }
+        { static int was = -1; int st = ledger_started(); if (was != st) { if (was >= 0) { sel_fix(0); project_desk(); bump_view(pkg); } was = st; } }      /* the ledger appeared or went away (a new game): re-project the desk at once */
+        { static long zt = 0; if (now_ms() - zt > 1500) { zt = now_ms(); sync_z(pkg); } }
         long ls = file_size(led), ds = file_size(draft); int ch = ls != seen_led || ds != seen_dr; seen_led = ls; seen_dr = ds;
         if (feed && (last_feed == 0 || now_ms() - last_feed >= 300) && (last_key > last_feed || ch || now_ms() - last_feed >= 30000)) { last_feed = now_ms(); make_feed(feed); }
         if (once) return first_refusal;

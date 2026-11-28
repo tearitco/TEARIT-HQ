@@ -44,7 +44,7 @@ EXPECT_OUT | 1 | NEGATIVE-the-refused-move-added-no-row
 ENV | GAME_ARG | u1
 RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/house/@.apps/civ-snes/events/found | $T/house | ui
 EXPECT_HAS | led.txt | FOUND\pu1\pc1\p5\p7 | the found page founded a city where the settler stands
-EXPECT_HAS | desk/cells.txt | 6,0 | the desk now draws the human city tile
+EXPECT_HAS | desk/cells.txt | 17,0 | the desk now draws the human city tile (HAND: 6 + ((civ 1 - 1) x 3 + city kind 2) x 5 + terrain grass 1 = 17; the city of civ 1 at 5,7 stands on grass)
 ENV | GAME_ARG | c1 settler
 RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/house/@.apps/civ-snes/events/build | $T/house | ui
 EXPECT_HAS | led.txt | BUILD\pc1\psettler | the build page set production

@@ -40,3 +40,5 @@ SETUPKEY | 9         | digit  | 9
 RULE | poll_ms | 50
 RULE | idle_poll_ms | 120
 RULE | step_ms | 100
+# dup_ms: the engine echoes a key press a second time about 90 ms later; the same code again inside this many ms is dropped (0 = off)
+RULE | dup_ms | 100

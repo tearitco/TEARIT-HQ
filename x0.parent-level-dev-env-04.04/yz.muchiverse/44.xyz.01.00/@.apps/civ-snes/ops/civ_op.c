@@ -426,6 +426,29 @@ static int cmd_lesson(World *W, const char *file, int civ) {
     printf("step=%d/%d\nlabel=%s\ngoal=%s\ndone=0\n", cur + 1, ns, st[cur].label, st[cur].sentence); return 0; }
 
 /* ---------- the projection: ONE desk read by the 2D and the 3D board ---------- */
+/* ---------- the art: every tile is DRAWN by this op from rules and hash-free patterns (a pure function of the civ colours), 16 x 16 px, SNES-Civ-like: textured terrain, and the pieces drawn ON the terrain tile (settler, warrior, city castle in the owner's colour).
+ * The flat 2D view blits cells.txt + cells.rgba, the 3D view textures the floor with the same atlas: one picture for both. Atlas: 0 fog, 1..5 terrain (water grass forest hills mountain), 6 + ((civ-1)*3 + kind) * 5 + terrain = piece on terrain (kind 0 settler 1 warrior 2 city). */
+#define NTILES 66
+static const char *SPR[3][16] = {
+  { "................", ".......oo.......", "......owwo......", "......owwo......", ".......oo.......", ".....ooXXoo.....", "....oXXXXXXo....", "....oXXXXXXoXo..", "....oXXXXXXoXXo.", ".....oXXXXo.oo..", ".....oXooXo.....", ".....oXo.oXo....", ".....oXo.oXo....", ".....ooo.ooo....", "................", "................" },
+  { ".............o..", ".............o..", ".......oo....o..", "......ooooo..o..", "......owwwo..o..", ".......oo....o..", "....ooXXXXoo.o..", "...oXXXXXXXXoo..", "...oXXoXXXXoXo..", "...oXXoXXXXoXo..", "...ooXoXXXXoo...", ".....oXooXo.....", ".....oXo.oXo....", ".....oXo.oXo....", ".....ooo.ooo....", "................" },
+  { "................", ".o.o..oooo..o.o.", ".oXoooXXXXoooXo.", ".oXXXXXXXXXXXXo.", ".oXwXXXXXXXXwXo.", ".oXXXXXXXXXXXXo.", ".oXXXXXXXXXXXXo.", ".oXXXXXooXXXXXo.", ".oXXXXoooowXXXo.", ".oXXXXooooXXXXo.", ".oXXXXooooXXXXo.", ".oooooooooooooo.", "................", "................", "................", "................" } };
+static void terr_px(int k, int x, int y, int *r, int *g, int *b) {
+    static const int BASE[5][3] = { {40,90,200}, {96,176,72}, {40,140,60}, {160,136,84}, {172,172,178} };
+    int R = BASE[k][0], G = BASE[k][1], B = BASE[k][2], h = (x * 7 + y * 13 + x * y) % 9;
+    if (k == 0) { if ((x * 3 + y * 5) % 11 == 0 || ((x + 8) * 3 + (y + 3) * 5) % 13 == 0) { R += 40; G += 50; B += 30; } }
+    else if (k == 1) { if (h == 0) { R -= 26; G -= 22; B -= 20; } else if (h == 4 && (x + y) % 3 == 0) { R += 18; G += 14; B += 6; } }
+    else if (k == 2) { int tx = x % 8, ty = y % 8; if (ty < 6 && abs(2 * tx - 7) <= ty + 1 && ty >= 1) { R = 18; G = 96; B = 44; if (ty == 1 || (tx == 3 && ty % 2)) { R += 22; G += 40; B += 16; } } else if (ty >= 6 && (tx == 3 || tx == 4)) { R = 96; G = 66; B = 36; } }
+    else if (k == 3) { int tx = (x + 4) % 8, ty = y % 8; double dx = (tx - 3.5) / 3.5, dy = (ty - 5.5) / 3.0; if (dx * dx + dy * dy < 1.0 && ty <= 5) { if (tx < 4 && ty < 4) { R += 36; G += 30; B += 20; } } else if ((x + 2 * y) % 5 == 0) { R -= 24; G -= 20; B -= 14; } }
+    else { int in = 0, cap = 0; for (int p = 0; p < 2; p++) { int cx = p ? 11 : 4, top = p ? 6 : 2; if (y >= top && abs(x - cx) * 10 <= (y - top) * 7 + 3) { in = 1; if (y < top + 3) cap = 1; } } if (in) { if (cap) { R = 240; G = 240; B = 246; } else { R = 112; G = 112; B = 124; } } else if (h == 2) { R -= 18; G -= 18; B -= 18; } }
+    *r = R < 0 ? 0 : R > 255 ? 255 : R; *g = G < 0 ? 0 : G > 255 ? 255 : G; *b = B < 0 ? 0 : B > 255 ? 255 : B; }
+static void paint_tile(unsigned char *o, int k, int kind, const unsigned char col[3]) {      /* kind -1 = bare terrain */
+    for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) { int r, g, b; terr_px(k, x, y, &r, &g, &b);
+        if (x == 0 || y == 0) { r = r * 88 / 100; g = g * 88 / 100; b = b * 88 / 100; }      /* a faint grid line, like the reference's tile edge */
+        if (kind >= 0) { char ch = SPR[kind][y][x]; int dk = kind == 1 ? 78 : 100;
+            if (ch == 'X') { r = col[0] * dk / 100; g = col[1] * dk / 100; b = col[2] * dk / 100; } else if (ch == 'o') { r = 18; g = 18; b = 30; } else if (ch == 'w') { r = 250; g = 232; b = 200; } }
+        size_t i = ((size_t)y * 16 + (size_t)x) * 4; o[i] = (unsigned char)r; o[i + 1] = (unsigned char)g; o[i + 2] = (unsigned char)b; o[i + 3] = 255; } }
+static int piece_tile(int slot, int kind, int k) { return 6 + ((slot - 1) * 3 + kind) * 5 + k; }
 /* atlas tiles: 0 fog, 1 water, 2 grass, 3 forest, 4 hills, 5 mountain, 6 city civ1, 7 city civ2 (flat colours, a stopgap: placeholder art) */
 static const unsigned char TILE[10][3] = { {0,0,0}, {40,90,200}, {90,170,70}, {40,150,60}, {150,130,80}, {170,170,175}, {80,140,255}, {255,90,80}, {250,220,60}, {200,90,230} };
 /* unit colours: civ 1..4, [kind 0 settler, 1 warrior] */
@@ -433,22 +456,27 @@ static int write_file(const char *path, const char *data, size_t n) {
     char tmp[PATH_MAX + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", path); FILE *f = fopen(tmp, "w"); if (!f) return 5;
     int ok = fwrite(data, 1, n, f) == n; fclose(f); if (!ok || rename(tmp, path)) return 5; return 0; }
 static int cmd_project(World *W, int civ, const char *dir, const char *sel) {
-    static char cells[MAXT * 8 + 256], mapt[MAXT + 128], ev[MAXT * 40], atl[16 * 16 * 10 * 4]; size_t nc = 0, nm = 0, ne = 0; char p[PATH_MAX + 32];
+    static char cells[MAXT * 8 + 256], mapt[MAXT + 128], ev[MAXT * 80], atl[16 * 16 * NTILES * 4]; size_t nc = 0, nm = 0, ne = 0; char p[PATH_MAX + 32];
     mkdir(dir, 0755);
-    nc += (size_t)snprintf(cells + nc, sizeof cells - nc, "width=%d\nheight=%d\ntile_px=16\natlas_cols=1\natlas_tiles=10\ncells\n", W->w, W->h);
+    nc += (size_t)snprintf(cells + nc, sizeof cells - nc, "width=%d\nheight=%d\ntile_px=16\natlas_cols=1\natlas_tiles=66\ncells\n", W->w, W->h);
     for (int y = 0; y < W->h; y++) { for (int x = 0; x < W->w; x++) { int t, g; City *c = city_at(W, x, y);
-            if (!vis(W, civ, x, y)) { t = 0; g = '#'; } else if (c) { t = 5 + c->civ; g = "ABCD"[c->civ - 1]; } else { int k = W->ter[y * W->w + x]; t = k + 1; g = tglyph[k]; }
+            if (!vis(W, civ, x, y)) { t = 0; g = '#'; } else if (c) { t = piece_tile(c->civ, 2, W->ter[y * W->w + x]); g = "ABCD"[c->civ - 1]; } else { int k = W->ter[y * W->w + x]; Unit *pu = unit_at(W, x, y); t = pu ? piece_tile(pu->civ, pu->kind, k) : k + 1; g = tglyph[k]; }
             nc += (size_t)snprintf(cells + nc, sizeof cells - nc, "%s%d,0", x ? " " : "", t); mapt[nm++] = (char)g; }
         cells[nc++] = '\n'; mapt[nm++] = '\n'; }
     for (int i = 0; i < W->nu; i++) { Unit *u = &W->u[i]; if (!u->alive || !vis(W, civ, u->x, u->y)) continue;
         int cr = rule_civ(W->civid[u->civ], "r"), cg = rule_civ(W->civid[u->civ], "g"), cb = rule_civ(W->civid[u->civ], "b"), lt = u->kind ? 0 : 90;      /* the piece wears its civ colour: the warrior as is, the settler lighter */
         int r = cr + (255 - cr) * lt / 255, g = cg + (255 - cg) * lt / 255, b = cb + (255 - cb) * lt / 255;
         if (sel && !strcmp(u->id, sel)) ne += (size_t)snprintf(ev + ne, sizeof ev - ne, "%d %d %d %d %d rig:civ 0 2 0\n", u->x, u->y, r, g, b);      /* the selected unit is the TOKEN the player possesses (the engine forwards the game keys only while a rig: token is possessed) */
-        else ne += (size_t)snprintf(ev + ne, sizeof ev - ne, "%d %d %d %d %d block 0 2 1\n", u->x, u->y, r, g, b); }
+        else if (u->kind == 0) ne += (size_t)snprintf(ev + ne, sizeof ev - ne, "%d %d %d %d %d item:settler 0 0 0\n", u->x, u->y, r, g, b);      /* a settler hovers as a small cube */
+        else ne += (size_t)snprintf(ev + ne, sizeof ev - ne, "%d %d %d %d %d block 0 2 1\n", u->x, u->y, r, g, b); }      /* a warrior stands as a pillar */
     unsigned char tile[10][3]; memcpy(tile, TILE, sizeof tile);
     for (int s = 1; s <= 4 && s <= W->nciv; s++) { tile[5 + s][0] = (unsigned char)rule_civ(W->civid[s], "r"); tile[5 + s][1] = (unsigned char)rule_civ(W->civid[s], "g"); tile[5 + s][2] = (unsigned char)rule_civ(W->civid[s], "b"); }      /* a city tile is its owner civ colour */
-    for (int t = 0; t < 10; t++) for (int i = 0; i < 256; i++) { size_t o = ((size_t)t * 256 + (size_t)i) * 4; int edge = (i % 16 == 0 || i / 16 == 0) && t > 0, sh = edge ? 12 : 0;
-        atl[o] = (char)(tile[t][0] > sh ? tile[t][0] - sh : 0); atl[o + 1] = (char)(tile[t][1] > sh ? tile[t][1] - sh : 0); atl[o + 2] = (char)(tile[t][2] > sh ? tile[t][2] - sh : 0); atl[o + 3] = (char)255; }
+    memset(atl, 0, sizeof atl); for (int i = 0; i < 256; i++) atl[i * 4 + 3] = (char)255;      /* tile 0: unseen = black */
+    for (int k = 0; k < 5; k++) paint_tile((unsigned char *)atl + (size_t)(k + 1) * 1024, k, -1, tile[0]);
+    for (int s = 1; s <= 4; s++) { unsigned char col[3] = { tile[5 + s][0], tile[5 + s][1], tile[5 + s][2] }; for (int kind = 0; kind < 3; kind++) for (int k = 0; k < 5; k++) paint_tile((unsigned char *)atl + (size_t)piece_tile(s, kind, k) * 1024, k, kind, col); }
+    for (int i = 0; i < W->nc; i++) { City *c = &W->c[i]; if (!vis(W, civ, c->x, c->y)) continue;      /* a city is a tower in 3D: a brown trunk with a flag block of the owner's colour */
+        int cr = rule_civ(W->civid[c->civ], "r"), cg = rule_civ(W->civid[c->civ], "g"), cb = rule_civ(W->civid[c->civ], "b");
+        ne += (size_t)snprintf(ev + ne, sizeof ev - ne, "%d %d %d %d %d tree:2:0:1 0 0 0\n", c->x, c->y, cr, cg, cb); }
     static const char *ext = "EXTRUDE | ~ | 1\nEXTRUDE | . | 1\nEXTRUDE | T | 1\nEXTRUDE | ^ | 3\nEXTRUDE | M | 5\nEXTRUDE | A | 2\nEXTRUDE | B | 2\nEXTRUDE | C | 2\nEXTRUDE | D | 2\nEXTRUDE | # | 1\n";
     int rc = 0;
     snprintf(p, sizeof p, "%s/cells.txt", dir); rc |= write_file(p, cells, nc);
