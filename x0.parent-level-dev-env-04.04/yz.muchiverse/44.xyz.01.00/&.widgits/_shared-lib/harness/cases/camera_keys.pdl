@@ -1,0 +1,87 @@
+# camera_keys (2026-11-27, D152): the camera keys are Y U I O P (121 117 105 111 112) in the board keybinds.pdl files, so the digits belong to the game.
+# Every row the roll-out rewrote carries a marker "(was N; D152)" after its new code, so ONE check per row per file proves it. Only TRACKED files are asserted (a fresh clone has them); the board instance copies git ignores or does not track (draw-battle, dsr-rpg, teario-make, teario-play, the editor) were changed on the owner's machine and on debil, not here.
+# NOT in this list on purpose: rta-board and vox-pchq keep the digits (their own game keys use I O and P U). When those game keys move, add their files here.
+# The editor and rmmc files were done first, with their own wording (case rmmc_help).
+RESULTS | ../results/camera_keys.txt
+CASE | every-board-uses-the-letter-camera-keys
+SCRATCH
+EXPECT_HAS | $HOUSE/@.apps/cdda-hq/keybinds.pdl | 121 # 'y'  first person (was 1; D152) | cdda-hq: y is first person
+EXPECT_HAS | $HOUSE/@.apps/cdda-hq/keybinds.pdl | 117 # 'u'  third person (was 2; D152) | cdda-hq: u is third person
+EXPECT_HAS | $HOUSE/@.apps/cdda-hq/keybinds.pdl | 105 # 'i'  free roam (was 3; D152) | cdda-hq: i is free roam
+EXPECT_HAS | $HOUSE/@.apps/cdda-hq/keybinds.pdl | 111 # 'o'  bird eye (was 4; D152) | cdda-hq: o is bird eye
+EXPECT_HAS | $HOUSE/@.apps/cdda-hq/keybinds.pdl | 112 # 'p'  toggle 2D <-> 3D (was 0; D152) | cdda-hq: p toggles 2D and 3D
+EXPECT_HAS | $HOUSE/@.apps/civ-rpgce/keybinds.pdl | 121 # 'y'  first person (was 1; D152) | civ-rpgce: y is first person
+EXPECT_HAS | $HOUSE/@.apps/civ-rpgce/keybinds.pdl | 117 # 'u'  third person (was 2; D152) | civ-rpgce: u is third person
+EXPECT_HAS | $HOUSE/@.apps/civ-rpgce/keybinds.pdl | 105 # 'i'  free roam (was 3; D152) | civ-rpgce: i is free roam
+EXPECT_HAS | $HOUSE/@.apps/civ-rpgce/keybinds.pdl | 111 # 'o'  bird eye (was 4; D152) | civ-rpgce: o is bird eye
+EXPECT_HAS | $HOUSE/@.apps/civ-rpgce/keybinds.pdl | 112 # 'p'  toggle 2D <-> 3D (was 0; D152) | civ-rpgce: p toggles 2D and 3D
+EXPECT_HAS | $HOUSE/@.apps/df-hq/keybinds.pdl | 121 # 'y'  first person (was 1; D152) | df-hq: y is first person
+EXPECT_HAS | $HOUSE/@.apps/df-hq/keybinds.pdl | 117 # 'u'  third person (was 2; D152) | df-hq: u is third person
+EXPECT_HAS | $HOUSE/@.apps/df-hq/keybinds.pdl | 105 # 'i'  free roam (was 3; D152) | df-hq: i is free roam
+EXPECT_HAS | $HOUSE/@.apps/df-hq/keybinds.pdl | 111 # 'o'  bird eye (was 4; D152) | df-hq: o is bird eye
+EXPECT_HAS | $HOUSE/@.apps/df-hq/keybinds.pdl | 112 # 'p'  toggle 2D <-> 3D (was 0; D152) | df-hq: p toggles 2D and 3D
+EXPECT_HAS | $HOUSE/@.apps/dsr-rpg/keybinds.pdl | 121 # 'y'  first person (was 1; D152) | dsr-rpg: y is first person
+EXPECT_HAS | $HOUSE/@.apps/dsr-rpg/keybinds.pdl | 117 # 'u'  third person (was 2; D152) | dsr-rpg: u is third person
+EXPECT_HAS | $HOUSE/@.apps/dsr-rpg/keybinds.pdl | 105 # 'i'  free roam (was 3; D152) | dsr-rpg: i is free roam
+EXPECT_HAS | $HOUSE/@.apps/dsr-rpg/keybinds.pdl | 111 # 'o'  bird eye (was 4; D152) | dsr-rpg: o is bird eye
+EXPECT_HAS | $HOUSE/@.apps/dsr-rpg/keybinds.pdl | 112 # 'p'  toggle 2D <-> 3D (was 0; D152) | dsr-rpg: p toggles 2D and 3D
+EXPECT_HAS | $HOUSE/@.apps/gta-hq/keybinds.pdl | 121 # 'y'  first person (was 1; D152) | gta-hq: y is first person
+EXPECT_HAS | $HOUSE/@.apps/gta-hq/keybinds.pdl | 117 # 'u'  third person (was 2; D152) | gta-hq: u is third person
+EXPECT_HAS | $HOUSE/@.apps/gta-hq/keybinds.pdl | 105 # 'i'  free roam (was 3; D152) | gta-hq: i is free roam
+EXPECT_HAS | $HOUSE/@.apps/gta-hq/keybinds.pdl | 111 # 'o'  bird eye (was 4; D152) | gta-hq: o is bird eye
+EXPECT_HAS | $HOUSE/@.apps/gta-hq/keybinds.pdl | 112 # 'p'  toggle 2D <-> 3D (was 0; D152) | gta-hq: p toggles 2D and 3D
+EXPECT_HAS | $HOUSE/@.apps/mcl-hq/keybinds.pdl | 121 # 'y'  first person (was 1; D152) | mcl-hq: y is first person
+EXPECT_HAS | $HOUSE/@.apps/mcl-hq/keybinds.pdl | 117 # 'u'  third person (was 2; D152) | mcl-hq: u is third person
+EXPECT_HAS | $HOUSE/@.apps/mcl-hq/keybinds.pdl | 105 # 'i'  free roam (was 3; D152) | mcl-hq: i is free roam
+EXPECT_HAS | $HOUSE/@.apps/mcl-hq/keybinds.pdl | 111 # 'o'  bird eye (was 4; D152) | mcl-hq: o is bird eye
+EXPECT_HAS | $HOUSE/@.apps/mcl-hq/keybinds.pdl | 112 # 'p'  toggle 2D <-> 3D (was 0; D152) | mcl-hq: p toggles 2D and 3D
+EXPECT_HAS | $HOUSE/@.apps/pet-trainer/keybinds.pdl | 121 # 'y'  first person (was 1; D152) | pet-trainer: y is first person
+EXPECT_HAS | $HOUSE/@.apps/pet-trainer/keybinds.pdl | 117 # 'u'  third person (was 2; D152) | pet-trainer: u is third person
+EXPECT_HAS | $HOUSE/@.apps/pet-trainer/keybinds.pdl | 105 # 'i'  free roam (was 3; D152) | pet-trainer: i is free roam
+EXPECT_HAS | $HOUSE/@.apps/pet-trainer/keybinds.pdl | 111 # 'o'  bird eye (was 4; D152) | pet-trainer: o is bird eye
+EXPECT_HAS | $HOUSE/@.apps/pet-trainer/keybinds.pdl | 112 # 'p'  toggle 2D <-> 3D (was 0; D152) | pet-trainer: p toggles 2D and 3D
+EXPECT_HAS | $HOUSE/@.apps/piececraft-hq/pieces/system/keybinds.pdl | 121 # 'y'  first person (was 1; D152) | piececraft-hq: y is first person
+EXPECT_HAS | $HOUSE/@.apps/piececraft-hq/pieces/system/keybinds.pdl | 117 # 'u'  third person (was 2; D152) | piececraft-hq: u is third person
+EXPECT_HAS | $HOUSE/@.apps/piececraft-hq/pieces/system/keybinds.pdl | 105 # 'i'  free roam (was 3; D152) | piececraft-hq: i is free roam
+EXPECT_HAS | $HOUSE/@.apps/piececraft-hq/pieces/system/keybinds.pdl | 111 # 'o'  bird eye (was 4; D152) | piececraft-hq: o is bird eye
+EXPECT_HAS | $HOUSE/@.apps/piececraft-hq/pieces/system/keybinds.pdl | 112 # 'p'  toggle 2D <-> 3D (was 0; D152) | piececraft-hq: p toggles 2D and 3D
+EXPECT_HAS | $HOUSE/@.apps/rpg-dust/keybinds.pdl | 121 # 'y'  first person (was 1; D152) | rpg-dust: y is first person
+EXPECT_HAS | $HOUSE/@.apps/rpg-dust/keybinds.pdl | 117 # 'u'  third person (was 2; D152) | rpg-dust: u is third person
+EXPECT_HAS | $HOUSE/@.apps/rpg-dust/keybinds.pdl | 105 # 'i'  free roam (was 3; D152) | rpg-dust: i is free roam
+EXPECT_HAS | $HOUSE/@.apps/rpg-dust/keybinds.pdl | 111 # 'o'  bird eye (was 4; D152) | rpg-dust: o is bird eye
+EXPECT_HAS | $HOUSE/@.apps/rpg-dust/keybinds.pdl | 112 # 'p'  toggle 2D <-> 3D (was 0; D152) | rpg-dust: p toggles 2D and 3D
+EXPECT_HAS | $HOUSE/@.apps/rpg-dust/pchq-overlay/keybinds.pdl | 121 # 'y'  first person (was 1; D152) | rpg-dust-pchq-overlay: y is first person
+EXPECT_HAS | $HOUSE/@.apps/rpg-dust/pchq-overlay/keybinds.pdl | 117 # 'u'  third person (was 2; D152) | rpg-dust-pchq-overlay: u is third person
+EXPECT_HAS | $HOUSE/@.apps/rpg-dust/pchq-overlay/keybinds.pdl | 105 # 'i'  free roam (was 3; D152) | rpg-dust-pchq-overlay: i is free roam
+EXPECT_HAS | $HOUSE/@.apps/rpg-dust/pchq-overlay/keybinds.pdl | 111 # 'o'  bird eye (was 4; D152) | rpg-dust-pchq-overlay: o is bird eye
+EXPECT_HAS | $HOUSE/@.apps/rpg-dust/pchq-overlay/keybinds.pdl | 112 # 'p'  toggle 2D <-> 3D (was 0; D152) | rpg-dust-pchq-overlay: p toggles 2D and 3D
+EXPECT_HAS | $HOUSE/@.apps/rpg-pet/keybinds.pdl | 121 # 'y'  first person (was 1; D152) | rpg-pet: y is first person
+EXPECT_HAS | $HOUSE/@.apps/rpg-pet/keybinds.pdl | 117 # 'u'  third person (was 2; D152) | rpg-pet: u is third person
+EXPECT_HAS | $HOUSE/@.apps/rpg-pet/keybinds.pdl | 105 # 'i'  free roam (was 3; D152) | rpg-pet: i is free roam
+EXPECT_HAS | $HOUSE/@.apps/rpg-pet/keybinds.pdl | 111 # 'o'  bird eye (was 4; D152) | rpg-pet: o is bird eye
+EXPECT_HAS | $HOUSE/@.apps/rpg-pet/keybinds.pdl | 112 # 'p'  toggle 2D <-> 3D (was 0; D152) | rpg-pet: p toggles 2D and 3D
+EXPECT_HAS | $HOUSE/@.apps/rpg-pvp-hq/keybinds.pdl | 121 # 'y'  first person (was 1; D152) | rpg-pvp-hq: y is first person
+EXPECT_HAS | $HOUSE/@.apps/rpg-pvp-hq/keybinds.pdl | 117 # 'u'  third person (was 2; D152) | rpg-pvp-hq: u is third person
+EXPECT_HAS | $HOUSE/@.apps/rpg-pvp-hq/keybinds.pdl | 105 # 'i'  free roam (was 3; D152) | rpg-pvp-hq: i is free roam
+EXPECT_HAS | $HOUSE/@.apps/rpg-pvp-hq/keybinds.pdl | 111 # 'o'  bird eye (was 4; D152) | rpg-pvp-hq: o is bird eye
+EXPECT_HAS | $HOUSE/@.apps/rpg-pvp-hq/keybinds.pdl | 112 # 'p'  toggle 2D <-> 3D (was 0; D152) | rpg-pvp-hq: p toggles 2D and 3D
+EXPECT_HAS | $HOUSE/@.apps/rpg-space/keybinds.pdl | 121 # 'y'  first person (was 1; D152) | rpg-space: y is first person
+EXPECT_HAS | $HOUSE/@.apps/rpg-space/keybinds.pdl | 117 # 'u'  third person (was 2; D152) | rpg-space: u is third person
+EXPECT_HAS | $HOUSE/@.apps/rpg-space/keybinds.pdl | 105 # 'i'  free roam (was 3; D152) | rpg-space: i is free roam
+EXPECT_HAS | $HOUSE/@.apps/rpg-space/keybinds.pdl | 111 # 'o'  bird eye (was 4; D152) | rpg-space: o is bird eye
+EXPECT_HAS | $HOUSE/@.apps/rpg-space/keybinds.pdl | 112 # 'p'  toggle 2D <-> 3D (was 0; D152) | rpg-space: p toggles 2D and 3D
+EXPECT_HAS | $HOUSE/@.apps/rpg-space/pchq-overlay/keybinds.pdl | 121 # 'y'  first person (was 1; D152) | rpg-space-pchq-overlay: y is first person
+EXPECT_HAS | $HOUSE/@.apps/rpg-space/pchq-overlay/keybinds.pdl | 117 # 'u'  third person (was 2; D152) | rpg-space-pchq-overlay: u is third person
+EXPECT_HAS | $HOUSE/@.apps/rpg-space/pchq-overlay/keybinds.pdl | 105 # 'i'  free roam (was 3; D152) | rpg-space-pchq-overlay: i is free roam
+EXPECT_HAS | $HOUSE/@.apps/rpg-space/pchq-overlay/keybinds.pdl | 111 # 'o'  bird eye (was 4; D152) | rpg-space-pchq-overlay: o is bird eye
+EXPECT_HAS | $HOUSE/@.apps/rpg-space/pchq-overlay/keybinds.pdl | 112 # 'p'  toggle 2D <-> 3D (was 0; D152) | rpg-space-pchq-overlay: p toggles 2D and 3D
+EXPECT_HAS | $HOUSE/@.apps/tcg-rpgce/keybinds.pdl | 121 # 'y'  first person (was 1; D152) | tcg-rpgce: y is first person
+EXPECT_HAS | $HOUSE/@.apps/tcg-rpgce/keybinds.pdl | 117 # 'u'  third person (was 2; D152) | tcg-rpgce: u is third person
+EXPECT_HAS | $HOUSE/@.apps/tcg-rpgce/keybinds.pdl | 105 # 'i'  free roam (was 3; D152) | tcg-rpgce: i is free roam
+EXPECT_HAS | $HOUSE/@.apps/tcg-rpgce/keybinds.pdl | 111 # 'o'  bird eye (was 4; D152) | tcg-rpgce: o is bird eye
+EXPECT_HAS | $HOUSE/@.apps/tcg-rpgce/keybinds.pdl | 112 # 'p'  toggle 2D <-> 3D (was 0; D152) | tcg-rpgce: p toggles 2D and 3D
+
+# CONTROL (inside the case, nothing to restore): a keybinds file that still has the digit rows does not carry the marker, so the checks above can fail.
+WRITE | old/keybinds.pdl | KEY \p pov_mode_1 \p 49 # '1' first person\nKEY \p pov_mode_2 \p 50 # '2' third person\n
+EXPECT_LACKS | old/keybinds.pdl | (was 1; D152) | CONTROL: a file left on the digits has no marker
+EXPECT_HAS | old/keybinds.pdl | pov_mode_1 \p 49 | CONTROL: the scratch file really holds the old digit row

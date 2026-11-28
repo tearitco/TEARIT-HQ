@@ -6,11 +6,11 @@ KEY          | arrow_left         | 1000
 KEY          | arrow_right        | 1001
 KEY          | arrow_up           | 1002
 KEY          | arrow_down         | 1003
-KEY          | render_mode_toggle | 48        # '0'  2D <-> 3D (camera.st mode)
-KEY          | pov_mode_1         | 49        # '1'  first person
-KEY          | pov_mode_2         | 50        # '2'  third person
-KEY          | pov_mode_3         | 51        # '3'  free roam
-KEY          | pov_mode_4         | 52        # '4'  bird's eye
+KEY          | render_mode_toggle | 112 # 'p'  toggle 2D <-> 3D (was 0; D152)
+KEY          | pov_mode_1         | 121 # 'y'  first person (was 1; D152)
+KEY          | pov_mode_2         | 117 # 'u'  third person (was 2; D152)
+KEY          | pov_mode_3         | 105 # 'i'  free roam (was 3; D152)
+KEY          | pov_mode_4         | 111 # 'o'  bird eye (was 4; D152)
 KEY          | yaw_left           | 113       # 'q'
 KEY          | yaw_right          | 101       # 'e'
 KEY          | pitch_down         | 114       # 'r'

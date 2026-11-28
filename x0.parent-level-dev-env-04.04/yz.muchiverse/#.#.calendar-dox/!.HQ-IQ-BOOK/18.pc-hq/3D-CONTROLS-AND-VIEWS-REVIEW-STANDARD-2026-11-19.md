@@ -1,5 +1,7 @@
 # 3D controls and views: inventory and the review standard (2026-11-19)
 
+> **CORRECTION 2026-11-27 (D152): the camera keys are now Y U I O P**, not the digits: `y` first person (mode 1), `u` third person (2), `i` free roam (3), `o` bird's eye (4), `p` toggles 2D/3D (was `0`); the digits belong to the game (the rmmc hotbar). Release possession in rmmc is `l` (was `u`). Applies to every board EXCEPT `rta-board` and `vox-pchq`, whose own game keys use those letters and which keep the digits for now (see decision D152 and case `camera_keys`). Where this document says `1`, `2`, `3`, `4` or `0` for a camera, read the letter. Check a board's real keys in its `pieces/system/keybinds.pdl` (`KEY | pov_mode_*`).
+
 Owner 2026-11-19: "in 3D things should look very normal. We may need to review existing 3D controls and views and document. Standardize review processes for those." Platform mode is a **2D** view (a side-on game mode), never a 3D one. This file is the ONE place for the inventory and the review procedure; the camera model itself is in `INTENDED.md` (camera_01, bv_state keys). Status words: **READ** = from the source text only, **RAN** = observed in a real session with the evidence named, **UNTESTED**.
 
 ## 1. Views (render modes) and cameras

@@ -633,7 +633,7 @@ static int handle_one_key(int key) {
      * this closes the same gap for board-viewer's own camera keys. */
     char arrow_cfg_path[PATH_BUF] = "";
     char kb_pdl_path[PATH_BUF] = "";
-    int key_toggle_render_mode = '0';
+    int key_toggle_render_mode = 'p';   /* D152 (2026-11-27): the camera keys are Y U I O P, digits belong to the game; was '0' */
     int key_possess = '9';
     int key_possess_commit = 13;    /* Enter - possess entity under the xlector (muta parity) */
     int key_poss_next = 0, key_poss_prev = 0, key_release_alt = 0, poss_enter_any = 0;   /* 2026-11-26 optional rows, see the possess_cycle comment */
@@ -646,7 +646,7 @@ static int handle_one_key(int key) {
     int key_cam_snap = ';';      /* snap to the player view: north-facing, pitched down, centred on the anchor (owner 2026-10-25) */
     int key_pan_forward = 'w', key_pan_back = 's', key_pan_left = 'a', key_pan_right = 'd';
     int key_cam_down = 'c', key_cam_up = 'v';
-    int key_pov_1 = '1', key_pov_2 = '2', key_pov_3 = '3', key_pov_4 = '4';
+    int key_pov_1 = 'y', key_pov_2 = 'u', key_pov_3 = 'i', key_pov_4 = 'o';   /* D152: were '1' to '4' */
     int key_pov_1_alt = 0, key_pov_2_alt = 0;   /* optional extra keys for first and third person (KEY rows pov_mode_1_alt, pov_mode_2_alt): a game that owns the digits as GAMEKEYs (the rmmc hotbar) still needs a camera key, and a GAMEKEY is taken before the POV handler */
     /* REAL, NEW 2026-09-15, direct live request ("we wanted to add a
      * 5th [camera mode] for 'side scroll' (mario) type mode... key

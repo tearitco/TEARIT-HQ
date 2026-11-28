@@ -18,6 +18,8 @@ Paths are from the house `44.xyz.01.00/`. Quote them (`&`, `@`). Companions: ski
 HUD (top-left): `pos x,y` = the SELECTOR from bv_state (default = page centre, why a fresh Teario session says 10,6) and `z` = xelector pos_z - floor_z; NOT the xelector cell and NOT the hero; `poss hero_01` = what it possesses; `click` / `ray` = the last mouse pick.
 
 ## 2. The recipe: engine keys, measured
+
+> **CORRECTION 2026-11-27 (D152): the camera keys are now Y U I O P**, not the digits: `y` first person (mode 1), `u` third person (2), `i` free roam (3), `o` bird's eye (4), `p` toggles 2D/3D (was `0`); the digits belong to the game (the rmmc hotbar). Release possession in rmmc is `l` (was `u`). Applies to every board EXCEPT `rta-board` and `vox-pchq`, whose own game keys use those letters and which keep the digits for now (see decision D152 and case `camera_keys`). Where this document says `1`, `2`, `3`, `4` or `0` for a camera, read the letter. Check a board's real keys in its `pieces/system/keybinds.pdl` (`KEY | pov_mode_*`).
 - Session: `S=$(sed -n 's/^bv_session=//p' @.apps/<app>/board/state/ui.txt | head -1)`; state: `$S/pieces/system/bv_state.txt` (camera, render mode); piece state: `@.apps/<app>/<app>-pchq/pieces/<piece>/state.txt`.
 - Send: `&.widgits/board-viewer/tools/+x/bv_keys.+x "$S" <text>` (one char = one key; `zzzzzzzzzzzzz` = 13 presses; no owner focus needed). Wait 2 s, read the state, THEN photograph (`&.widgits/_shared-lib/ops/+x/dump_frame_png_op.+x <window id> out.png`, find the window by size with `xwininfo -root -tree`) and open the PNG.
 - Do NOT hand-edit `hero_01` / `xelector_01` state to move things: the HUD followed my edit but the drawn pieces did not reliably; use the keys (`z`/`x`) which the engine applies itself.

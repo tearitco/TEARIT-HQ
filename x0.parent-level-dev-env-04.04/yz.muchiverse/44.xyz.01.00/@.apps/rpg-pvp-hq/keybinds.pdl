@@ -7,9 +7,9 @@ KEY | arrow_right | 1001
 KEY | arrow_up    | 1002
 KEY | arrow_down  | 1003
 KEY | control_switch | 9      # Tab: INT drives the selected pet <-> the player
-KEY | render_mode_toggle | 48 # 0
-KEY | pov_mode_1 | 49
-KEY | pov_mode_2 | 50
-KEY | pov_mode_3 | 51
-KEY | pov_mode_4 | 52
+KEY | render_mode_toggle | 112 # 'p'  toggle 2D <-> 3D (was 0; D152)
+KEY | pov_mode_1 | 121 # 'y'  first person (was 1; D152)
+KEY | pov_mode_2 | 117 # 'u'  third person (was 2; D152)
+KEY | pov_mode_3 | 105 # 'i'  free roam (was 3; D152)
+KEY | pov_mode_4 | 111 # 'o'  bird eye (was 4; D152)
 KEY | escape | 27
