@@ -1,10 +1,10 @@
 # text.pdl - the words of the "next" line of the side panel (CONFIG). The panel is the same for every civ; the line says what to do next.
-TEXT | next_pick | Next: press N to pick your settler
-TEXT | next_walk | Next: arrows walk the settler to open land
-TEXT | next_found | Next: press B to found a city here
-TEXT | next_endturn | Next: press Space to end the turn
-TEXT | next_move | Next: move a unit, or Space to end the turn
-TEXT | next_end | Next: press Space to end the turn
+TEXT | next_pick | Next: press N for a unit
+TEXT | next_walk | Next: walk to open land
+TEXT | next_found | Next: press B to found
+TEXT | next_endturn | Next: Space ends the turn
+TEXT | next_move | Move, or Space ends turn
+TEXT | next_end | Next: Space ends the turn
 TEXT | setup_next | Up/Down pick, Left/Right change, Space starts
 TEXT | civ_1_id | romans
 TEXT | civ_1_name | Romans

@@ -1,0 +1,36 @@
+# The same function the 3D maker calls. A row above the ground stands on it when axis=side is present, and sits on the neighbouring floor cell when that line is gone.
+RESULTS | ../results/teario_side_axis.txt
+ENV | LC_ALL | C
+
+CASE    | build
+SCRATCH |
+COPY | &.widgits/board-viewer/ops/mk_side_place.h | mk_side_place.h
+COPY | &.widgits/board-viewer/ops/bv_side_lift_test.c | bv_side_lift_test.c
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/lift.+x | $T/bv_side_lift_test.c
+EXPECT_EXIT | 0 | it-compiles
+
+CASE    | on-the-ground
+WRITE | on.txt | width=3\nheight=2\naxis=side\ncells\n0,0,1 0,0,1 0,0,1\n1,0,2 0,0,1 1,0,2\n
+RUN | $T/lift.+x | on.txt | 0 | 0
+EXPECT_OUT | depth=1 lift=1 | the-row-above-the-grass-stands-on-it
+RUN | $T/lift.+x | on.txt | 0 | 1
+EXPECT_OUT | depth=1 lift=0 | the-grass-row-itself-is-not-lifted
+RUN | $T/lift.+x | on.txt | 1 | 0
+EXPECT_OUT | depth=0 lift=0 | a-column-with-no-solid-stays-where-it-is
+
+CASE    | header-gone
+WRITE | off.txt | width=3\nheight=2\ncells\n0,0,1 0,0,1 0,0,1\n1,0,2 0,0,1 1,0,2\n
+RUN | grep | -q | axis=side | off.txt
+EXPECT_EXIT | 1 | the-header-really-is-absent
+RUN | $T/lift.+x | off.txt | 0 | 0
+EXPECT_OUT | depth=0 lift=0 | without-the-header-the-body-is-beside-the-pad
+
+CASE    | wired
+RUN | grep | -o | -F | mk_side_place( | $HOUSE/&.widgits/board-viewer/ops/bv_render_3d.c
+EXPECT_OUT | mk_side_place( | the-maker-calls-the-shared-function
+RUN | grep | -o | -F | axis=side | $HOUSE/&.widgits/_shared-lib/ops/game_core.c
+EXPECT_OUT | axis=side | the-scene-writer-emits-the-header
+RUN | grep | -o | -F | window") && g_mk.ev[i].has == 1 | $HOUSE/&.widgits/board-viewer/ops/bv_render_3d.c
+EXPECT_OUT | has == 1 | a-lift-flag-is-not-a-window-box
+
+CLEAN |

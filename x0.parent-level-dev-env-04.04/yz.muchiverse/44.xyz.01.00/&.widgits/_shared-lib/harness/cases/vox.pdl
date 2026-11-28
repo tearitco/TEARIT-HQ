@@ -1116,7 +1116,7 @@ EXPECT_OUT | turn=7 | CONTROL-the-real-op-passes-the-same-check-34
 MKDIR | m35
 MKDIR | c35
 RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m35.c
-RUN | sed | -i | /r = v_eat(&w, dst,/d | $T/b/m35.c
+RUN | sed | -i | /r = v_eat(wp, dst,/d | $T/b/m35.c
 RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/b/m35.c
 EXPECT_EXIT | 1 | mutant-35-source-really-differs-(vacuity-guard)
 RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/m35.+x | $T/b/m35.c

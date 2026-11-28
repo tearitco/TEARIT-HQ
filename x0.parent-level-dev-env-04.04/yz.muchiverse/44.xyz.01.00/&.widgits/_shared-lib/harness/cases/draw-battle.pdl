@@ -1,0 +1,102 @@
+# draw-battle (Draw Battle): the generated DATA DOCUMENT maker on the shared engine game_core (made by game_new_op from harness/templates/game/editor/case.pdl; edit freely, it is yours now).
+# The ledger holds EDIT rows (add / set / del) and publish rows; the document is derived by replay and exported as doc.txt (a projection). The publish rule is a STUB: rules.pdl REQUIRE rows name the ids a document needs.
+# Every number below is relative (no pinned hash). Scratch only: nothing here touches a live folder.
+# Run: cd &.widgits/_shared-lib/harness; ./ops/+x/harness_case_op.+x cases/draw-battle.pdl; ./ops/+x/harness_verdict_op.+x cases/draw-battle.pdl
+RESULTS | ../results/draw-battle.txt
+ENV | LC_ALL | C
+
+CASE    | edit-and-publish
+SCRATCH |
+MKDIR   | g
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | new
+EXPECT_OUT | kind=editor | a-document-opens
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | add | start | first row
+EXPECT_OUT | 1 rows in the document | an-edit-is-a-row
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | add | start | again
+EXPECT_EXIT | 2 | NEGATIVE-an-id-cannot-be-added-twice
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | add | Bad.Id | text
+EXPECT_EXIT | 2 | NEGATIVE-a-bad-id-is-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | set | nobody | text
+EXPECT_EXIT | 2 | NEGATIVE-set-of-a-missing-row-is-refused
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | publish
+EXPECT_EXIT | 2 | NEGATIVE-publish-is-refused-without-the-required-goal-row
+EXPECT_OUT | no row goal | the-refusal-names-the-missing-row
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | ledger_hash
+CAPTURE | h_before
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | publish
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | ledger_hash
+EXPECT_OUT_IS | $h_before | a-refused-publish-appends-nothing
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | add | goal | last row | as=bob
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | publish
+EXPECT_OUT | published doc= | publish-succeeds-once-start-and-goal-exist
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | set | goal | changed row
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | del | goal
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | publish
+EXPECT_EXIT | 2 | NEGATIVE-publish-is-refused-again-after-the-goal-is-deleted
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | add | goal | final row
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | publish
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | check
+EXPECT_OUT | CHECK ok | the-invariants-hold
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | status
+EXPECT_OUT | published= | status-reports-the-published-hash
+RUN | grep | -c | -F | \pbob\padd\p | $T/g/ledger.txt
+EXPECT_OUT_IS | 1 | the-author-is-recorded-on-the-row
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | replay
+CAPTURE | r1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | ledger_hash
+CAPTURE | l1
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | replay
+EXPECT_OUT_IS | $r1 | replaying-twice-prints-the-same-state-hash
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | ledger_hash
+EXPECT_OUT_IS | $l1 | replay-does-not-change-the-ledger-hash
+
+CASE    | tamper
+MKDIR   | c
+RUN | cp | $T/g/ledger.txt | $T/c/ledger.txt
+RUN | sed | -i | s/first row/first rox/ | $T/c/ledger.txt
+RUN | cmp | $T/g/ledger.txt | $T/c/ledger.txt
+EXPECT_EXIT | 1 | vacuity-the-edit-really-changed-the-file
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/c | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-hand-edited-row-is-caught-by-the-publish-hash
+EXPECT_OUT | ledger line | the-refusal-names-the-row
+RUN | cp | $T/g/ledger.txt | $T/c/ledger.txt
+RUN | sed | -i | 3d | $T/c/ledger.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/c | check
+EXPECT_EXIT | 1 | NEGATIVE-a-deleted-edit-row-is-refused
+RUN | cp | $T/g/ledger.txt | $T/c/ledger.txt
+APPEND  | c/ledger.txt | EVENT|99|author|publish|-|2|doc=0000000000000000\n
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/c | replay
+EXPECT_EXIT | 1 | NEGATIVE-a-forged-publish-row-is-refused
+
+CASE    | no-ghost-data
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | export
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | ui
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | audit
+EXPECT_OUT | AUDIT ok files=3 | the-audit-passes-with-only-declared-files
+RUN | cp | $T/g/doc.txt | $T/g/doc.keep
+RUN | rm | $T/g/doc.txt
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | export
+RUN | cmp | $T/g/doc.txt | $T/g/doc.keep
+EXPECT_EXIT | 0 | a-deleted-projection-regenerates-byte-for-byte
+RUN | rm | $T/g/doc.keep
+WRITE   | g/stray.txt | a file nobody declared
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | audit
+EXPECT_EXIT | 1 | NEGATIVE-a-stray-file-fails-the-audit
+EXPECT_OUT | ghost file stray.txt | the-audit-names-the-ghost
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/g | replay
+EXPECT_OUT_IS | $r1 | a-stray-file-changes-nothing-about-the-game-state
+RUN | rm | $T/g/stray.txt
+
+CASE    | the-publish-rule-is-data
+COPYDIR | @.apps/draw-battle | app2 | +x
+RUN | sed | -i | /^REQUIRE \p goal/d | $T/app2/rulesets/default/rules.pdl
+RUN | cmp | $HOUSE/@.apps/draw-battle/rulesets/default/rules.pdl | $T/app2/rulesets/default/rules.pdl
+EXPECT_EXIT | 1 | vacuity-the-rules-file-copy-really-differs
+MKDIR   | f
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app2 | $T/f | new
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app2 | $T/f | add | start | only row
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $T/app2 | $T/f | publish
+EXPECT_OUT | published doc= | with-the-goal-rule-removed-start-alone-publishes
+RUN | $HOUSE/&.widgits/_shared-lib/ops/+x/game_core.+x | $HOUSE/@.apps/draw-battle | $T/f | replay
+EXPECT_EXIT | 1 | NEGATIVE-the-same-ledger-under-the-stock-rules-is-refused
+CLEAN   |

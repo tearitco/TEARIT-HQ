@@ -34,7 +34,7 @@ EXPECT_NOFILE | led.txt | NO ledger yet: choosing options writes no game fact (t
 EXPECT_HAS | $T/feed0.txt | nick_line=Setup: you are Romans | the setup bar names the civ you will play
 EXPECT_HAS | $T/feed0.txt | party_0_label=> Romans | the civ list is the left bar's pals list, the pick marked
 EXPECT_HAS | $T/feed0.txt | stat_line2=Seed: 4 | the focused option is shown
-EXPECT_HAS | $T/feed0.txt | Pick the options with the arrows, then press Space. | and the lesson sentence says what to do
+EXPECT_HAS | $T/feed0.txt | Arrows pick options. Space starts. | and the lesson sentence says what to do
 EXPECT_FILE | desk/cells.txt | the setup screen wrote the preview desk (the same files the game desk is)
 EXPECT_HAS | $T/desk/cells.txt | width=20\nheight=14\n | the preview is the SMALL map the draft chose
 # ---- start = space

@@ -15,7 +15,19 @@ COPY | &.widgits/_shared-lib/game_events.c | &.widgits/_shared-lib/game_events.c
 COPY | &.widgits/livedesk-clock/ops/+x/lc_clock.+x | &.widgits/livedesk-clock/ops/+x/lc_clock.+x
 COPY | &.widgits/db-hq/data/system.pdl | &.widgits/db-hq/data/system.pdl
 COPY | &.widgits/db-hq/data/actors.pdl | &.widgits/db-hq/data/actors.pdl
-RUN | nice | -n | 15 | gcc | -std=gnu11 | -O0 | -w | -o | $T/@.apps/mcl-hq/ops/+x/mcl_hq.+x | $T/@.apps/mcl-hq/ops/mcl_hq.c | -lm
+COPY | &.widgits/world-ops/ops/+x/wo.+x | &.widgits/world-ops/ops/+x/wo.+x
+COPY | &.widgits/_shared-lib/petslike_core.c | &.widgits/_shared-lib/petslike_core.c
+COPY | &.widgits/_shared-lib/petslike_toolbar.c | &.widgits/_shared-lib/petslike_toolbar.c
+COPY | &.widgits/_shared-lib/pet_sky.c | &.widgits/_shared-lib/pet_sky.c
+COPY | &.widgits/_shared-lib/pet_footer.c | &.widgits/_shared-lib/pet_footer.c
+COPY | &.widgits/_shared-lib/plug_ref.c | &.widgits/_shared-lib/plug_ref.c
+COPY | &.widgits/_shared-lib/pet_nudge.c | &.widgits/_shared-lib/pet_nudge.c
+COPY | &.widgits/_shared-lib/kh_state_notify.h | &.widgits/_shared-lib/kh_state_notify.h
+COPY | &.widgits/_shared-lib/csv_frames.c | &.widgits/_shared-lib/csv_frames.c
+COPY | &.widgits/_shared-lib/petslike_skin_lib.c | &.widgits/_shared-lib/petslike_skin_lib.c
+COPY | &.widgits/_shared-lib/petslike_autotile.c | &.widgits/_shared-lib/petslike_autotile.c
+COPY | &.widgits/_shared-lib/petslike_life.c | &.widgits/_shared-lib/petslike_life.c
+RUN | nice | -n | 15 | gcc | -std=gnu11 | -O0 | -w | -I$T/@.apps/mcl-hq/ops | -o | $T/@.apps/mcl-hq/ops/+x/mcl_hq.+x | $T/@.apps/mcl-hq/ops/mcl_hq.c | -lm
 EXPECT_EXIT | 0 | setup.build
 EXPECT_EXISTS | @.apps/mcl-hq/ops/+x/mcl_hq.+x | setup.binary-exists
 # a stand-in window: the game writes ui.txt only while a process named khtpm_core_render with <game>.xhtpm in its command line exists (a copy of tail, no GUI)

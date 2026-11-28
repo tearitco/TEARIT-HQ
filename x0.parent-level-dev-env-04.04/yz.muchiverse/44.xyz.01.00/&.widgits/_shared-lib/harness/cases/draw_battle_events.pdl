@@ -1,0 +1,42 @@
+# Paint two bodies, tick until the weaker one is dead. Numbers come from units.pdl. A copied file with hp 1 must die in one touch.
+RESULTS | ../results/draw_battle_events.txt
+ENV | LC_ALL | C
+
+CASE    | build
+SCRATCH |
+COPY | &.widgits/_shared-lib/ops/db_battle_op.c | db_battle_op.c
+COPY | @.apps/draw-battle/rulesets/default/units.pdl | units.pdl
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/db.+x | $T/db_battle_op.c
+EXPECT_EXIT | 0 | the-op-compiles
+
+CASE    | catalog
+RUN | $T/db.+x | catalog | $T/units.pdl | soldier
+EXPECT_OUT | hp=40 | soldier-hp-is-the-catalog
+RUN | $T/db.+x | catalog | $T/units.pdl | not_a_unit
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-id-is-refused
+
+CASE    | fight
+RUN | $T/db.+x | stroke | $T/fight.txt | $T/units.pdl | 1 | soldier | 2 | 7
+EXPECT_OUT | stroked | a-stroke-is-a-row
+RUN | $T/db.+x | stroke | $T/fight.txt | $T/units.pdl | 2 | roman | 10 | 7
+RUN | $T/db.+x | tick | $T/fight.txt | $T/units.pdl
+RUN | $T/db.+x | tick | $T/fight.txt | $T/units.pdl
+RUN | $T/db.+x | tick | $T/fight.txt | $T/units.pdl
+RUN | $T/db.+x | tick | $T/fight.txt | $T/units.pdl
+RUN | $T/db.+x | tick | $T/fight.txt | $T/units.pdl
+RUN | $T/db.+x | tick | $T/fight.txt | $T/units.pdl
+RUN | $T/db.+x | tick | $T/fight.txt | $T/units.pdl
+RUN | $T/db.+x | tick | $T/fight.txt | $T/units.pdl
+EXPECT_OUT | soldier team=1 | the-soldier-is-still-named
+EXPECT_OUT | dead | the-weaker-body-is-dead
+EXPECT_OUT | roman team=2 | the-roman-is-still-there
+EXPECT_OUT | up | someone-is-still-standing
+
+CASE    | fragile
+COPY | @.apps/draw-battle/rulesets/default/units-weak.pdl | weak.pdl
+RUN | $T/db.+x | stroke | $T/weak.txt | $T/weak.pdl | 1 | soldier | 5 | 7
+RUN | $T/db.+x | stroke | $T/weak.txt | $T/weak.pdl | 2 | roman | 6 | 7
+RUN | $T/db.+x | tick | $T/weak.txt | $T/weak.pdl
+EXPECT_OUT | soldier team=1 x=5 y=7 hp=0 dead | hp-1-dies-in-one-touch
+
+CLEAN |

@@ -1,0 +1,423 @@
+# rmmc_guns (2026-11-27, D158): guns as DATA on the vox ledger. GUN rows of @.apps/rmmc/vox/rules.pdl, ONE verb `shoot` of vox_op (@.apps/vox/ops/vox_op.c), rows SHOT (the intent, with the outcome words) + HIT / MINE (derived).
+# Every number below is computed BY HAND from the rows (hardness: dirt 2, planks 3, sandstone 3, wood_side 4, stone 6, bedrock 99; pistol22 dmg 1 range 24 max hardness 2; autogun dmg 1 x5 range 20 max hardness 4;
+# bazooka dmg 8 blast 2 falloff 2 max hardness 6, damage at distance d = 8 - 2d, d = integer part of the distance; muzzle height 0, eye height 1, pitch_run 2) and never read back from the op under test.
+# Two scratch worlds written as TERRAIN boxes (a floor of dirt at y 0 everywhere). Aim: a letter (n e s w, +-1..9 pitch) fires from her cell's level; x,y,z fires from eye height (cell level + 1) at that cell.
+RESULTS | ../results/rmmc_guns.txt
+CASE | build
+SCRATCH
+MKDIR | b
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/vox.+x | $HOUSE/@.apps/vox/ops/vox_op.c
+EXPECT_EXIT | 0 | the real vox_op compiles
+MKDIR | dA
+MKDIR | dB
+COPY | @.apps/rmmc/vox/rules.pdl | dA/rules.pdl
+COPY | @.apps/rmmc/vox/blocks.pdl | dA/blocks.pdl
+COPY | @.apps/rmmc/vox/rules.pdl | dB/rules.pdl
+COPY | @.apps/rmmc/vox/blocks.pdl | dB/blocks.pdl
+APPEND | dA/rules.pdl | GUN \p titan \p bullets \p dmg \p 100 \p 40 \p 1 \p 0 \p 0 \p 200 \p 1 \p -\n
+WRITE | dA/terrain.pdl | TERRAIN \p 0 \p 0 \p 0 \p 40 \p 0 \p 20 \p dirt\nTERRAIN \p 6 \p 1 \p 2 \p 6 \p 1 \p 2 \p dirt\nTERRAIN \p 31 \p 1 \p 2 \p 31 \p 1 \p 2 \p dirt\nTERRAIN \p 5 \p 1 \p 3 \p 5 \p 1 \p 3 \p dirt\nTERRAIN \p 25 \p 1 \p 4 \p 25 \p 1 \p 4 \p planks\nTERRAIN \p 20 \p 1 \p 4 \p 20 \p 1 \p 4 \p dirt\nTERRAIN \p 25 \p 1 \p 6 \p 25 \p 1 \p 6 \p stone\nTERRAIN \p 20 \p 1 \p 6 \p 20 \p 1 \p 6 \p dirt\nTERRAIN \p 25 \p 1 \p 7 \p 25 \p 1 \p 7 \p bedrock\nTERRAIN \p 25 \p 1 \p 8 \p 25 \p 1 \p 8 \p sandstone\nTERRAIN \p 28 \p 1 \p 9 \p 28 \p 1 \p 9 \p water\nTERRAIN \p 25 \p 1 \p 9 \p 25 \p 1 \p 9 \p dirt\n
+WRITE | dB/terrain.pdl | TERRAIN \p 0 \p 0 \p 0 \p 40 \p 0 \p 20 \p dirt\nTERRAIN \p 24 \p 1 \p 10 \p 24 \p 1 \p 10 \p stone\nTERRAIN \p 23 \p 1 \p 10 \p 23 \p 1 \p 10 \p dirt\nTERRAIN \p 22 \p 1 \p 10 \p 22 \p 1 \p 10 \p wood_side\nTERRAIN \p 24 \p 1 \p 12 \p 24 \p 1 \p 12 \p stone\nTERRAIN \p 24 \p 2 \p 10 \p 24 \p 2 \p 10 \p stone\nTERRAIN \p 24 \p 1 \p 8 \p 24 \p 1 \p 8 \p bedrock\nTERRAIN \p 24 \p 3 \p 10 \p 24 \p 3 \p 10 \p stone\nTERRAIN \p 25 \p 1 \p 11 \p 25 \p 1 \p 11 \p dirt\nTERRAIN \p 26 \p 1 \p 11 \p 26 \p 1 \p 11 \p dirt\nTERRAIN \p 24 \p 1 \p 13 \p 24 \p 1 \p 13 \p stone\nTERRAIN \p 25 \p 1 \p 14 \p 25 \p 1 \p 14 \p dirt\nTERRAIN \p 15 \p 2 \p 14 \p 15 \p 2 \p 14 \p dirt\n
+EXPECT_HAS | dA/rules.pdl | GUN \p pistol22 | the data has the .22 row
+EXPECT_HAS | dA/rules.pdl | GUN \p bazooka | the data has the bazooka row
+
+CASE | pistol-range-hardness-and-ammo
+RUN | $T/b/vox.+x | move | $T/dA | $T/l1 | asa | 30 | 1 | 2
+RUN | $T/b/vox.+x | give | $T/dA | $T/l1 | asa | pistol22 | 1 | test
+RUN | $T/b/vox.+x | give | $T/dA | $T/l1 | asa | bullets | 10 | test
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l1 | asa | pistol22 | w
+EXPECT_EXIT | 0 | the first .22 shot at a dirt block 24 cells away (the range limit is 24) is accepted
+EXPECT_OUT | shot=pistol22 hit dirt 1/2 | dirt has hardness 2 and one round does 1: damaged, 1 of 2 (a soft block needs 2 hits)
+EXPECT_HAS | l1 | HIT \p asa \p pistol22 \p 6 \p 1 \p 2 \p 1 \p 1 | the HIT row: block (6,1,2), damage 1, progress 1
+EXPECT_HAS | l1 | SHOT \p asa \p pistol22 \p bullets \p 1 \p w \p hit dirt 1/2 | the SHOT row spends 1 bullet and carries the outcome words
+RUN | $T/b/vox.+x | cell | $T/dA | $T/l1 | 6 | 1 | 2
+EXPECT_OUT_IS | dirt | after one hit the block is still there
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l1 | asa | pistol22 | w
+EXPECT_OUT | shot=pistol22 broke dirt | the second round brings it to 2 of 2: the block breaks
+EXPECT_HAS | l1 | MINE \p asa \p 6 \p 1 \p 2 \p dirt | the MINE row removes it
+RUN | $T/b/vox.+x | cell | $T/dA | $T/l1 | 6 | 1 | 2
+EXPECT_OUT_IS | air | the dirt block is gone
+RUN | $T/b/vox.+x | bag | $T/dA | $T/l1 | asa
+EXPECT_OUT_IS | bag=pistol22:1,bullets:8 | two shots, two bullets spent (10 - 2 = 8); the gun itself stays
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l1 | asa | pistol22 | w
+EXPECT_OUT | missed | nothing left on the line within 24 cells: a miss (the ammo is still spent)
+RUN | $T/b/vox.+x | bag | $T/dA | $T/l1 | asa
+EXPECT_OUT_IS | bag=pistol22:1,bullets:7 | a miss costs a bullet too
+RUN | $T/b/vox.+x | status | $T/dA | $T/l1
+EXPECT_OUT | turn=4 | one turn per shot (the move 1 + three shots)
+RUN | $T/b/vox.+x | verify | $T/dA | $T/l1
+EXPECT_OUT | verified | a ledger of shots replays byte for byte
+
+CASE | range-edge-both-sides
+RUN | $T/b/vox.+x | move | $T/dA | $T/l2 | asa | 30 | 1 | 3
+RUN | $T/b/vox.+x | give | $T/dA | $T/l2 | asa | pistol22 | 1 | test
+RUN | $T/b/vox.+x | give | $T/dA | $T/l2 | asa | bullets | 5 | test
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l2 | asa | pistol22 | w
+EXPECT_OUT | missed | the block at x=5 is 25 cells from x=30: one past the range
+RUN | $T/b/vox.+x | cell | $T/dA | $T/l2 | 5 | 1 | 3
+EXPECT_OUT_IS | dirt | and it is untouched
+EXPECT_HAS | l2 | SHOT \p asa \p pistol22 \p bullets \p 1 \p w \p missed | the miss is a SHOT row with the outcome
+RUN | $T/b/vox.+x | move | $T/dA | $T/l2 | asa | 29 | 1 | 3
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l2 | asa | pistol22 | w
+EXPECT_OUT | shot=pistol22 hit dirt 1/2 | CONTROL: one step closer (24 cells) the same block is hit
+
+CASE | the-wall-blocks-the-shot-and-hard-blocks-bounce
+RUN | $T/b/vox.+x | move | $T/dA | $T/l3 | asa | 30 | 1 | 6
+RUN | $T/b/vox.+x | give | $T/dA | $T/l3 | asa | pistol22 | 1 | test
+RUN | $T/b/vox.+x | give | $T/dA | $T/l3 | asa | bullets | 10 | test
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l3 | asa | pistol22 | w
+EXPECT_OUT | too hard: stone | stone has hardness 6, the .22 chips at most 2: the round bounces
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l3 | asa | pistol22 | w
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l3 | asa | pistol22 | w
+RUN | $T/b/vox.+x | cell | $T/dA | $T/l3 | 25 | 1 | 6
+EXPECT_OUT_IS | stone | three bounces: the stone is untouched
+RUN | $T/b/vox.+x | cell | $T/dA | $T/l3 | 20 | 1 | 6
+EXPECT_OUT_IS | dirt | the dirt BEHIND the wall is untouched
+EXPECT_LACKS | l3 | HIT | no HIT row at all: a bounce writes no damage
+RUN | $T/b/vox.+x | bag | $T/dA | $T/l3 | asa
+EXPECT_OUT_IS | bag=pistol22:1,bullets:7 | bounces cost bullets
+
+CASE | autogun-burst-bores-through
+RUN | $T/b/vox.+x | move | $T/dA | $T/l4 | asa | 30 | 1 | 4
+RUN | $T/b/vox.+x | give | $T/dA | $T/l4 | asa | autogun | 1 | test
+RUN | $T/b/vox.+x | give | $T/dA | $T/l4 | asa | bullets | 10 | test
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l4 | asa | autogun | w
+EXPECT_OUT | shot=autogun broke dirt | one pull is 5 rounds: 3 to break the planks (hardness 3), then 2 more bore into the dirt behind (hardness 2)
+EXPECT_HAS | l4 | HIT \p asa \p autogun \p 25 \p 1 \p 4 \p 1 \p 3 | round 3 on the planks: progress 3
+EXPECT_HAS | l4 | MINE \p asa \p 25 \p 1 \p 4 \p planks | the planks are removed
+EXPECT_HAS | l4 | HIT \p asa \p autogun \p 20 \p 1 \p 4 \p 1 \p 2 | round 5 on the dirt: progress 2
+EXPECT_HAS | l4 | MINE \p asa \p 20 \p 1 \p 4 \p dirt | the dirt behind goes too
+RUN | $T/b/vox.+x | bag | $T/dA | $T/l4 | asa
+EXPECT_OUT_IS | bag=autogun:1,bullets:5 | a burst spends 5 bullets (10 - 5)
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l4 | asa | autogun | w
+EXPECT_OUT | missed | the second pull finds nothing
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l4 | asa | autogun | w
+EXPECT_EXIT | 25 | NEGATIVE: the second pull spent the last 5 bullets; a third pull is refused with exit 25 (a burst needs 5)
+EXPECT_OUT | out of ammo | and says why
+
+CASE | autogun-hardness-limit
+RUN | $T/b/vox.+x | move | $T/dA | $T/l5 | asa | 30 | 1 | 6
+RUN | $T/b/vox.+x | give | $T/dA | $T/l5 | asa | autogun | 1 | test
+RUN | $T/b/vox.+x | give | $T/dA | $T/l5 | asa | bullets | 10 | test
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l5 | asa | autogun | w
+EXPECT_OUT | too hard: stone | the auto chips up to hardness 4: stone (6) still bounces
+RUN | $T/b/vox.+x | move | $T/dA | $T/l5 | asa | 30 | 1 | 8
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l5 | asa | autogun | w
+EXPECT_OUT | shot=autogun broke sandstone | sandstone (3) falls to one burst: 3 rounds break it, the other 2 pass on
+EXPECT_HAS | l5 | HIT \p asa \p autogun \p 25 \p 1 \p 8 \p 1 \p 3 | progress 3 of 3
+RUN | $T/b/vox.+x | give | $T/dA | $T/l5 | asa | pistol22 | 1 | test
+RUN | $T/b/vox.+x | give | $T/dA | $T/l5 | asa | bullets | 3 | test
+RUN | $T/b/vox.+x | move | $T/dA | $T/l5 | asa | 30 | 1 | 7
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l5 | asa | pistol22 | w
+EXPECT_OUT | bedrock is unbreakable | bedrock (99) is never harmed by a .22
+RUN | $T/b/vox.+x | cell | $T/dA | $T/l5 | 25 | 1 | 7
+EXPECT_OUT_IS | bedrock | still there
+
+CASE | indestructible-is-a-rule-not-a-side-effect-of-weak-guns
+RUN | $T/b/vox.+x | move | $T/dA | $T/l6 | asa | 30 | 1 | 7
+RUN | $T/b/vox.+x | give | $T/dA | $T/l6 | asa | titan | 1 | test
+RUN | $T/b/vox.+x | give | $T/dA | $T/l6 | asa | bullets | 5 | test
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l6 | asa | titan | w
+EXPECT_OUT | bedrock is unbreakable | a test gun that does 100 damage and may chip hardness 200 still cannot break bedrock (hardness 99 >= RULE indestructible_hardness)
+RUN | $T/b/vox.+x | cell | $T/dA | $T/l6 | 25 | 1 | 7
+EXPECT_OUT_IS | bedrock | the bedrock survives
+RUN | $T/b/vox.+x | move | $T/dA | $T/l6 | asa | 30 | 1 | 6
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l6 | asa | titan | w
+EXPECT_OUT | shot=titan broke stone | CONTROL: the same gun breaks stone in one round (100 >= 6)
+
+CASE | bullets-pass-water-and-pitch-aims
+RUN | $T/b/vox.+x | move | $T/dA | $T/l7 | asa | 30 | 1 | 9
+RUN | $T/b/vox.+x | give | $T/dA | $T/l7 | asa | pistol22 | 1 | test
+RUN | $T/b/vox.+x | give | $T/dA | $T/l7 | asa | bullets | 10 | test
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l7 | asa | pistol22 | w
+EXPECT_OUT | shot=pistol22 hit dirt 1/2 | water at x=28 is not solid: the round flies through it and hits the dirt at x=25
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l7 | asa | pistol22 | w+1
+EXPECT_OUT | missed | pitched up (one level per 2 cells) the round passes over the dirt
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l7 | asa | pistol22 | w-1
+EXPECT_HAS | l7 | HIT \p asa \p pistol22 \p 29 \p 0 \p 9 \p 1 \p 1 | pitched down the round hits the floor one cell in front (29,0,9)
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l7 | asa | pistol22 | 25,1,9
+EXPECT_OUT | shot=pistol22 broke dirt | aiming at the CELL (25,1,9) fires from eye height (y 2): the line drops one level over the 5 cells and hits the dirt there, whose second hit (the first was the level shot) breaks it
+RUN | $T/b/vox.+x | cell | $T/dA | $T/l7 | 25 | 1 | 9
+EXPECT_OUT_IS | air | it broke
+
+CASE | durability-is-one-table-with-mining
+RUN | $T/b/vox.+x | move | $T/dA | $T/l8 | asa | 30 | 1 | 2
+RUN | $T/b/vox.+x | give | $T/dA | $T/l8 | asa | pistol22 | 1 | test
+RUN | $T/b/vox.+x | give | $T/dA | $T/l8 | asa | bullets | 2 | test
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l8 | asa | pistol22 | e
+EXPECT_OUT | shot=pistol22 hit dirt 1/2 | one round on the dirt at (31,1,2): 1 of 2
+RUN | $T/b/vox.+x | mine | $T/dA | $T/l8 | asa | hand | 31 | 1 | 2
+EXPECT_OUT | broken | a bare hand (power 1) adds its 1 to the SAME durability: 1 + 1 = 2, broken
+EXPECT_HAS | l8 | DAMAGE \p asa \p hand \p 31 \p 1 \p 2 \p 1 \p 2 | the mining row continues from the shot's progress
+
+CASE | refusals-write-nothing
+RUN | $T/b/vox.+x | move | $T/dA | $T/l9 | asa | 30 | 1 | 2
+RUN | $T/b/vox.+x | give | $T/dA | $T/l9 | asa | bullets | 3 | test
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l9 | asa | pistol22 | w
+EXPECT_EXIT | 16 | NEGATIVE: bullets but no gun in the bag: refused 16
+EXPECT_OUT | no pistol22 in the bag | with the reason
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l9 | asa | knife | w
+EXPECT_EXIT | 16 | NEGATIVE: not a weapon: 16
+RUN | $T/b/vox.+x | give | $T/dA | $T/l9 | asa | pistol22 | 1 | test
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l9 | asa | pistol22 | q
+EXPECT_EXIT | 13 | NEGATIVE: a bad aim: 13
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l9 | asa | pistol22 | 30,2,2
+EXPECT_EXIT | 13 | NEGATIVE: aiming at your own eye cell is no direction: 13
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l9 | bob | pistol22 | w
+EXPECT_EXIT | 10 | NEGATIVE: an actor that never spawned: 10
+RUN | cp | $T/l9 | $T/l9.before
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l9 | asa | pistol22 | w
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l9 | asa | pistol22 | w
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l9 | asa | pistol22 | w
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l9 | asa | pistol22 | w
+EXPECT_EXIT | 25 | NEGATIVE: the 4th shot with 3 bullets: out of ammo 25
+RUN | cp | $T/l9 | $T/l9.after4
+RUN | $T/b/vox.+x | shoot | $T/dA | $T/l9 | asa | pistol22 | w
+RUN | cmp | $T/l9 | $T/l9.after4
+EXPECT_EXIT | 0 | a refused shot appended NOT ONE byte (ledger identical before and after)
+
+CASE | replay-reproduces-and-forged-rows-are-refused
+RUN | $T/b/vox.+x | replay | $T/dA | $T/l1 | $T/l1.replay
+EXPECT_OUT | replayed identical | the shot ledger replays into a new file
+RUN | cmp | $T/l1 | $T/l1.replay
+EXPECT_EXIT | 0 | and the bytes are identical
+RUN | cp | $T/l1 | $T/f1
+RUN | sed | -i | s#hit dirt 1/2#hit dirt 2/2# | $T/f1
+RUN | cmp | -s | $T/l1 | $T/f1
+EXPECT_EXIT | 1 | forgery 1 really changed the file (vacuity guard)
+RUN | $T/b/vox.+x | verify | $T/dA | $T/f1
+EXPECT_EXIT | 14 | FORGED: a SHOT row with a lying outcome is refused
+RUN | cp | $T/l1 | $T/f2
+RUN | sed | -i | /^HIT /d | $T/f2
+RUN | $T/b/vox.+x | verify | $T/dA | $T/f2
+EXPECT_EXIT | 14 | FORGED: the HIT rows deleted (a shot with no damage) is refused
+RUN | cp | $T/l1 | $T/f3
+APPEND | f3 | MINE \p asa \p 5 \p 1 \p 3 \p dirt\n
+RUN | $T/b/vox.+x | verify | $T/dA | $T/f3
+EXPECT_EXIT | 14 | FORGED: a block removed with no shot is refused
+RUN | cp | $T/l1 | $T/f4
+APPEND | f4 | SHOT \p asa \p pistol22 \p bullets \p 1 \p w \p broke dirt\nTURN \p 99 \p shoot\n
+RUN | $T/b/vox.+x | verify | $T/dA | $T/f4
+EXPECT_EXIT | 14 | FORGED: a made-up SHOT (and its TURN) with no matching consequence is refused
+RUN | cp | $T/l1 | $T/f5
+RUN | sed | -i | s#SHOT \p asa \p pistol22 \p bullets \p 1 \p w \p hit#SHOT \p asa \p pistol22 \p bullets \p 0 \p w \p hit# | $T/f5
+RUN | cmp | -s | $T/l1 | $T/f5
+EXPECT_EXIT | 1 | forgery 5 really changed the file (vacuity guard)
+RUN | $T/b/vox.+x | verify | $T/dA | $T/f5
+EXPECT_EXIT | 14 | FORGED: a free shot (ammo count edited to 0) is refused
+RUN | $T/b/vox.+x | verify | $T/dA | $T/l1
+EXPECT_OUT | verified | CONTROL: the untouched ledger still verifies
+
+CASE | bazooka-crater-hand-counted
+RUN | $T/b/vox.+x | move | $T/dB | $T/lb | asa | 30 | 1 | 10
+RUN | $T/b/vox.+x | give | $T/dB | $T/lb | asa | bazooka | 1 | test
+RUN | $T/b/vox.+x | give | $T/dB | $T/lb | asa | rockets | 2 | test
+RUN | $T/b/vox.+x | shoot | $T/dB | $T/lb | asa | bazooka | w
+EXPECT_EXIT | 0 | the rocket flies 6 cells and bursts on the stone at (24,1,10)
+EXPECT_OUT | crater 14 broken 2 hit | 14 blocks broken and 2 damaged inside the radius-2 sphere (hand count in the file header)
+RUN | $T/b/vox.+x | cell | $T/dB | $T/lb | 24 | 1 | 10
+EXPECT_OUT_IS | air | the centre stone (8 damage >= 6): gone
+RUN | $T/b/vox.+x | cell | $T/dB | $T/lb | 23 | 1 | 10
+EXPECT_OUT_IS | air | dirt one cell away (6 >= 2): gone
+RUN | $T/b/vox.+x | cell | $T/dB | $T/lb | 22 | 1 | 10
+EXPECT_OUT_IS | air | wood two cells away (8 - 2*2 = 4 >= 4): gone
+RUN | $T/b/vox.+x | cell | $T/dB | $T/lb | 24 | 2 | 10
+EXPECT_OUT_IS | air | stone one cell above (6 >= 6): gone
+RUN | $T/b/vox.+x | cell | $T/dB | $T/lb | 25 | 1 | 11
+EXPECT_OUT_IS | air | dirt on the diagonal (d2=2, distance 1): gone
+RUN | $T/b/vox.+x | cell | $T/dB | $T/lb | 24 | 0 | 10
+EXPECT_OUT_IS | air | the floor under the burst: gone
+RUN | $T/b/vox.+x | cell | $T/dB | $T/lb | 23 | 0 | 9
+EXPECT_OUT_IS | air | the floor corner of the 3x3 under the burst (d2=3): gone
+RUN | $T/b/vox.+x | cell | $T/dB | $T/lb | 22 | 0 | 10
+EXPECT_OUT_IS | dirt | the floor 2 cells to the side and one down (d2=5 > 4): outside the sphere, untouched
+RUN | $T/b/vox.+x | cell | $T/dB | $T/lb | 24 | 1 | 12
+EXPECT_OUT_IS | stone | stone two cells away (8 - 4 = 4 < 6): damaged only, still there
+EXPECT_HAS | lb | HIT \p asa \p bazooka \p 24 \p 1 \p 12 \p 4 \p 4 | with progress 4 of 6
+RUN | $T/b/vox.+x | cell | $T/dB | $T/lb | 24 | 3 | 10
+EXPECT_OUT_IS | stone | stone two cells above: damaged only
+EXPECT_HAS | lb | HIT \p asa \p bazooka \p 24 \p 3 \p 10 \p 4 \p 4 | progress 4
+RUN | $T/b/vox.+x | cell | $T/dB | $T/lb | 24 | 1 | 8
+EXPECT_OUT_IS | bedrock | bedrock inside the sphere survives
+EXPECT_LACKS | lb | HIT \p asa \p bazooka \p 24 \p 1 \p 8 | and gets no damage row
+RUN | $T/b/vox.+x | cell | $T/dB | $T/lb | 26 | 1 | 11
+EXPECT_OUT_IS | dirt | dirt at (26,1,11): d2 = 5, outside: untouched
+RUN | $T/b/vox.+x | cell | $T/dB | $T/lb | 24 | 1 | 13
+EXPECT_OUT_IS | stone | stone 3 cells away: untouched
+EXPECT_LACKS | lb | HIT \p asa \p bazooka \p 24 \p 1 \p 13 | no row for it
+RUN | $T/b/vox.+x | bag | $T/dB | $T/lb | asa
+EXPECT_OUT_IS | bag=bazooka:1,rockets:1 | one rocket spent
+RUN | $T/b/vox.+x | status | $T/dB | $T/lb
+EXPECT_OUT | turn=3 | the bazooka costs 2 turns (1 for the move)
+RUN | $T/b/vox.+x | shoot | $T/dB | $T/lb | asa | bazooka | w
+EXPECT_OUT | missed | the second rocket flies over the crater and finds nothing
+RUN | $T/b/vox.+x | shoot | $T/dB | $T/lb | asa | bazooka | w
+EXPECT_EXIT | 25 | NEGATIVE: no rockets left: 25
+RUN | $T/b/vox.+x | replay | $T/dB | $T/lb | $T/lb.replay
+EXPECT_OUT | replayed identical | the crater ledger replays identically
+RUN | cmp | $T/lb | $T/lb.replay
+EXPECT_EXIT | 0 | byte for byte
+RUN | $T/b/vox.+x | cell | $T/dB | $T/lb.replay | 23 | 1 | 10
+EXPECT_OUT_IS | air | and the replayed world has the crater (the world is the fold of the rows)
+
+CASE | over-the-wall-with-the-crosshair
+RUN | $T/b/vox.+x | move | $T/dB | $T/lw | asa | 30 | 1 | 14
+RUN | $T/b/vox.+x | give | $T/dB | $T/lw | asa | pistol22 | 1 | test
+RUN | $T/b/vox.+x | give | $T/dB | $T/lw | asa | bullets | 5 | test
+RUN | $T/b/vox.+x | shoot | $T/dB | $T/lw | asa | pistol22 | w
+EXPECT_HAS | lw | HIT \p asa \p pistol22 \p 25 \p 1 \p 14 \p 1 \p 1 | a level shot hits the 1-high wall (25,1,14)
+RUN | $T/b/vox.+x | shoot | $T/dB | $T/lw | asa | pistol22 | 10,2,14
+EXPECT_HAS | lw | HIT \p asa \p pistol22 \p 15 \p 2 \p 14 \p 1 \p 1 | the crosshair shot from eye height (y 2) clears the wall and hits the block at (15,2,14), 15 cells away
+
+CASE | sabotage-the-guns
+MKDIR | m
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m1.c
+RUN | sed | -i | s#i <= range; i++) { int x = ex#i <= range + 5; i++) { int x = ex# | $T/m/m1.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m1.c
+EXPECT_EXIT | 1 | mutant 1 (the range limit removed) really differs
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m/m1.+x | $T/m/m1.c
+EXPECT_EXIT | 0 | mutant 1 compiles
+RUN | $T/m/m1.+x | move | $T/dA | $T/s1 | asa | 30 | 1 | 3
+RUN | $T/m/m1.+x | give | $T/dA | $T/s1 | asa | pistol22 | 1 | t
+RUN | $T/m/m1.+x | give | $T/dA | $T/s1 | asa | bullets | 3 | t
+RUN | $T/m/m1.+x | shoot | $T/dA | $T/s1 | asa | pistol22 | w
+EXPECT_OUT_LACKS | missed | SABOTAGE 1 (range limit removed) is caught: the block 25 cells away is hit
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m2.c
+RUN | sed | -i | s#if (b->hard > g->maxh) {#if (0) {# | $T/m/m2.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m2.c
+EXPECT_EXIT | 1 | mutant 2 (no hardness limit) really differs
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m/m2.+x | $T/m/m2.c
+EXPECT_EXIT | 0 | mutant 2 compiles
+RUN | $T/m/m2.+x | move | $T/dA | $T/s2 | asa | 30 | 1 | 6
+RUN | $T/m/m2.+x | give | $T/dA | $T/s2 | asa | pistol22 | 1 | t
+RUN | $T/m/m2.+x | give | $T/dA | $T/s2 | asa | bullets | 3 | t
+RUN | $T/m/m2.+x | shoot | $T/dA | $T/s2 | asa | pistol22 | w
+EXPECT_OUT_LACKS | too hard | SABOTAGE 2 (hardness limit removed) is caught: the .22 now chips stone
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m3.c
+RUN | sed | -i | s#if (b->hard >= R("indestructible_hardness")) {#if (0) {# | $T/m/m3.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m3.c
+EXPECT_EXIT | 1 | mutant 3 (bedrock check removed) really differs
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m/m3.+x | $T/m/m3.c
+EXPECT_EXIT | 0 | mutant 3 compiles
+RUN | $T/m/m3.+x | move | $T/dA | $T/s3 | asa | 30 | 1 | 7
+RUN | $T/m/m3.+x | give | $T/dA | $T/s3 | asa | titan | 1 | t
+RUN | $T/m/m3.+x | give | $T/dA | $T/s3 | asa | bullets | 3 | t
+RUN | $T/m/m3.+x | shoot | $T/dA | $T/s3 | asa | titan | w
+EXPECT_OUT_LACKS | unbreakable | SABOTAGE 3 (no indestructible rule) is caught: the titan breaks bedrock
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m4.c
+RUN | sed | -i | s#r.steps = i; return r; }#r.steps = i; }# | $T/m/m4.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m4.c
+EXPECT_EXIT | 1 | mutant 4 (a wall does not stop the ray) really differs
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m/m4.+x | $T/m/m4.c
+EXPECT_EXIT | 0 | mutant 4 compiles
+RUN | $T/m/m4.+x | move | $T/dA | $T/s4 | asa | 30 | 1 | 6
+RUN | $T/m/m4.+x | give | $T/dA | $T/s4 | asa | pistol22 | 1 | t
+RUN | $T/m/m4.+x | give | $T/dA | $T/s4 | asa | bullets | 3 | t
+RUN | $T/m/m4.+x | shoot | $T/dA | $T/s4 | asa | pistol22 | w
+EXPECT_OUT_LACKS | too hard: stone | SABOTAGE 4 (the ray goes through the wall) is caught
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m5.c
+RUN | sed | -i | s#-= atoi(f\[4\])#-= 0# | $T/m/m5.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m5.c
+EXPECT_EXIT | 1 | mutant 5 (ammo never spent) really differs
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m/m5.+x | $T/m/m5.c
+EXPECT_EXIT | 0 | mutant 5 compiles
+RUN | $T/m/m5.+x | move | $T/dA | $T/s5 | asa | 30 | 1 | 6
+RUN | $T/m/m5.+x | give | $T/dA | $T/s5 | asa | pistol22 | 1 | t
+RUN | $T/m/m5.+x | give | $T/dA | $T/s5 | asa | bullets | 3 | t
+RUN | $T/m/m5.+x | shoot | $T/dA | $T/s5 | asa | pistol22 | w
+RUN | $T/m/m5.+x | bag | $T/dA | $T/s5 | asa
+EXPECT_OUT_LACKS | bullets:2 | SABOTAGE 5 (ammo not spent) is caught: the bag still has 3 bullets
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m6.c
+RUN | sed | -i | s#if (d2 > rb \* rb) continue;#if (d2 > (rb + 1) * (rb + 1)) continue;# | $T/m/m6.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m6.c
+EXPECT_EXIT | 1 | mutant 6 (blast radius off by one) really differs
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m/m6.+x | $T/m/m6.c
+EXPECT_EXIT | 0 | mutant 6 compiles
+RUN | $T/m/m6.+x | move | $T/dB | $T/s6 | asa | 30 | 1 | 10
+RUN | $T/m/m6.+x | give | $T/dB | $T/s6 | asa | bazooka | 1 | t
+RUN | $T/m/m6.+x | give | $T/dB | $T/s6 | asa | rockets | 1 | t
+RUN | $T/m/m6.+x | shoot | $T/dB | $T/s6 | asa | bazooka | w
+EXPECT_OUT_LACKS | crater 14 broken 2 hit | SABOTAGE 6 (a bigger blast sphere) is caught: the hand-counted crater changes
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m7.c
+RUN | sed | -i | s#if (!ac \p\p \*ac < need) {#if (0) {# | $T/m/m7.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m7.c
+EXPECT_EXIT | 1 | mutant 7 (no ammo check) really differs
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m/m7.+x | $T/m/m7.c
+EXPECT_EXIT | 0 | mutant 7 compiles
+RUN | $T/m/m7.+x | move | $T/dA | $T/s7 | asa | 30 | 1 | 6
+RUN | $T/m/m7.+x | give | $T/dA | $T/s7 | asa | pistol22 | 1 | t
+RUN | $T/m/m7.+x | shoot | $T/dA | $T/s7 | asa | pistol22 | w
+EXPECT_OUT_LACKS | out of ammo | SABOTAGE 7 (no ammo check) is caught: a gun with no bullets fires
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m8.c
+RUN | sed | -i | s#r = v_shoot(wp, dst, f\[1\], f\[2\], f\[5\]);#r = 0;# | $T/m/m8.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m8.c
+EXPECT_EXIT | 1 | mutant 8 (replay does not re-run SHOT) really differs
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m/m8.+x | $T/m/m8.c
+EXPECT_EXIT | 0 | mutant 8 compiles
+RUN | $T/m/m8.+x | verify | $T/dA | $T/l1
+EXPECT_OUT_LACKS | verified | SABOTAGE 8 (replay skips shots) is caught: the genuine shot ledger no longer verifies
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m9.c
+RUN | sed | -i | s#!strcmp(f\[0\], "HIT") \p\p ## | $T/m/m9.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m9.c
+EXPECT_EXIT | 1 | mutant 9 (HIT is not a known derived row) really differs
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m/m9.+x | $T/m/m9.c
+EXPECT_EXIT | 0 | mutant 9 compiles
+RUN | $T/m/m9.+x | verify | $T/dA | $T/l1
+EXPECT_OUT_LACKS | verified | SABOTAGE 9 (a row kind unknown to replay) is caught
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m10.c
+RUN | sed | -i | s#int prog = s_dmg(x, y, z) + dmg;#int prog = dmg;# | $T/m/m10.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m10.c
+EXPECT_EXIT | 1 | mutant 10 (damage does not accumulate) really differs
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m/m10.+x | $T/m/m10.c
+EXPECT_EXIT | 0 | mutant 10 compiles
+RUN | $T/m/m10.+x | move | $T/dA | $T/s10 | asa | 30 | 1 | 2
+RUN | $T/m/m10.+x | give | $T/dA | $T/s10 | asa | pistol22 | 1 | t
+RUN | $T/m/m10.+x | give | $T/dA | $T/s10 | asa | bullets | 3 | t
+RUN | $T/m/m10.+x | shoot | $T/dA | $T/s10 | asa | pistol22 | w
+RUN | $T/m/m10.+x | shoot | $T/dA | $T/s10 | asa | pistol22 | w
+EXPECT_OUT_LACKS | broke dirt | SABOTAGE 10 (hits do not add up) is caught: the second round no longer breaks the dirt
+CLEAN |
+CASE | the-use-key-fires-the-held-gun-through-the-pages
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+MKDIR | h/@.apps/rmmc/play/world
+ENV | MUCHI_TARGET_ENT | $T/h/@.apps/rmmc/play/world
+ENV | GAME_ARG | 140 100
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/spawn | $T/h | ui
+ENV | GAME_ARG | e
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/face | $T/h | ui
+ENV | GAME_ARG |
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/place | $T/h | ui
+EXPECT_HAS | led.txt | PLACE \p asa \p dirt \p 141 \p 6 \p 100 | a dirt block on the column east of her, at her own level (141,6,100)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | pistol22 | 1 | test
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | bullets | 6 | test
+WRITE | h/@.apps/rmmc/play/pick.txt | pickaxe_not_picked\n
+WRITE | h/@.apps/rmmc/play/pick.txt | pistol22\n
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/mine | $T/h | ui
+EXPECT_HAS | h/@.apps/rmmc/play/result.txt | ok | the use key (the mine page) with the .22 picked is accepted
+EXPECT_HAS | led.txt | SHOT \p asa \p pistol22 \p bullets \p 1 \p e \p hit dirt 1/2 | it FIRED the gun along her facing (east): a SHOT row with the outcome words the bar shows
+EXPECT_LACKS | led.txt | DAMAGE \p asa | and it did not swing a tool
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/mine | $T/h | ui
+EXPECT_HAS | led.txt | MINE \p asa \p 141 \p 6 \p 100 \p dirt | the second shot breaks the block in front
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | bag | $T/h/@.apps/rmmc/vox | $T/led.txt | asa
+EXPECT_OUT | bullets:4 | two bullets spent
+ENV | GAME_ARG | pistol22 e
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/shoot | $T/h | ui
+EXPECT_HAS | h/@.apps/rmmc/play/result.txt | ok | the shoot PAGE (a harness or an AI beat calls it) fires the named weapon
+EXPECT_HAS | led.txt | SHOT \p asa \p pistol22 \p bullets \p 1 \p e \p missed | a SHOT row (nothing in front now: missed)
+ENV | GAME_ARG | knife e
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/shoot | $T/h | ui
+EXPECT_HAS | h/@.apps/rmmc/play/result.txt | refused | NEGATIVE: a knife is not a weapon
+EXPECT_HAS | h/@.apps/rmmc/play/result.txt | [exit 16] | with exit 16
+ENV | GAME_ARG |
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | verify | $T/h/@.apps/rmmc/vox | $T/led.txt
+EXPECT_OUT | verified | the ledger the pages wrote verifies
+WRITE | h/@.apps/rmmc/play/pick.txt | pick\n
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/place | $T/h | ui
+WRITE | h/@.apps/rmmc/play/pick.txt | pistol22\n
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/place | $T/h | ui
+EXPECT_HAS | h/@.apps/rmmc/play/result.txt | refused | NEGATIVE: a gun is not a block: placing it is refused
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | pickx | 1 | test
+WRITE | h/@.apps/rmmc/play/pick.txt | pick\n
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/mine | $T/h | ui
+EXPECT_HAS | led.txt | DAMAGE \p asa \p pick | CONTROL: with a pickaxe picked the same key still swings the tool (the old behaviour is unchanged)
+CLEAN |

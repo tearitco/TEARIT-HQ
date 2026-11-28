@@ -312,11 +312,15 @@ static int do_endturn(World *W, Rows *R) {
     return 0; }
 
 /* ---------- ledger: load, replay (verify), append ---------- */
-static char *g_lines[MAXROWS * 2]; static int g_n;
-static void free_lines(void) { for (int i = 0; i < g_n; i++) free(g_lines[i]); g_n = 0; }
+#define MAXLEDGER 400000   /* rows a ledger may have (about 5000 turns of a 4-civ game): a longer one is REFUSED, never silently cut (it was a fixed 8192 before 2026-11-27) */
+static char **g_lines; static int g_n, g_cap;
+static void free_lines(void) { for (int i = 0; i < g_n; i++) free(g_lines[i]); free(g_lines); g_lines = NULL; g_n = g_cap = 0; }
 static int read_ledger(const char *path) {
     FILE *f = fopen(path, "r"); char ln[LINE * 2]; free_lines(); if (!f) return 5;
-    while (fgets(ln, sizeof ln, f) && g_n < MAXROWS * 2) { ln[strcspn(ln, "\r\n")] = 0; if (ln[0]) g_lines[g_n++] = strdup(ln); }
+    while (fgets(ln, sizeof ln, f)) { ln[strcspn(ln, "\r\n")] = 0; if (!ln[0]) continue;
+        if (g_n >= MAXLEDGER) { fclose(f); fprintf(stderr, "civ_op: the ledger has more than %d rows: refused, not cut\n", MAXLEDGER); return 14; }
+        if (g_n >= g_cap) { g_cap = g_cap ? g_cap * 2 : 4096; g_lines = realloc(g_lines, (size_t)g_cap * sizeof *g_lines); if (!g_lines) return 5; }
+        g_lines[g_n++] = strdup(ln); }
     fclose(f); return 0; }
 static int bad(int at, const char *why) { fprintf(stderr, "ledger line %d: %s\n", at + 1, why); return 14; }
 /* compare the block just made to the next lines of the ledger (skip the first when it is the row being applied) */
@@ -423,7 +427,7 @@ static int cmd_lesson(World *W, const char *file, int civ) {
 
 /* ---------- the projection: ONE desk read by the 2D and the 3D board ---------- */
 /* atlas tiles: 0 fog, 1 water, 2 grass, 3 forest, 4 hills, 5 mountain, 6 city civ1, 7 city civ2 (flat colours, a stopgap: placeholder art) */
-static const unsigned char TILE[10][3] = { {0,0,0}, {40,90,200}, {90,170,70}, {30,110,50}, {150,130,80}, {170,170,175}, {80,140,255}, {255,90,80}, {250,220,60}, {200,90,230} };
+static const unsigned char TILE[10][3] = { {0,0,0}, {40,90,200}, {90,170,70}, {40,150,60}, {150,130,80}, {170,170,175}, {80,140,255}, {255,90,80}, {250,220,60}, {200,90,230} };
 /* unit colours: civ 1..4, [kind 0 settler, 1 warrior] */
 static int write_file(const char *path, const char *data, size_t n) {
     char tmp[PATH_MAX + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", path); FILE *f = fopen(tmp, "w"); if (!f) return 5;
@@ -445,7 +449,7 @@ static int cmd_project(World *W, int civ, const char *dir, const char *sel) {
     for (int s = 1; s <= 4 && s <= W->nciv; s++) { tile[5 + s][0] = (unsigned char)rule_civ(W->civid[s], "r"); tile[5 + s][1] = (unsigned char)rule_civ(W->civid[s], "g"); tile[5 + s][2] = (unsigned char)rule_civ(W->civid[s], "b"); }      /* a city tile is its owner civ colour */
     for (int t = 0; t < 10; t++) for (int i = 0; i < 256; i++) { size_t o = ((size_t)t * 256 + (size_t)i) * 4; int edge = (i % 16 == 0 || i / 16 == 0) && t > 0, sh = edge ? 12 : 0;
         atl[o] = (char)(tile[t][0] > sh ? tile[t][0] - sh : 0); atl[o + 1] = (char)(tile[t][1] > sh ? tile[t][1] - sh : 0); atl[o + 2] = (char)(tile[t][2] > sh ? tile[t][2] - sh : 0); atl[o + 3] = (char)255; }
-    static const char *ext = "EXTRUDE | ~ | 1\nEXTRUDE | . | 1\nEXTRUDE | T | 2\nEXTRUDE | ^ | 3\nEXTRUDE | M | 5\nEXTRUDE | A | 2\nEXTRUDE | B | 2\nEXTRUDE | C | 2\nEXTRUDE | D | 2\nEXTRUDE | # | 1\n";
+    static const char *ext = "EXTRUDE | ~ | 1\nEXTRUDE | . | 1\nEXTRUDE | T | 1\nEXTRUDE | ^ | 3\nEXTRUDE | M | 5\nEXTRUDE | A | 2\nEXTRUDE | B | 2\nEXTRUDE | C | 2\nEXTRUDE | D | 2\nEXTRUDE | # | 1\n";
     int rc = 0;
     snprintf(p, sizeof p, "%s/cells.txt", dir); rc |= write_file(p, cells, nc);
     snprintf(p, sizeof p, "%s/map.txt", dir); rc |= write_file(p, mapt, nm);

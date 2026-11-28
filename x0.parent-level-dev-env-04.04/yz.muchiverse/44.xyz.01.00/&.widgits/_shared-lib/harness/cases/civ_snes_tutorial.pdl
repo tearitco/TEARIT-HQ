@@ -15,7 +15,7 @@ EXPECT_EXIT | 0 | the op compiles
 RUN | $T/app/ops/+x/civ_op.+x | $T/pre.txt | lesson | $T/app/tutorial.pdl | civ1
 EXPECT_OUT | step=1/5 | with NO ledger the lesson is at step 1 (the setup)
 EXPECT_OUT | label=1/5 Space: start | the bar names the key
-EXPECT_OUT | goal=Pick the options with the arrows, then press Space. | and the sentence names the arrows and Space (the words a stranger reads)
+EXPECT_OUT | goal=Arrows pick options. Space starts. | and the sentence names the arrows and Space (the words a stranger reads)
 RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/pre_draft.txt | next
 RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/pre_draft.txt | inc
 EXPECT_OUT | stat_line=Map: earth | the stranger pressed Down then Right: the Map option changed
@@ -33,12 +33,12 @@ EXPECT_OUT | label=2/5 arrows: step | the next label
 RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | new | 4 | small
 RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | lesson | $T/app/tutorial.pdl | civ1
 EXPECT_OUT | label=2/5 arrows: step | step 1: the bar says what to do (label)
-EXPECT_OUT | goal=Press an arrow key to walk one step with your settler. | and the sentence names the key
+EXPECT_OUT | goal=Press an arrow to walk one step. | and the sentence names the key
 RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | ui | civ1
-EXPECT_OUT | next=Next: press N to pick your settler | the side panel's NEXT line at the very start (the settler is not selected yet)
+EXPECT_OUT | next=Next: press N for a unit | the side panel's NEXT line at the very start (the settler is not selected yet)
 RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | ui | civ1 | u1
 EXPECT_OUT | stat_line=u1 settler  moves 1 | once u1 is picked the bar says what it is and its moves
-EXPECT_OUT | next=Next: press B to found a city here | the NEXT line for a settler on open land
+EXPECT_OUT | next=Next: press B to found | the NEXT line for a settler on open land
 # a lesson step that is not done stays put: pressing the wrong thing changes nothing (CONTROL)
 RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | endturn
 RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | lesson | $T/app/tutorial.pdl | civ1
@@ -74,7 +74,7 @@ RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | lesson | $T/app/tutorial.pdl | civ1
 EXPECT_OUT | label=lesson done! | the bar says lesson done
 EXPECT_OUT | done=1 | finished
 RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | ui | civ1
-EXPECT_OUT | next=Next: move a unit, or Space to end the turn | after the lesson the panel keeps naming the next thing (the warrior still has moves)
+EXPECT_OUT | next=Move, or Space ends turn | after the lesson the panel keeps naming the next thing (the warrior still has moves)
 # NEGATIVES on the grader: a stranger who walks and ends the turn but never founds stays on step 2
 RUN | $T/app/ops/+x/civ_op.+x | $T/m.txt | new | 4 | small
 RUN | $T/app/ops/+x/civ_op.+x | $T/m.txt | move | u1 | n
@@ -86,7 +86,7 @@ WRITE | app/long.pdl | RULE \p label_max \p 20\nLESSON \p l \p long\nSTEP \p a \
 RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | lesson | $T/app/long.pdl | civ1
 EXPECT_EXIT | 4 | NEGATIVE-a-label-longer-than-the-bar-is-refused
 RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | lesson | $T/app/tutorial.pdl | civ1
-EXPECT_EXIT | 0 | CONTROL: the real lesson fits (labels 20, sentences 60)
+EXPECT_EXIT | 0 | CONTROL: the real lesson fits (labels 20, sentences 40, two bar lines)
 # keys: the camera keys Y U I O P (D152) are never bound to a game verb
 RUN | grep | -c | -i | ^KEYVERB \p [yuiop] *\p | $T/app/keys.pdl
 EXPECT_OUT | 0 | the camera keys y u i o p are not bound to game verbs

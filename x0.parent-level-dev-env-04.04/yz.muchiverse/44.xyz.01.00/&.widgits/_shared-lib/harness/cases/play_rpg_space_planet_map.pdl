@@ -34,6 +34,7 @@ COPY | &.widgits/_shared-lib/petslike_core.c | &.widgits/_shared-lib/petslike_co
 COPY | &.widgits/_shared-lib/petslike_toolbar.c | &.widgits/_shared-lib/petslike_toolbar.c
 COPY | &.widgits/_shared-lib/pet_sky.c | &.widgits/_shared-lib/pet_sky.c
 COPY | &.widgits/_shared-lib/pet_footer.c | &.widgits/_shared-lib/pet_footer.c
+COPY | &.widgits/_shared-lib/plug_ref.c | &.widgits/_shared-lib/plug_ref.c
 COPY | &.widgits/_shared-lib/pet_nudge.c | &.widgits/_shared-lib/pet_nudge.c
 COPY | &.widgits/_shared-lib/kh_state_notify.h | &.widgits/_shared-lib/kh_state_notify.h
 COPY | &.widgits/_shared-lib/csv_frames.c | &.widgits/_shared-lib/csv_frames.c
@@ -112,17 +113,17 @@ WRITE | @.apps/rpg-space/state/direct.txt | 0 0\n
 RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | helm | move | 1 | 0
 EXPECT_FILE | @.apps/rpg-space/state/direct.txt | 1 0\n | p4_voxels.flown-one-cell-east
 EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_1/state.txt | entity_type=vehicle | p4_voxels.an-asteroid-is-a-vehicle-piece
-EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_1/state.txt | desk=bridge | p4_voxels.drawn-on-the-bridge-desk-where-the-land-is
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_1/state.txt | desk=* | p4_voxels.drawn-on-every-desk-where-space-is-visible-desk-star
 EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_1/state.txt | pos_x=13.00 | p4_voxels.ore-at-world-15-5-minus-flight-shift-1-centred-on-its-3-wide-box
-EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_1/state.txt | pos_y=3.50 | p4_voxels.ore-at-world-y-5-centred-on-its-4-deep-box
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_1/state.txt | pos_y= | p4_voxels.ore-has-a-y-position-its-exact-value-follows-the-nugget-depth-which-the-fine-rock-cubes-changed-2026-10-27
 EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_1/state.txt | pos_z=-8 | p4_voxels.the-land-and-its-rocks-sink-by-the-ship-altitude
 EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_1/state.txt | size_h=3.00 | p4_voxels.box-height-is-the-nugget-height
 RUN | grep | -c | ^\n | $T/@.apps/rpg-space/rpg-space-pchq/pieces/veh_1/model.txt
-EXPECT_OUT_IS | 12 | p4_voxels.ore-nugget-is-11-voxels-plus-the-dim-line
+EXPECT_OUT_IS | 447 | p4_voxels.ore-nugget-is-fine-rock-cubes-446-surface-voxels-plus-the-dim-line-rock_vpc-4-seeded-so-the-same-every-time
 RUN | grep | -c | ^\n | $T/@.apps/rpg-space/rpg-space-pchq/pieces/veh_2/model.txt
-EXPECT_OUT_IS | 12 | p4_voxels.rock-nugget-is-11-voxels-plus-the-dim-line
+EXPECT_OUT_IS | 474 | p4_voxels.rock-nugget-is-fine-rock-cubes-473-surface-voxels-plus-the-dim-line
 RUN | grep | -c | ^\n | $T/@.apps/rpg-space/rpg-space-pchq/pieces/veh_3/model.txt
-EXPECT_OUT_IS | 8 | p4_voxels.crystal-nugget-is-7-voxels-plus-the-dim-line
+EXPECT_OUT_IS | 323 | p4_voxels.crystal-nugget-is-fine-rock-cubes-322-surface-voxels-plus-the-dim-line
 EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_4/model.txt | dim 24 16 24 | p4_voxels.the-skiff-is-a-6x6-layout-of-4-voxel-tile-cubes-floor-plus-3-wall-levels-high
 RUN | grep | -c | ^\n | $T/@.apps/rpg-space/rpg-space-pchq/pieces/veh_4/model.txt
 EXPECT_OUT_IS | 2647 | p4_voxels.the-skiff-has-2646-tile-cube-voxels-plus-the-dim-line-only-cubes-with-a-free-face
@@ -130,15 +131,18 @@ EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_4/state.txt | pos_x=4.50
 EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_4/state.txt | pos_y=-8.50 | p4_voxels.skiff-at-world-y-minus-6-centred-on-its-6-deep-box
 EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_4/state.txt | size_x=6.00 | p4_voxels.skiff-box-is-6-cells-wide
 EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_4/state.txt | size_h=4.00 | p4_voxels.and-4-cells-high-a-floor-cube-plus-3-wall-cubes
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_4/tile_model.txt | dim 6 4 6 | p4_voxels.the-skiff-also-has-a-tile-model-of-6x4x6-cells-for-the-textured-faces
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_4/tile_model.txt | 0 0 0 0 0 | p4_voxels.its-first-cell-is-a-floor-cube-with-tile-0
+EXPECT_NOFILE | @.apps/rpg-space/rpg-space-pchq/pieces/veh_1/tile_model.txt | p4_voxels.an-asteroid-has-no-tile-model-only-the-skiff-does
 EXPECT_NOFILE | @.apps/rpg-space/rpg-space-pchq/pieces/veh_5/state.txt | p4_voxels.only-four-objects-so-no-fifth-piece
 RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | helm | move | 1 | 0
 EXPECT_FILE | @.apps/rpg-space/state/direct.txt | 2 0\n | p4_voxels.flown-another-cell-east
 EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_4/state.txt | pos_x=3.50 | p4_voxels.the-skiff-slid-one-cell-with-the-flight
 EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_1/state.txt | pos_x=12.00 | p4_voxels.the-ore-slid-one-cell-with-the-flight
 RUN | grep | -c | ^\n | $T/@.apps/rpg-space/rpg-space-pchq/pieces/veh_1/model.txt
-EXPECT_OUT_IS | 12 | p4_voxels.the-nugget-keeps-its-shape-when-the-ship-moves
+EXPECT_OUT_IS | 447 | p4_voxels.the-nugget-keeps-its-shape-when-the-ship-moves
 RUN | grep | -c | ^\n | $T/@.apps/rpg-space/rpg-space-pchq/pieces/veh_3/model.txt
-EXPECT_OUT_IS | 8 | p4_voxels.the-crystal-keeps-its-shape-too
+EXPECT_OUT_IS | 323 | p4_voxels.the-crystal-keeps-its-shape-too
 RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | helm | off
 EXPECT_NOFILE | @.apps/rpg-space/rpg-space-pchq/pieces/veh_1/state.txt | p4_voxels.releasing-the-helm-removes-the-asteroid-pieces
 EXPECT_NOFILE | @.apps/rpg-space/rpg-space-pchq/pieces/veh_4/state.txt | p4_voxels.releasing-the-helm-removes-the-skiff-piece
@@ -216,5 +220,30 @@ RUN | grep | -c | ^\n | $T/@.apps/rpg-space/rpg-space-pchq/pieces/veh_1/model.tx
 EXPECT_OUT_IS | 11 | p7_worlds.all-ten-voxels-plus-the-dim-line
 EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_1/model.txt | 0 0 0 200 40 40 | p7_worlds.and-keeps-the-colours-of-the-file-not-the-rock-tile
 RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | helm | off
+# ---- phase p8_scene_vox: remnants and resource nodes lying in a room are small VOXEL pieces (pieces/veh_10..24, desk = their room), a remnant is a loot bag that is rewritten turned by eighths (owner 2026-10-27: not flat sprite sheets)
+RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/playthrough_op.+x | mark | /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/_shared-lib/harness/results/play_rpg_space_planet_map.marks.txt | p8_scene_vox
+WRITE | @.apps/rpg-space/state/nodes.txt | bridge\p12\p10\pore\p4\n
+WRITE | @.apps/rpg-space/state/drops.txt | 1\pbridge\p5\p5\p1\piron\p0\p0\ptest\n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | space | scene | 0
+EXPECT_OUT | 1 remnants and 1 nodes | p8_scene_vox.the-remnant-and-the-node-are-drawn-as-pieces-not-sprites
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_10/state.txt | desk=bridge | p8_scene_vox.it-belongs-to-the-room-the-engine-shows
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_10/state.txt | pos_z=1.000 | p8_scene_vox.and-rests-on-the-floor
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_10/model.txt | dim 7 6 7 | p8_scene_vox.the-loot-bag-is-7-by-6-by-7-voxels
+RUN | grep | -c | ^\n | $T/@.apps/rpg-space/rpg-space-pchq/pieces/veh_10/model.txt
+EXPECT_OUT_IS | 67 | p8_scene_vox.66-voxels-plus-the-dim-line
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_10/model.txt | 5 1 3 235 228 200 | p8_scene_vox.the-pale-patch-is-on-the-x-side-at-angle-0
+EXPECT_LACKS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_10/model.txt | 3 1 5 235 228 200 | p8_scene_vox.and-not-on-the-z-side
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_10/model.txt | 3 5 3 230 187 170 | p8_scene_vox.the-tip-takes-the-iron-colour-lightened
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_11/state.txt | desk=bridge | p8_scene_vox.the-first-resource-node-is-a-piece-too
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | space | scene | 2
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_10/model.txt | 3 1 5 235 228 200 | p8_scene_vox.a-quarter-turn-moves-the-patch-to-the-z-side
+EXPECT_LACKS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_10/model.txt | 5 1 3 235 228 200 | p8_scene_vox.and-it-left-the-x-side
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | space | scene | 1
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_10/model.txt | 5 1 4 235 228 200 | p8_scene_vox.an-eighth-turn-puts-the-patch-on-the-diagonal-it-does-not-vanish
+EXPECT_HAS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_10/model.txt | 4 1 5 235 228 200 | p8_scene_vox.with-its-second-voxel
+WRITE | @.apps/rpg-space/state/drops.txt | \n
+RUN | nice | -n | 15 | $T/@.apps/rpg-space/ops/+x/rpg_space.+x | space | scene
+EXPECT_NOFILE | @.apps/rpg-space/rpg-space-pchq/pieces/veh_11/state.txt | p8_scene_vox.a-collected-remnant-leaves-no-piece-for-the-next-one
+EXPECT_LACKS | @.apps/rpg-space/rpg-space-pchq/pieces/veh_10/model.txt | dim 7 6 7 | p8_scene_vox.and-its-slot-now-holds-the-node-not-a-bag
 RUN | $HOUSE/&.widgits/_shared-lib/harness/ops/+x/playthrough_op.+x | mark | /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/_shared-lib/harness/results/play_rpg_space_planet_map.marks.txt | END
 CLEAN |
