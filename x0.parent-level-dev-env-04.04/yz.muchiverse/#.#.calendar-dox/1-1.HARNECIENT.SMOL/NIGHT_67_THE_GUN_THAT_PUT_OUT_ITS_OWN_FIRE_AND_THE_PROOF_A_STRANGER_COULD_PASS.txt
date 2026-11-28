@@ -1,0 +1,39 @@
+# NIGHT 67 — The Gun That Put Out Its Own Fire, and the Proof a Stranger Could Pass
+# ====================================================================
+# Title: "NIGHT 67 — The Gun That Put Out Its Own Fire, and the Proof a Stranger Could Pass"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (ja-JP-NanamiNeural), RAHWEH (en-GB-RyanNeural), THE NARRATOR (en-GB-ThomasNeural)
+# Voice profiles: as in night_voices.pdl. The owner judges the voices by ear.
+# Topic: 2026-11-27 and 28, one long day. Guns, a flamethrower and a water gun in rmmc as ledger rows; a civ game with a setup screen and a real Earth map; a car and a multi-story building that did NOT get built yet; and the owner's standard: scientifically verifiable completion plus a stranger UX test. Written from the handoff `16.game/HANDOFF-2026-11-28-GUNS-CAR-BUILDING-CIV-PROGRESS-AND-ROADMAP-TO-THE-GRAND-VISION.md`, which is the authority for every number below.
+# Long-form: RAN means run and the result seen. AGENT means a sub agent reported it and it was not re-run. DESIGN means written, nothing runs. NOT BUILT means it does not exist.
+#
+# Format: one line per spoken turn, `SPEAKER: text`, as NIGHT 66.
+
+THE NARRATOR: Night sixty-seven. A long day, and a lesson about the difference between saying it works and measuring that it works.
+MAXINE: Start with the guns. What exists?
+TOMO: Five weapons as data rows: a point-two-two, an auto, a bazooka, a flamethrower and a water gun. One shoot verb writes one row. Fire and water are derived rows, written when a turn advances.
+MAXINE: So there is no fire simulation running in the background.
+TOMO: None. The state is the ledger plus the turn count, so replay reproduces it, and a forged row is refused. AGENT reported one hundred forty-five checks for the guns and one hundred thirteen for fire.
+RAHWEH: And the scenario that matters: the flamethrower lit four blocks, the fire spread to seven, and the water gun reported doused seven fires. The ledger agreed that no fire was left.
+THE NARRATOR: That one was seen in a real window on the debil machine, in a photograph. The bazooka crater too.
+MAXINE: What was wrong?
+TOMO: Water near the camera flooded the first person view, and fire looked like a flat orange wall. An agent tried to fix the fire by insetting the cubes. The photograph showed it was worse, so it was reverted.
+RAHWEH: That is the lesson. A fix that is not photographed again is not a fix. The owner's standard says: write the hypothesis and the pass number before you run, change one thing, keep a control that can fail, repeat the live run and report the spread.
+MAXINE: And the second half of the standard?
+TOMO: A stranger test. Can someone who has never seen the game find the keys from the words on the screen, and when something is refused, does the bar say why in plain words. Space turned out to be jump, not advance turn. The agent's own demo recipe was wrong, and a stranger would have been stuck.
+THE NARRATOR: Now the civ game. The owner asked for something like the Super Nintendo Civilization, with the three-dimensional board of the Teropoly style, from the same data.
+MAXINE: What did the agents find?
+TOMO: There was no civ game to finish. So a new app was built on the shape of rmmc: one rule op, a setup row, lesson one graded from the ledger. Setup has map size from small to huge, three difficulties, up to three rivals, a random map or the real Earth sampled from elevation data, and eight civs as data, where you pick which one you play.
+RAHWEH: The measured part is nice. The plain two-dimensional view was blank blue. The cause was a default height of zero in the shared renderer. After the fix, the count of non-sea pixels went from one hundred nineteen to over five hundred thousand.
+MAXINE: And what is not done?
+TOMO: Founding a city on screen, a rival in fog, the three-dimensional overview, the video. The art is code-drawn and reads like a prototype. The earth data file is eighteen megabytes and is not in git.
+THE NARRATOR: The car and the building. They are honest zeroes.
+RAHWEH: The car has a design, five questions answered, hypotheses written, and inert data rows whose part masses sum by hand to one million one hundred forty-nine thousand grams. No verb, no integrator, no photo.
+TOMO: The building: the only older door and stair is a five by five flat sheet from November eleventh. The owner wants proof of the climb to the roof in first person and in third person, tied to the height of the character at every step, no teleport.
+MAXINE: Why does this belong in a lesson about the grand vision?
+RAHWEH: Because every verb here, shoot, ignite, douse, enter, open the door, found a city, is an action the learning actor can take, and every result is a ledger row a harness can grade. The vocabulary is growing, and the grader is the loss.
+TOMO: And promotion stays with a human. The model describes in one fixed line and never sets a number.
+THE NARRATOR: The roadmap, in order. Close the open proofs. Extend the stranger case past lesson one to craft, fire, douse, drive, and the roof. Cars then planes. The city block on a real square. Civ to a full game. Then feed the verbs to the actor that learns the ledger.
+MAXINE: And the open decisions?
+TOMO: Push the unpushed commits. Two boards that keep digit cameras. Diagonal move keys in the editor. Whether to track the earth data. And the voices, which the owner judges by ear.
+THE NARRATOR: End of night sixty-seven.
