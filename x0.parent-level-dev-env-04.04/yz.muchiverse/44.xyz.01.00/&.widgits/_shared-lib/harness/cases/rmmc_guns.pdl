@@ -403,7 +403,7 @@ EXPECT_OUT | bullets:4 | two bullets spent
 ENV | GAME_ARG | pistol22 e
 RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/shoot | $T/h | ui
 EXPECT_HAS | h/@.apps/rmmc/play/result.txt | ok | the shoot PAGE (a harness or an AI beat calls it) fires the named weapon
-EXPECT_HAS | led.txt | SHOT \p asa \p pistol22 \p bullets \p 1 \p e \p missed | a SHOT row (nothing in front now: missed)
+EXPECT_HAS | led.txt | SHOT \p asa \p pistol22 \p bullets \p 1 \p e \p hit grass_top 1/2 | a SHOT row: with the dirt gone the round flies on east and chips the grass of the island slope (observed: ground there rises to her level)
 ENV | GAME_ARG | knife e
 RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/h/@.apps/rmmc/events/shoot | $T/h | ui
 EXPECT_HAS | h/@.apps/rmmc/play/result.txt | refused | NEGATIVE: a knife is not a weapon

@@ -18,3 +18,13 @@ SLOT | shears | Shears | hotbar/shears-bgr.png
 SLOT | sandstone | Sandstone | hotbar/sandstone-bgr.png
 SLOT | planks | Planks | hotbar/planks-bgr.png
 SLOT | craft_table | Table | hotbar/craft_table-bgr.png
+# Guns and their ammo (2026-11-27, D158 D159): a tool that is a GUN row of vox/rules.pdl. Hold one and press the use key (b) to FIRE it; craft the gun at a craft_table and the ammo anywhere/at one (pick the item, press m); the bar shows the bag count.
+SLOT | pistol22 | .22 Pistol | hotbar/pistol22-bgr.png
+SLOT | autogun | Auto | hotbar/autogun-bgr.png
+SLOT | bazooka | Bazooka | hotbar/bazooka-bgr.png
+SLOT | flamer | Flamethrower | hotbar/flamer-bgr.png
+SLOT | watergun | Water gun | hotbar/watergun-bgr.png
+SLOT | bullets | Bullets | hotbar/bullets-bgr.png
+SLOT | rockets | Rockets | hotbar/rockets-bgr.png
+SLOT | fuel | Fuel | hotbar/fuel-bgr.png
+SLOT | waterpack | Water pack | hotbar/waterpack-bgr.png

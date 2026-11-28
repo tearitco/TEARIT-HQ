@@ -16,3 +16,9 @@ BLOCK | water      | 0 | -      | 0 | -       | 0 | 0 | 0 | 0 | 0 | 0
 BLOCK | sandstone   | 3 | pick   | 0 | sandstone | 1 | 1 | 1 | 0 | 0 | 0
 BLOCK | planks      | 3 | axe    | 0 | planks  | 1 | 1 | 1 | 0 | 0 | 1
 BLOCK | craft_table | 3 | axe    | 0 | craft_table | 1 | 1 | 1 | 0 | 0 | 1
+# D158 / D159: charcoal is what burnt wood becomes; water_f1..3 are flowing water (level = how many cells it may still spread sideways; the name starts with water so wading rules treat it as water); bedrock never breaks (hardness above RULE indestructible_hardness)
+BLOCK | charcoal | 2 | shovel | 0 | charcoal | 1 | 1 | 1 | 0 | 0 | 0
+BLOCK | water_f1 | 0 | - | 0 | - | 0 | 0 | 0 | 0 | 0 | 0
+BLOCK | water_f2 | 0 | - | 0 | - | 0 | 0 | 0 | 0 | 0 | 0
+BLOCK | water_f3 | 0 | - | 0 | - | 0 | 0 | 0 | 0 | 0 | 0
+BLOCK | bedrock | 99 | pick | 99 | - | 0 | 1 | 1 | 0 | 0 | 0

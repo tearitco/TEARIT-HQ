@@ -54,3 +54,36 @@ RECIPE | table | craft_table | 1 | planks | 4 | - | 0 | -
 RECIPE | pickaxe | pick | 1 | planks | 3 | - | 0 | craft_table
 RECIPE | axe | axe | 1 | planks | 3 | - | 0 | craft_table
 RECIPE | shovel | shovel | 1 | planks | 2 | - | 0 | craft_table
+# guns (D158, owner 2026-11-27: "give one of their tools to be guns .22, auto/bazooka"): a held item that has a GUN row is FIRED by the use key (b) instead of swung. The ammo is a bag item taken by the SHOT row.
+# GUN | name | ammo item | effect (dmg ignite water) | dmg per round | range (cells) | rounds per pull (ammo used) | blast radius | dmg lost per cell of distance | max hardness it can chip | turns per shot | deposit kind (- none)
+GUN | pistol22 | bullets   | dmg    | 1 | 24 | 1 | 0 | 0 | 2 | 1 | -
+GUN | autogun  | bullets   | dmg    | 1 | 20 | 5 | 0 | 0 | 4 | 1 | -
+GUN | bazooka  | rockets   | dmg    | 8 | 30 | 1 | 2 | 2 | 6 | 2 | -
+GUN | flamer   | fuel      | ignite | 0 | 6  | 1 | 1 | 0 | 0 | 1 | -
+GUN | watergun | waterpack | water  | 0 | 10 | 1 | 2 | 0 | 0 | 1 | water_f3
+RULE | indestructible_hardness | 99
+RULE | eye_height | 1
+RULE | muzzle_height | 0
+RULE | pitch_run | 2
+# fire and water (D159): a BURN row says what a flammable block (the blocks.pdl flammable column) does on fire: BURN | kind | turns it burns | percent chance per turn that a burning neighbour sets it alight | what it becomes
+RULE | fire_seed | 7
+RULE | fire_cells_per_turn | 32
+RULE | extinguish_char_pct | 50
+RULE | flow_cells_per_turn | 16
+RULE | water_spread | 3
+RULE | water_dry_turns | 8
+BURN | wood_side | 6 | 25 | charcoal
+BURN | wood_top | 6 | 25 | charcoal
+BURN | planks | 5 | 40 | charcoal
+BURN | craft_table | 5 | 30 | charcoal
+BURN | leaves | 3 | 60 | air
+# ammo and weapons are crafted (the picked hotbar item is what is made, press m; the weapons need a craft_table within reach)
+RECIPE | pistol | pistol22 | 1 | planks | 2 | stone | 3 | craft_table
+RECIPE | auto | autogun | 1 | planks | 3 | stone | 6 | craft_table
+RECIPE | bazookarec | bazooka | 1 | planks | 4 | stone | 8 | craft_table
+RECIPE | flamerrec | flamer | 1 | planks | 3 | gravel | 4 | craft_table
+RECIPE | watergunrec | watergun | 1 | planks | 3 | sand | 4 | craft_table
+RECIPE | bulletsrec | bullets | 12 | gravel | 1 | - | 0 | craft_table
+RECIPE | rocketsrec | rockets | 2 | sand | 2 | gravel | 2 | craft_table
+RECIPE | fuelrec | fuel | 6 | leaves | 4 | - | 0 | -
+RECIPE | waterrec | waterpack | 8 | snow | 2 | - | 0 | -

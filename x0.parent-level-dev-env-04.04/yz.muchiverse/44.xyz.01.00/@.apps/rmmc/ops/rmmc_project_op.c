@@ -11,6 +11,7 @@
  *                (break and place are priority 3); a MINE or PLACE that is not at the column top goes to voxedit.txt (D148, 2026-11-27: before that it was ignored and a dug wall never changed on screen).
  *   cells.marker grows: new size = (old size mod 4000) + 1 byte of '1', on EVERY run (the engine reloads the desk when the SIZE changes, never on mtime). --no-marker skips it (an events-only refresh if a full reload hitches).
  * `event_lift=1` stays because cells.txt is the seed's header. Axes: desk(x, row) = vox(x, y height, z = row). Prints: projected actors=<n> pattern=<last> marker=<size>.
+   D158 D159: HIT = a crack like DAMAGE; SHOT = the swing pose; IGNITE SPREAD BURNOUT EXTING WATER FLOW DRY draw `fire:<L>` `char:<L>` `wet:<L>` event cubes (see paint_kind); a burnt-away cell is a carve.
  * Exit: 0 ok, 2 usage, 3 a seed file is missing, 4 a bad row, 5 cannot write.
  * Build: gcc -std=gnu11 -Wall -Wextra -O2 -o +x/rmmc_project_op.+x rmmc_project_op.c */
 #define _GNU_SOURCE
@@ -103,6 +104,19 @@ static void edit_col(int x, int z, int y, int mine, const char *item) {
     if (edit_col_top(x, z, y, mine, item)) { ve_drop(x, y, z); return; }
     int sl = mine ? 0 : slot_by_name(item); ve_set(x, y, z, mine ? 0 : (sl ? sl : 1));
 }
+/* D158 D159: what a shot and the fire and water rows do to the PICTURE. The engine draws a voxel edit with its COLUMN's tile (it cannot show another block kind), so a burning, burnt or wet cell is a small EVENT cube instead: `fire:<L>`, `char:<L>`, `wet:<L>`
+ * at the column (x, z), L = vox y - shift (0 = the floor block), written after the actors (bv_render_3d.c draws them over the block). A cell that becomes air goes through edit_col (the top block of a column lowers it, any other cell is a voxedit hole).
+ * HIT rows leave the same crack as a mining DAMAGE row. Capped at MAXDE cubes (the engine holds 384 events and 128 boxes in all). */
+#define MAXDE 96
+static struct { int x, y, z, lvl; char name[8]; } DE[MAXDE]; static int nde;
+static void de_rm(int x, int y, int z) { for (int i = 0; i < nde; i++) if (DE[i].x == x && DE[i].y == y && DE[i].z == z) { DE[i] = DE[--nde]; return; } }
+static void de_set(int x, int y, int z, const char *nm, int lvl) { de_rm(x, y, z); if (nde < MAXDE) { DE[nde].x = x; DE[nde].y = y; DE[nde].z = z; DE[nde].lvl = lvl; snprintf(DE[nde++].name, 8, "%s", nm); } }   /* lvl = the water level 1..3 (0 = a full block), written as the event pattern: the engine draws a flow level as a shallow layer */
+static void paint_kind(int x, int y, int z, const char *kind) {   /* the kind the cell holds from now on */
+    de_rm(x, y, z);
+    if (!strcmp(kind, "fire")) de_set(x, y, z, "fire", 0); else if (!strcmp(kind, "charcoal")) de_set(x, y, z, "char", 0); else if (!strncmp(kind, "water", 5)) de_set(x, y, z, "wet", strlen(kind) > 7 ? atoi(kind + 7) : 0);
+    else if (!strcmp(kind, "air")) edit_col(x, z, y, 1, "");   /* a block burnt away */
+    /* any other kind (the planks a douse saved): the grid already draws it */
+}
 static int fold_ledger(const char *p) {
     FILE *f = fopen(p, "r"); if (!f) return 3; char l[512], *x[10];
     while (fgets(l, sizeof l, f)) { int n = split(l, x, 10);
@@ -116,8 +130,17 @@ static int fold_ledger(const char *p) {
         else if (n >= 5 && !strcmp(x[0], "SPAWNPOINT")) { Act *a = act(x[1]); if (a) { a->sx = atoi(x[2]); a->sy = atoi(x[3]); a->sz = atoi(x[4]); } }
         else if (n >= 3 && !strcmp(x[0], "RESET")) { Act *a = act(x[1]); lastact = 0; if (a && a->has) { a->x = a->sx; a->y = a->sy; a->z = a->sz; snprintf(a->last, sizeof a->last, "RESET"); } }
         else if (n >= 8 && !strcmp(x[0], "DAMAGE")) { Act *a = act(x[1]); if (a) snprintf(a->last, sizeof a->last, "DAMAGE"); dm_set(atoi(x[3]), atoi(x[5]), atoi(x[7])); lastact = 0; }
-        else if (n >= 6 && !strcmp(x[0], "MINE")) { Act *a = act(x[1]); if (a) snprintf(a->last, sizeof a->last, "MINE"); dm_clear(atoi(x[2]), atoi(x[4])); lastact = 1; lastx = atoi(x[2]); lastz = atoi(x[4]); lastdrop[0] = 0; edit_col(atoi(x[2]), atoi(x[4]), atoi(x[3]), 1, ""); }
-        else if (n >= 6 && !strcmp(x[0], "PLACE")) { Act *a = act(x[1]); if (a) snprintf(a->last, sizeof a->last, "PLACE"); dm_clear(atoi(x[3]), atoi(x[5])); lastact = 0; edit_col(atoi(x[3]), atoi(x[5]), atoi(x[4]), 0, x[2]); } }
+        else if (n >= 8 && !strcmp(x[0], "HIT")) { dm_set(atoi(x[3]), atoi(x[5]), atoi(x[7])); lastact = 0; }
+        else if (n >= 6 && !strcmp(x[0], "SHOT")) { Act *a = act(x[1]); if (a && pose_of("DAMAGE") >= 0) snprintf(a->last, sizeof a->last, "DAMAGE"); lastact = 0; }
+        else if (n >= 7 && !strcmp(x[0], "IGNITE")) paint_kind(atoi(x[3]), atoi(x[4]), atoi(x[5]), "fire");
+        else if (n >= 5 && !strcmp(x[0], "SPREAD")) paint_kind(atoi(x[1]), atoi(x[2]), atoi(x[3]), "fire");
+        else if (n >= 5 && !strcmp(x[0], "BURNOUT")) { dm_clear(atoi(x[1]), atoi(x[3])); paint_kind(atoi(x[1]), atoi(x[2]), atoi(x[3]), x[4]); }
+        else if (n >= 7 && !strcmp(x[0], "EXTING")) paint_kind(atoi(x[3]), atoi(x[4]), atoi(x[5]), x[6]);
+        else if (n >= 8 && !strcmp(x[0], "WATER")) paint_kind(atoi(x[3]), atoi(x[4]), atoi(x[5]), x[6]);
+        else if (n >= 6 && !strcmp(x[0], "FLOW")) paint_kind(atoi(x[1]), atoi(x[2]), atoi(x[3]), x[4]);
+        else if (n >= 4 && !strcmp(x[0], "DRY")) de_rm(atoi(x[1]), atoi(x[2]), atoi(x[3]));
+        else if (n >= 6 && !strcmp(x[0], "MINE")) { Act *a = act(x[1]); if (a) snprintf(a->last, sizeof a->last, "MINE"); dm_clear(atoi(x[2]), atoi(x[4])); de_rm(atoi(x[2]), atoi(x[3]), atoi(x[4])); lastact = 1; lastx = atoi(x[2]); lastz = atoi(x[4]); lastdrop[0] = 0; edit_col(atoi(x[2]), atoi(x[4]), atoi(x[3]), 1, ""); }
+        else if (n >= 6 && !strcmp(x[0], "PLACE")) { Act *a = act(x[1]); if (a) snprintf(a->last, sizeof a->last, "PLACE"); dm_clear(atoi(x[3]), atoi(x[5])); de_rm(atoi(x[3]), atoi(x[4]), atoi(x[5])); lastact = 0; edit_col(atoi(x[3]), atoi(x[5]), atoi(x[4]), 0, x[2]); } }
     fclose(f); return 0;
 }
 int main(int argc, char **argv) {
@@ -134,7 +157,7 @@ int main(int argc, char **argv) {
     size_t cap = (size_t)W * Hh * 20 + cells_head_len + 64; char *cb = malloc(cap), *mb = malloc((size_t)(W + 1) * Hh + 1); if (!cb || !mb) return 5; size_t cn = 0, mn = 0;
     memcpy(cb, cells_head, cells_head_len); cn = cells_head_len;
     for (int z = 0; z < Hh; z++) { for (int xx = 0; xx < W; xx++) { if (xx) cb[cn++] = ' '; size_t k = strlen(tok[z][xx]); memcpy(cb + cn, tok[z][xx], k); cn += k; mb[mn++] = glyph[z][xx]; } cb[cn++] = '\n'; mb[mn++] = '\n'; }
-    char *ev = malloc(strlen(seed_events) + 64 * MAXA + 100 * 66 + 64); size_t en = 0; int projected = 0, lastpat = -1;
+    char *ev = malloc(strlen(seed_events) + 64 * MAXA + 100 * (66 + MAXDE) + 64); size_t en = 0; int projected = 0, lastpat = -1;
     for (char *s = seed_events; *s; ) { char *e = strchr(s, '\n'); size_t len = e ? (size_t)(e - s) : strlen(s); char ln[512]; if (len >= sizeof ln) len = sizeof ln - 1; memcpy(ln, s, len); ln[len] = 0; s += len + (e ? 1 : 0); if (!ln[0]) continue;
         int ex, ey, cr, cg, cb2, fl, dir, pat; char nm[NM] = "";
         if (sscanf(ln, "%d %d %d %d %d %31s %d %d %d", &ex, &ey, &cr, &cg, &cb2, nm, &fl, &dir, &pat) == 9 && !strncmp(nm, "rig:", 4)) {
@@ -144,6 +167,7 @@ int main(int argc, char **argv) {
             en += (size_t)snprintf(ev + en, 200, "%d %d %d %d %d %s %d %d %d\n", ex, ey, cr, cg, cb2, nm, fl, dir, pat); }
         else en += (size_t)snprintf(ev + en, 600, "%s\n", ln); }
     for (int i = 0; i < ndm; i++) { int st = DM[i].prog < 1 ? 1 : DM[i].prog > 3 ? 3 : DM[i].prog; en += (size_t)snprintf(ev + en, 100, "%d %d 34 26 22 crack:%d 0 2 0\n", DM[i].x, DM[i].z, st); }
+    for (int i = 0; i < nde; i++) { int fr = DE[i].name[0] == 'f', fc = DE[i].name[0] == 'c'; en += (size_t)snprintf(ev + en, 100, "%d %d %d %d %d %s:%d 0 2 %d\n", DE[i].x, DE[i].z, fr ? 240 : fc ? 30 : 60, fr ? 128 : fc ? 30 : 110, fr ? 28 : fc ? 34 : 214, DE[i].name, DE[i].y - shift, DE[i].lvl); }
     if (!idle && lastact == 1 && lastdrop[0] && lastx >= 0) { int sl = slot_by_name(lastdrop), cr = 130, cg = 100, cbb = 70; if (sl) tile_avg(seed, sl, &cr, &cg, &cbb); en += (size_t)snprintf(ev + en, 100, "%d %d %d %d %d item:%s 0 2 0\n", lastx, lastz, cr, cg, cbb, lastdrop); en += (size_t)snprintf(ev + en, 100, "%d %d %d %d %d chip:6 0 2 0\n", lastx, lastz, cr, cg, cbb); }
     snprintf(p, sizeof p, "%s/cells.txt", out); if (write_atomic(p, cb, cn)) return 5;
     snprintf(p, sizeof p, "%s/map.txt", out); if (write_atomic(p, mb, mn)) return 5;

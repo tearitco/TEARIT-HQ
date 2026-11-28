@@ -402,7 +402,7 @@ typedef struct {
     int hot_n; float hot[64][3];
     /* Visible map events (events.txt). Capped: the GPU scene holds 128
      * boxes and the selector, hero and range wires share that list. */
-    struct { int x, y, r, g, b, index, dir, pat, has; float box[6]; char name[40]; } ev[96];
+    struct { int x, y, r, g, b, index, dir, pat, has; float box[6]; char name[40]; } ev[384];
     int ev_n;
     char *glyph;            /* map.txt, w*h. 3D height comes from extrusion.pdl, not from the flat 2D picture. */
     unsigned char zh[128];  /* extrusion height for each glyph. 0 = no row. */
@@ -524,7 +524,7 @@ static void maker_read_events(const char *dir) {
 #endif
     f = fopen(path, "r");
     if (!f) return;
-    while (g_mk.ev_n < 96 && fgets(line, sizeof(line), f)) {
+    while (g_mk.ev_n < 384 && fgets(line, sizeof(line), f)) {
         int x, y, r, g, b, index, dir_, pat; char name[40];
         float x0, y0, z0, x1, y1, z1;
         int got = sscanf(line, "%d %d %d %d %d %39s %d %d %d %f %f %f %f %f %f",
@@ -2768,14 +2768,14 @@ static void bv_hand_color(const char *it, unsigned char *r, unsigned char *g, un
     unsigned h = 7; for (const char *p = it; *p; p++) h = h * 31 + (unsigned char)*p; *r = 90 + h % 120; *g = 90 + (h >> 8) % 120; *b = 90 + (h >> 16) % 120;
 }
 static void bv_draw_hand(const char *root) {
-    static char cached_root[PATH_BUF], item[48]; static long long swing = 0; static int have = 0, skin[3] = { 249, 193, 157 }, slv[3] = { 64, 72, 67 }; static struct timespec last;
+    static char cached_root[PATH_BUF], item[48], shape[16]; static long long swing = 0; static int have = 0, skin[3] = { 249, 193, 157 }, slv[3] = { 64, 72, 67 }; static struct timespec last;
     struct timespec now; clock_gettime(CLOCK_MONOTONIC, &now); long long now_ms = (long long)now.tv_sec * 1000 + now.tv_nsec / 1000000;
     long long since = (long long)(now.tv_sec - last.tv_sec) * 1000 + (now.tv_nsec - last.tv_nsec) / 1000000;
     if (!g_fbuf || !root || !root[0]) return;
     if (strcmp(cached_root, root) || since > 150 || since < 0) {
-        snprintf(cached_root, sizeof cached_root, "%s", root); last = now; have = 0; item[0] = 0; swing = 0;
+        snprintf(cached_root, sizeof cached_root, "%s", root); last = now; have = 0; item[0] = 0; shape[0] = 0; swing = 0;
         char p[PATH_BUF], l[96]; snprintf(p, sizeof p, "%s/pieces/system/held.txt", root); FILE *f = fopen(p, "r");
-        if (f) { have = 1; while (fgets(l, sizeof l, f)) { l[strcspn(l, "\r\n")] = 0; if (!strncmp(l, "item=", 5)) snprintf(item, sizeof item, "%s", l + 5); else if (!strncmp(l, "swing=", 6)) swing = atoll(l + 6);
+        if (f) { have = 1; while (fgets(l, sizeof l, f)) { l[strcspn(l, "\r\n")] = 0; if (!strncmp(l, "item=", 5)) snprintf(item, sizeof item, "%s", l + 5); else if (!strncmp(l, "shape=", 6)) snprintf(shape, sizeof shape, "%s", l + 6); else if (!strncmp(l, "swing=", 6)) swing = atoll(l + 6);
                 else if (!strncmp(l, "skin=", 5)) sscanf(l + 5, "%d,%d,%d", &skin[0], &skin[1], &skin[2]); else if (!strncmp(l, "sleeve=", 7)) sscanf(l + 7, "%d,%d,%d", &slv[0], &slv[1], &slv[2]); } fclose(f); }
     }
     if (!have) return;
@@ -2788,6 +2788,19 @@ static void bv_draw_hand(const char *root) {
     vm_box(o, ax, ay, az, -A, A, -A, A, LEN * 0.52, LEN, (unsigned char)skin[0], (unsigned char)skin[1], (unsigned char)skin[2], focal);      /* the hand end: skin */
     vm_box(o, ax, ay, az, -A, A, -A, A, 0.0, LEN * 0.52, (unsigned char)slv[0], (unsigned char)slv[1], (unsigned char)slv[2], focal);          /* the sleeve */
     VmV hand = vm_add(o, vm_mul(az, LEN * 0.92)); int tool = strstr(item, "axe") || strstr(item, "shovel") || strstr(item, "pick") || strstr(item, "sword") || strstr(item, "hoe");
+    if (shape[0]) {      /* A GUN (rmmc D158 D159; the driver writes shape= from the item's GUN row: pistol, rifle, tube, flame, water): boxes in the hand's frame, a muzzle flash / flame / water jet for the length of the swing */
+        long long gdt = now_ms - swing; int fl = (swing > 0 && gdt >= 0 && gdt < 300); double fi = fl ? 1.0 - (double)gdt / 300.0 : 0.0;
+        if (!strcmp(shape, "tube")) { vm_box(hand, ax, ay, az, -0.10, 0.10, -0.06, 0.14, -0.30, 0.95, 88, 110, 64, focal); vm_box(hand, ax, ay, az, -0.12, 0.12, -0.08, 0.16, 0.85, 1.00, 50, 60, 40, focal); vm_box(hand, ax, ay, az, -0.03, 0.03, -0.20, -0.06, 0.10, 0.30, 60, 50, 40, focal);
+            if (fl) { vm_box(hand, ax, ay, az, -0.16 * (1.2 - fi), 0.16 * (1.2 - fi), 0.0, 0.26, 1.0, 1.0 + 0.5 * (1.3 - fi), 255, 170, 50, focal); vm_box(hand, ax, ay, az, -0.08, 0.08, 0.03, 0.17, 1.0, 1.4, 255, 240, 160, focal); } }
+        else if (!strcmp(shape, "rifle")) { vm_box(hand, ax, ay, az, -0.04, 0.04, -0.06, 0.06, -0.20, 0.50, 44, 44, 52, focal); vm_box(hand, ax, ay, az, -0.02, 0.02, 0.0, 0.04, 0.50, 0.95, 150, 154, 164, focal); vm_box(hand, ax, ay, az, -0.025, 0.025, -0.20, -0.06, 0.10, 0.22, 60, 62, 70, focal); vm_box(hand, ax, ay, az, -0.03, 0.03, -0.12, -0.04, -0.15, -0.02, 140, 92, 46, focal);
+            if (fl) { vm_box(hand, ax, ay, az, -0.045 * (0.6 + fi), 0.045 * (0.6 + fi), -0.005, 0.055, 0.95, 1.05 + 0.15 * fi, 255, 230, 100, focal); } }
+        else if (!strcmp(shape, "flame")) { vm_box(hand, ax, ay, az, -0.08, 0.08, -0.20, -0.02, -0.12, 0.22, 214, 96, 34, focal); vm_box(hand, ax, ay, az, -0.035, 0.035, -0.03, 0.06, -0.05, 0.60, 44, 44, 52, focal); vm_box(hand, ax, ay, az, -0.045, 0.045, -0.04, 0.07, 0.60, 0.70, 150, 154, 164, focal);
+            if (fl) { for (int q = 0; q < 5; q++) { double s0 = 0.70 + 0.18 * q, wd = 0.04 + 0.05 * q; vm_box(hand, ax, ay, az, -wd, wd, -wd * 0.6 + 0.02 * q, wd * 0.9 + 0.03 * q, s0, s0 + 0.2, q % 2 ? 255 : 240, q % 2 ? 214 : 120, q % 2 ? 70 : 30, focal); } } }
+        else if (!strcmp(shape, "water")) { vm_box(hand, ax, ay, az, -0.05, 0.05, -0.06, 0.08, -0.10, 0.40, 60, 110, 214, focal); vm_box(hand, ax, ay, az, -0.035, 0.035, -0.02, 0.05, 0.40, 0.62, 150, 196, 250, focal); vm_box(hand, ax, ay, az, -0.03, 0.03, -0.18, -0.06, -0.02, 0.10, 90, 140, 230, focal);
+            if (fl) { for (int q = 0; q < 6; q++) { double s0 = 0.62 + 0.2 * q; vm_box(hand, ax, ay, az, -0.025 - 0.01 * q, 0.025 + 0.01 * q, -0.02 - 0.02 * q * q * 0.12, 0.04 - 0.02 * q * q * 0.12, s0, s0 + 0.14, 150, 200, 255, focal); } } }
+        else { vm_box(hand, ax, ay, az, -0.04, 0.04, -0.05, 0.06, -0.12, 0.28, 44, 44, 52, focal); vm_box(hand, ax, ay, az, -0.02, 0.02, 0.0, 0.04, 0.28, 0.52, 150, 154, 164, focal); vm_box(hand, ax, ay, az, -0.03, 0.03, -0.17, -0.05, -0.10, 0.06, 140, 92, 46, focal);
+            if (fl) { vm_box(hand, ax, ay, az, -0.04 * (0.6 + fi), 0.04 * (0.6 + fi), -0.005, 0.05, 0.52, 0.62 + 0.12 * fi, 255, 230, 100, focal); } }
+    } else
     if (tool) { vm_box(hand, ax, ay, az, -0.03, 0.03, -0.03, 0.03, -0.05, 0.50, 120, 85, 45, focal);                                            /* the handle */
         vm_box(hand, ax, ay, az, -0.02, 0.02, 0.05, 0.30, 0.40, 0.55, 165, 170, 175, focal); }                                                  /* the head, across the end of the handle */
     else if (item[0]) { unsigned char r, g, b; bv_hand_color(item, &r, &g, &b); VmV top = vm_add(hand, vm_add(vm_mul(ay, 0.0), vm_mul(az, 0.0)));
@@ -4863,6 +4876,14 @@ static int render_one_frame(void) {
                         for (int k = 0; k < nc; k++) { float ang = (float)k * 6.2831853f / (float)nc + (float)k * 0.7f, rad = (0.12f + 0.55f * q) * (0.8f + 0.12f * (float)(k % 3)), hgt = 0.15f + 1.7f * q * (1.0f - q) * (1.0f + 0.3f * (float)(k % 2)), sz = 0.07f * (1.0f - 0.5f * q);
                             float cx = (float)g_mk.ev[i].x + 0.5f + cosf(ang) * rad, cz = (float)g_mk.ev[i].y + 0.5f + sinf(ang) * rad, cy = 1.0f + lift + 0.35f + hgt;
                             ADDBOX(cx - sz, cy - sz, cz - sz, cx + sz, cy + sz, cz + sz, g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, 0); } }
+                } else if (!strncmp(g_mk.ev[i].name, "fire:", 5) || !strncmp(g_mk.ev[i].name, "char:", 5) || !strncmp(g_mk.ev[i].name, "wet:", 4)) {      /* FIRE, CHARCOAL and POURED WATER (rmmc D159): <kind>:<level> = ONE block-sized cube at that level of the column (level 0 = the floor block; a block at level L fills y L..L+1), drawn over whatever the grid holds there. The voxel grid draws every solid with its COLUMN's tile, so a burning, burnt or wet block cannot be a tile; the projection writes these events instead (colour = the event's r g b).
+                     * fire: a glowing cube a hair bigger than the block with two flames licking up (flicker on the wall clock; THREE boxes in all: the GPU scene holds only BV_GPU_MAX_BOX 128 boxes, shared with every actor and tree); char: dark with one ember fleck; wet: blue. */
+                    int isf = g_mk.ev[i].name[0] == 'f', isc = g_mk.ev[i].name[0] == 'c', lv = atoi(strchr(g_mk.ev[i].name, ':') + 1); float yb = (float)lv, x0 = (float)g_mk.ev[i].x, z0 = (float)g_mk.ev[i].y, e = isf ? 0.03f : (isc ? 0.02f : 0.04f);
+                    struct timespec ft; clock_gettime(CLOCK_MONOTONIC, &ft); long long fms = (long long)ft.tv_sec * 1000 + ft.tv_nsec / 1000000; float ph = (float)(fms % 700) / 700.f;
+                    float hgt = (!isf && !isc && g_mk.ev[i].pat > 0) ? 0.22f + 0.2f * (float)g_mk.ev[i].pat : 1.f; ADDBOX(x0 - e, yb - e, z0 - e, x0 + 1.f + e, yb + hgt + e, z0 + 1.f + e, g_mk.ev[i].r, g_mk.ev[i].g, g_mk.ev[i].b, isf ? 1 : 0);
+                    if (isf) { for (int k = 0; k < 1; k++) { float ang = (float)k * 1.5707963f + ph * 6.2831853f * 0.5f, ox = 0.5f + 0.28f * cosf(ang), oz = 0.5f + 0.28f * sinf(ang), hh = 0.35f + 0.35f * (0.5f + 0.5f * sinf(ph * 6.2831853f + (float)k * 1.7f)); ADDBOX(x0 + ox - 0.12f, yb + 1.f, z0 + oz - 0.12f, x0 + ox + 0.12f, yb + 1.f + hh, z0 + oz + 0.12f, k % 2 ? 255 : 250, k % 2 ? 214 : 150, k % 2 ? 70 : 40, 1); }
+                        ADDBOX(x0 + 0.38f, yb + 1.f, z0 + 0.38f, x0 + 0.62f, yb + 1.f + 0.55f + 0.25f * sinf(ph * 6.2831853f), z0 + 0.62f, 255, 240, 160, 1); }
+                    else if (isc) { ADDBOX(x0 + 0.18f, yb + 1.f, z0 + 0.2f, x0 + 0.34f, yb + 1.f + 0.04f, z0 + 0.36f, 214, 76, 22, 1); }
                 } else if (!strncmp(g_mk.ev[i].name, "crack:", 6)) {      /* BREAK DAMAGE (rmmc): crack:<1..3> = dark slits down all four faces from the top edge, and lines across the top, more and longer with each stage (thin boxes a hair outside the block) */
                     int st = atoi(g_mk.ev[i].name + 6); if (st < 1) st = 1; if (st > 3) st = 3; float x0 = (float)g_mk.ev[i].x, z0 = (float)g_mk.ev[i].y, yt = 1.0f + lift, e = 0.015f, w = 0.07f;
                     unsigned char cr = g_mk.ev[i].r, cg = g_mk.ev[i].g, cb = g_mk.ev[i].b;

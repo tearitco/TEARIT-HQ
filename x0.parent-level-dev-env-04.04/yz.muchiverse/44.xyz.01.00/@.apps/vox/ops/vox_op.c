@@ -10,6 +10,10 @@
  *   wait <n>                             TURN row (a manual turn, n turns)         sleep <actor>   SLEEP + SPAWNPOINT + TURN skipping to the wake minute
  *   eat <actor> <item>                   EAT row (removes one food item from the bag, lowers hunger by RULE food_<item>) + TURN; refused: not food/none in bag (16), hunger 0 (23)
  *   craft <actor> <recipe>               CRAFT row: RECIPE rows of rules.pdl (name out outn in1 n1 in2 n2 station): inputs leave the bag, the output enters it, a station block (craft_table) must be within RULE craft_reach; refused 10 unknown actor, 16 no such recipe or inputs missing, 20 no station near; needs RULE turns_craft and craft_reach
+
+ *   shoot <actor> <weapon> <aim>         SHOT row + HIT / MINE / IGNITE / EXTING / WATER rows + fire and water ticks + TURN (GUN rows of rules.pdl, D158 D159): aim = n|e|s|w[+-1..9] or x,y,z; refused 16 no such weapon or not in the bag, 25 out of ammo, 13 bad aim, 21 table full
+
+ *   fire                                 read only: fire=x,y,z@start;... flow=x,y,z@start;... (the burning and flowing cells the fold knows, sorted z y x; - = none)
  *   bag <actor>                          read-only: bag=item:n,item:n (counts above 0; - when empty); refused 10 unknown actor
  *   walk <actor> <n|e|s|w>               MOVE one column on, resolving the target height from the terrain (highest solid + 1): refused 11 off the map or over no ground, 18 for a step up above RULE step_up, a fall above fall_max, water deeper than water_max_depth (D137)
  *   face <actor> <n|e|s|w>               FACE row (a turn on the spot; no cell change, no turn counted)      jump <actor>   two MOVE rows (up RULE jump_height, back down) in ONE write; 15 no ground under the feet, 18 no room
@@ -33,11 +37,12 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <stdarg.h>
 #define MAXA 8
 #define MAXI 32
-#define MAXC 4096
+#define MAXC 8192   /* changed cells and damaged cells of the fold (was 4096: a crater of a few shots would have filled it; a full table REFUSES a shot, never drops a cell silently) */
 #define MAXB 32
-#define MAXR 64
+#define MAXR 128
 #define MAXT 16
 #define MAXD 32
 #define MAXX 32
@@ -45,14 +50,23 @@
 typedef struct { char name[NM]; int x, y, z, has, hunger, ni; char item[MAXI][NM]; int cnt[MAXI]; int sx, sy, sz; char dir; int seat; } Actor;   /* sx sy sz = the spawn point (first MOVE, then the last SPAWNPOINT), dir = the last FACE letter (n e s w) or 0 */
 typedef struct { int x, y, z; char kind[NM]; } Cell;
 typedef struct { int x, y, z, prog; } Dmg;
-typedef struct { char kind[NM], tool[NM], drops[NM]; int hard, minp, count, solid; } Blk;
+typedef struct { char kind[NM], tool[NM], drops[NM]; int hard, minp, count, solid, flam; } Blk;
 typedef struct { char k[NM]; int v; } Rule;
 typedef struct { int x1, y1, z1, x2, y2, z2; char kind[NM]; } Box;
-typedef struct { Actor a[MAXA]; int na; Cell c[MAXC]; int nc; Dmg d[MAXC]; int nd; int turn; } W;
+#define MAXF 512
+typedef struct { int x, y, z, start; } Ent;   /* a burning cell or a flowing-water cell: where it is and the TURN it began */
+typedef struct { Actor a[MAXA]; int na; Cell c[MAXC]; int nc; Dmg d[MAXC]; int nd; int turn; Ent fire[MAXF]; int nf; Ent flow[MAXF]; int nfl; } W;
 
 static FILE *OUT; /* stdout, or /dev/null while verify and replay re-run verbs */
 static Blk BL[MAXB]; static int nb; static Rule RU[MAXR]; static int nr; static Rule TL[MAXT]; static int nt;
-typedef struct { char k[NM], out[NM], i1[NM], i2[NM], st[NM]; int on, n1, n2; } Rcp; static Rcp RC[16]; static int nrc;   /* RECIPE rows of rules.pdl: name out outn in1 n1 in2 n2 station (- = none) */
+typedef struct { char k[NM], out[NM], i1[NM], i2[NM], st[NM]; int on, n1, n2; } Rcp; static Rcp RC[32]; static int nrc;   /* RECIPE rows of rules.pdl: name out outn in1 n1 in2 n2 station (- = none) */
+/* GUN | name | ammo item | effect (dmg, ignite, water) | dmg | range | rounds | blast | falloff | max hardness | turns | deposit kind (- none): the weapons of D158/D159, data only (rules.pdl).
+ * BURN | kind | burn_turns | catch_pct | into: what a flammable block (blocks.pdl flammable column) does on fire (D159). */
+#define MAXG 24
+typedef struct { char name[NM], ammo[NM], eff[NM], dep[NM]; int dmg, range, rounds, blast, fall, maxh, turns; } Gun; static Gun GN[MAXG]; static int ngn;
+typedef struct { char kind[NM], into[NM]; int turns, catch_pct; } Bn; static Bn BN[MAXG]; static int nbn;
+#define OBZ (1 << 20)
+static char OBUF[OBZ]; static int g_ofl;   /* the one output buffer every verb builds its rows in; a verb that would overflow it refuses (21) and writes nothing */
 static Rule DL[MAXD]; static int ndl; static Box BX[MAXX]; static int nx;
 typedef struct { char kind[NM]; int slot, r, g, b; } Pic; static Pic PC[MAXB]; static int npc; static int PL[3] = { 255, 255, 0 };
 static int SH_PIT[3], SH_RAISE[3], has_pit, has_raise;   /* SHADE rows of blocks.pdl (2D depth cue of map.png only); absent row = no cue */
@@ -100,14 +114,16 @@ static int load_data(const char *dir) {
     while (fgets(l, sizeof l, fp)) { int n = split(l, f, 16);
         if (n >= 3 && !strcmp(f[0], "RULE") && nr < MAXR) { snprintf(RU[nr].k, NM, "%s", f[1]); RU[nr++].v = atoi(f[2]); }
         else if (n >= 3 && !strcmp(f[0], "TOOL") && nt < MAXT) { snprintf(TL[nt].k, NM, "%s", f[1]); TL[nt++].v = atoi(f[2]); }
-        else if (n >= 9 && !strcmp(f[0], "RECIPE") && nrc < 16) { Rcp *c = &RC[nrc++]; snprintf(c->k, NM, "%s", f[1]); snprintf(c->out, NM, "%s", f[2]); c->on = atoi(f[3]); snprintf(c->i1, NM, "%s", f[4]); c->n1 = atoi(f[5]); snprintf(c->i2, NM, "%s", f[6]); c->n2 = atoi(f[7]); snprintf(c->st, NM, "%s", f[8]); }
+        else if (n >= 9 && !strcmp(f[0], "RECIPE") && nrc < 32) { Rcp *c = &RC[nrc++]; snprintf(c->k, NM, "%s", f[1]); snprintf(c->out, NM, "%s", f[2]); c->on = atoi(f[3]); snprintf(c->i1, NM, "%s", f[4]); c->n1 = atoi(f[5]); snprintf(c->i2, NM, "%s", f[6]); c->n2 = atoi(f[7]); snprintf(c->st, NM, "%s", f[8]); }
+        else if (n >= 12 && !strcmp(f[0], "GUN") && ngn < MAXG) { Gun *g = &GN[ngn++]; snprintf(g->name, NM, "%s", f[1]); snprintf(g->ammo, NM, "%s", f[2]); snprintf(g->eff, NM, "%s", f[3]); g->dmg = atoi(f[4]); g->range = atoi(f[5]); g->rounds = atoi(f[6]); g->blast = atoi(f[7]); g->fall = atoi(f[8]); g->maxh = atoi(f[9]); g->turns = atoi(f[10]); snprintf(g->dep, NM, "%s", f[11]); }
+        else if (n >= 5 && !strcmp(f[0], "BURN") && nbn < MAXG) { Bn *b = &BN[nbn++]; snprintf(b->kind, NM, "%s", f[1]); b->turns = atoi(f[2]); b->catch_pct = atoi(f[3]); snprintf(b->into, NM, "%s", f[4]); }
         else if (n >= 3 && !strcmp(f[0], "DAYLIGHT") && ndl < MAXD) { snprintf(DL[ndl].k, NM, "%s", f[1]); DL[ndl++].v = atoi(f[2]); } }
     fclose(fp);
     snprintf(p, sizeof p, "%s/blocks.pdl", dir);
     if (!(fp = fopen(p, "r"))) return -1;
     while (fgets(l, sizeof l, fp)) { int n = split(l, f, 16);
         if (n >= 9 && !strcmp(f[0], "BLOCK") && nb < MAXB) { Blk *b = &BL[nb++]; snprintf(b->kind, NM, "%s", f[1]); b->hard = atoi(f[2]);
-            snprintf(b->tool, NM, "%s", f[3]); b->minp = atoi(f[4]); snprintf(b->drops, NM, "%s", f[5]); b->count = atoi(f[6]); b->solid = atoi(f[7]); }
+            snprintf(b->tool, NM, "%s", f[3]); b->minp = atoi(f[4]); snprintf(b->drops, NM, "%s", f[5]); b->count = atoi(f[6]); b->solid = atoi(f[7]); b->flam = n >= 12 ? atoi(f[11]) : 0; }
         else if (n >= 6 && !strcmp(f[0], "PICTURE") && npc < MAXB) { Pic *c = &PC[npc++]; snprintf(c->kind, NM, "%s", f[1]); c->slot = atoi(f[2]); c->r = atoi(f[3]); c->g = atoi(f[4]); c->b = atoi(f[5]); }
         else if (n >= 5 && !strcmp(f[0], "SHADE") && !strcmp(f[1], "pit")) { for (int k = 0; k < 3; k++) SH_PIT[k] = atoi(f[2 + k]); has_pit = 1; }
         else if (n >= 5 && !strcmp(f[0], "SHADE") && !strcmp(f[1], "raise")) { for (int k = 0; k < 3; k++) SH_RAISE[k] = atoi(f[2 + k]); has_raise = 1; }
@@ -156,6 +172,10 @@ static int *dmg_at(W *w, int x, int y, int z, int make) {
     Dmg *d = &w->d[w->nd++]; d->x = x; d->y = y; d->z = z; d->prog = 0; return &d->prog;
 }
 
+static int ent_find(Ent *e, int n, int x, int y, int z) { for (int i = 0; i < n; i++) if (e[i].x == x && e[i].y == y && e[i].z == z) return i; return -1; }
+static void ent_add(Ent *e, int *n, int x, int y, int z, int start) { int i = ent_find(e, *n, x, y, z); if (i >= 0) { e[i].start = start; return; } if (*n < MAXF) { e[*n].x = x; e[*n].y = y; e[*n].z = z; e[*n].start = start; (*n)++; } }
+static void ent_rm(Ent *e, int *n, int x, int y, int z) { int i = ent_find(e, *n, x, y, z); if (i >= 0) { e[i] = e[--(*n)]; } }
+static void cell_changed(W *w, int x, int y, int z) { ent_rm(w->fire, &w->nf, x, y, z); ent_rm(w->flow, &w->nfl, x, y, z); }   /* a mined or placed cell is no longer burning or flowing */
 /* the fold: ledger rows -> world */
 static void fold_rows(W *w, FILE *L) {   /* the row loop alone: folds from L's CURRENT position to the end into the state already in w (D151) */
     char l[512], *f[10];
@@ -167,10 +187,19 @@ static void fold_rows(W *w, FILE *L) {   /* the row loop alone: folds from L's C
         else if (n >= 3 && !strcmp(f[0], "FACE")) { Actor *a = actor(w, f[1], 1); if (a) a->dir = f[2][0]; }
         else if (n >= 3 && !strcmp(f[0], "SEAT")) { Actor *a = actor(w, f[1], 1); if (a) a->seat = !strcmp(f[2], "human") ? 1 : 2; }
         else if (n >= 8 && !strcmp(f[0], "DAMAGE")) { int *p = dmg_at(w, atoi(f[3]), atoi(f[4]), atoi(f[5]), 1); if (p) *p = atoi(f[7]); }
-        else if (n >= 5 && !strcmp(f[0], "MINE")) { int x = atoi(f[2]), y = atoi(f[3]), z = atoi(f[4]); set_cell(w, x, y, z, "air"); int *p = dmg_at(w, x, y, z, 0); if (p) *p = 0; }
+        else if (n >= 8 && !strcmp(f[0], "HIT")) { int *p = dmg_at(w, atoi(f[3]), atoi(f[4]), atoi(f[5]), 1); if (p) *p = atoi(f[7]); }   /* a shot's damage: the same durability table as a mined DAMAGE row (D158) */
+        else if (n >= 6 && !strcmp(f[0], "SHOT")) { Actor *a = actor(w, f[1], 1); int *c = a ? bag(a, f[3], 0) : NULL; if (c) *c -= atoi(f[4]); }   /* SHOT | actor | weapon | ammo | n | aim */
+        else if (n >= 7 && !strcmp(f[0], "IGNITE")) ent_add(w->fire, &w->nf, atoi(f[3]), atoi(f[4]), atoi(f[5]), atoi(f[6]));
+        else if (n >= 5 && !strcmp(f[0], "SPREAD")) ent_add(w->fire, &w->nf, atoi(f[1]), atoi(f[2]), atoi(f[3]), atoi(f[4]));
+        else if (n >= 5 && !strcmp(f[0], "BURNOUT")) { int x = atoi(f[1]), y = atoi(f[2]), z = atoi(f[3]); set_cell(w, x, y, z, f[4]); ent_rm(w->fire, &w->nf, x, y, z); int *p = dmg_at(w, x, y, z, 0); if (p) *p = 0; }
+        else if (n >= 7 && !strcmp(f[0], "EXTING")) { int x = atoi(f[3]), y = atoi(f[4]), z = atoi(f[5]); ent_rm(w->fire, &w->nf, x, y, z); if (strcmp(f[6], kind_at(w, x, y, z))) set_cell(w, x, y, z, f[6]); }
+        else if (n >= 8 && !strcmp(f[0], "WATER")) { int x = atoi(f[3]), y = atoi(f[4]), z = atoi(f[5]); set_cell(w, x, y, z, f[6]); ent_add(w->flow, &w->nfl, x, y, z, atoi(f[7])); }
+        else if (n >= 6 && !strcmp(f[0], "FLOW")) { int x = atoi(f[1]), y = atoi(f[2]), z = atoi(f[3]); set_cell(w, x, y, z, f[4]); ent_add(w->flow, &w->nfl, x, y, z, atoi(f[5])); }
+        else if (n >= 4 && !strcmp(f[0], "DRY")) { int x = atoi(f[1]), y = atoi(f[2]), z = atoi(f[3]); set_cell(w, x, y, z, "air"); ent_rm(w->flow, &w->nfl, x, y, z); }
+        else if (n >= 5 && !strcmp(f[0], "MINE")) { int x = atoi(f[2]), y = atoi(f[3]), z = atoi(f[4]); set_cell(w, x, y, z, "air"); int *p = dmg_at(w, x, y, z, 0); if (p) *p = 0; cell_changed(w, x, y, z); }
         else if (n >= 4 && !strcmp(f[0], "DROP")) { Actor *a = actor(w, f[1], 1); int *c = a ? bag(a, f[2], 1) : NULL; if (c) *c += atoi(f[3]); }
         else if (n >= 6 && !strcmp(f[0], "PLACE")) { Actor *a = actor(w, f[1], 1); int *c = a ? bag(a, f[2], 0) : NULL; if (c) *c -= 1;
-            set_cell(w, atoi(f[3]), atoi(f[4]), atoi(f[5]), f[2]); int *p = dmg_at(w, atoi(f[3]), atoi(f[4]), atoi(f[5]), 0); if (p) *p = 0; }
+            set_cell(w, atoi(f[3]), atoi(f[4]), atoi(f[5]), f[2]); int *p = dmg_at(w, atoi(f[3]), atoi(f[4]), atoi(f[5]), 0); if (p) *p = 0; cell_changed(w, atoi(f[3]), atoi(f[4]), atoi(f[5])); }
         else if (n >= 5 && !strcmp(f[0], "CRAFT")) { Actor *a = actor(w, f[1], 1); Rcp *r = rcp(f[2]); if (a && r) { int *c = bag(a, r->i1, 0); if (c) *c -= r->n1; if (strcmp(r->i2, "-")) { c = bag(a, r->i2, 0); if (c) *c -= r->n2; } c = bag(a, r->out, 1); if (c) *c += r->on; } }
         else if (n >= 4 && !strcmp(f[0], "EAT")) { Actor *a = actor(w, f[1], 1); int *c = a ? bag(a, f[2], 0) : NULL; if (c) *c -= 1;
             if (a) { a->hunger -= atoi(f[3]); if (a->hunger < 0) a->hunger = 0; } }
@@ -193,15 +222,64 @@ static int light_of(int minute) {
     fprintf(stderr, "missing DAYLIGHT row for minute %d\n", minute); exit(9);
 }
 /* one buffered write: a refusal never reaches here */
-static int commit(FILE *L, const char *buf) { fseek(L, 0, SEEK_END); fputs(buf, L); fflush(L); return 0; }
-static void adv(char *o, int turn, int n, const char *verb) {   /* TURN row + one DAY row per midnight crossed */
-    int dm = R("day_minutes"); long d0 = total_min(turn) / dm, d1 = total_min(turn + n) / dm; char t[96];
-    snprintf(t, sizeof t, "TURN | %d | %s\n", turn + n, verb); strcat(o, t);
-    for (long d = d0 + 1; d <= d1; d++) { snprintf(t, sizeof t, "DAY | %ld\n", d); strcat(o, t); }
-}
+static int commit(FILE *L, const char *buf) { if (g_ofl) { fprintf(stderr, "refused: too many rows for one verb\n"); exit(21); } fseek(L, 0, SEEK_END); fputs(buf, L); fflush(L); return 0; }
 static int inb(int x, int y, int z) { return x >= 0 && y >= 0 && z >= 0 && x <= R("world_x_max") && y <= R("world_y_max") && z <= R("world_z_max"); }
 static int in_reach(Actor *a, int x, int y, int z, int r) { int dx = a->x - x, dy = a->y - y, dz = a->z - z; return dx * dx + dy * dy + dz * dz <= r * r; }
 static int word_ok(const char *s) { if (!*s || strlen(s) >= NM) return 0; for (; *s; s++) if (!isalnum((unsigned char)*s) && *s != '_' && *s != '-' && *s != '.') return 0; return 1; }
+
+/* ---- D159 fire and water, D158 guns: the SIM. A verb works on a small copy of the fire and flow lists plus a short overlay of cell and damage changes (S): the fold in w is never touched while a verb runs
+ * (the incremental replay folds the same rows later, D151), and everything the verb decides is WRITTEN as rows. tick() is the whole fire and water rule for ONE turn; adv() runs it for every turn a verb advances,
+ * BEFORE that verb's TURN row, and stops early once nothing can change any more (so `wait 10000` with nothing burning costs one check). A random chance is a pure hash of (rule seed, turn, cell). ---- */
+static W *SW;
+static struct { Ent fire[MAXF]; int nf; Ent flow[MAXF]; int nfl; struct { int x, y, z; char kind[NM]; } ov[1024]; int nov; struct { int x, y, z, prog; } dm[1024]; int ndm; } S;
+static void sim_begin(W *w) { SW = w; S.nf = w->nf; memcpy(S.fire, w->fire, sizeof(Ent) * (size_t)w->nf); S.nfl = w->nfl; memcpy(S.flow, w->flow, sizeof(Ent) * (size_t)w->nfl); S.nov = S.ndm = 0; g_ofl = 0; }
+static const char *sk(int x, int y, int z) { for (int i = S.nov - 1; i >= 0; i--) if (S.ov[i].x == x && S.ov[i].y == y && S.ov[i].z == z) return S.ov[i].kind; return kind_at(SW, x, y, z); }
+static void s_set(int x, int y, int z, const char *k) { for (int i = 0; i < S.nov; i++) if (S.ov[i].x == x && S.ov[i].y == y && S.ov[i].z == z) { snprintf(S.ov[i].kind, NM, "%s", k); return; }
+    if (S.nov < 1024) { S.ov[S.nov].x = x; S.ov[S.nov].y = y; S.ov[S.nov].z = z; snprintf(S.ov[S.nov++].kind, NM, "%s", k); } else g_ofl = 1; }
+static int s_dmg(int x, int y, int z) { for (int i = 0; i < S.ndm; i++) if (S.dm[i].x == x && S.dm[i].y == y && S.dm[i].z == z) return S.dm[i].prog; int *p = dmg_at(SW, x, y, z, 0); return p ? *p : 0; }
+static void s_setdmg(int x, int y, int z, int v) { for (int i = 0; i < S.ndm; i++) if (S.dm[i].x == x && S.dm[i].y == y && S.dm[i].z == z) { S.dm[i].prog = v; return; }
+    if (S.ndm < 1024) { S.dm[S.ndm].x = x; S.dm[S.ndm].y = y; S.dm[S.ndm].z = z; S.dm[S.ndm++].prog = v; } else g_ofl = 1; }
+static void ap(char *o, const char *fmt, ...) { size_t n = strlen(o); va_list v; if (n + 400 >= OBZ) { g_ofl = 1; return; } va_start(v, fmt); vsnprintf(o + n, OBZ - n, fmt, v); va_end(v); }
+static Gun *gun(const char *n) { for (int i = 0; i < ngn; i++) if (!strcmp(GN[i].name, n)) return &GN[i]; return NULL; }
+static Bn *burn(const char *k) { Blk *b = blk(k); if (!b || !b->flam) return NULL; for (int i = 0; i < nbn; i++) if (!strcmp(BN[i].kind, k)) return &BN[i]; return NULL; }   /* flammable needs BOTH the blocks.pdl flag and a BURN row */
+static int roll100(int t, int x, int y, int z) {
+    unsigned h = (unsigned)R("fire_seed") * 2654435761u; h ^= (unsigned)t * 0x9E3779B1u; h = (h ^ (h >> 15)) * 0x85EBCA6Bu; h ^= (unsigned)(x + 1) * 0xC2B2AE35u; h = (h ^ (h >> 13)) * 0x27D4EB2Fu;
+    h ^= (unsigned)(y + 7) * 0x165667B1u; h = (h ^ (h >> 16)) * 0x7FEB352Du; h ^= (unsigned)(z + 13) * 0x846CA68Bu; h ^= h >> 15; h *= 0x2C1B3C6Du; h ^= h >> 12; return (int)(h % 100u); }
+static int cmp_ent(const void *pa, const void *pb) { const Ent *a = pa, *b = pb; if (a->z != b->z) return a->z - b->z; if (a->y != b->y) return a->y - b->y; return a->x - b->x; }
+static int is_air(const char *k) { return !strcmp(k, "air"); }
+static int tick(char *o, int t) {   /* one turn of fire then water; returns how many rows it wrote */
+    int changed = 0;
+    if (S.nf) { Ent snap[MAXF]; int n0 = S.nf, cap = R("fire_cells_per_turn"), done = 0; memcpy(snap, S.fire, sizeof(Ent) * (size_t)n0); qsort(snap, (size_t)n0, sizeof(Ent), cmp_ent);
+        static const int dd[6][3] = { {0,1,0}, {1,0,0}, {-1,0,0}, {0,0,1}, {0,0,-1}, {0,-1,0} };
+        for (int i = 0; i < n0 && done < cap; i++) { done++; Ent f = snap[i]; if (ent_find(S.fire, S.nf, f.x, f.y, f.z) < 0) continue;
+            const char *k = sk(f.x, f.y, f.z); Bn *b = burn(k);
+            if (!b) { ap(o, "BURNOUT | %d | %d | %d | %s\n", f.x, f.y, f.z, k); ent_rm(S.fire, &S.nf, f.x, f.y, f.z); changed++; continue; }
+            if (t - f.start >= b->turns) { ap(o, "BURNOUT | %d | %d | %d | %s\n", f.x, f.y, f.z, b->into); s_set(f.x, f.y, f.z, b->into); ent_rm(S.fire, &S.nf, f.x, f.y, f.z); changed++; continue; }
+            for (int d = 0; d < 6; d++) { int nx = f.x + dd[d][0], ny = f.y + dd[d][1], nz = f.z + dd[d][2]; if (!inb(nx, ny, nz)) continue;
+                Bn *nb = burn(sk(nx, ny, nz)); if (!nb || S.nf >= MAXF || ent_find(S.fire, S.nf, nx, ny, nz) >= 0) continue;
+                if (roll100(t, nx, ny, nz) < nb->catch_pct) { ap(o, "SPREAD | %d | %d | %d | %d\n", nx, ny, nz, t); ent_add(S.fire, &S.nf, nx, ny, nz, t); changed++; } } } }
+    if (S.nfl) { Ent snap[MAXF]; int n0 = S.nfl, cap = R("flow_cells_per_turn"), made = 0, dry = R("water_dry_turns"), spread = R("water_spread"); memcpy(snap, S.flow, sizeof(Ent) * (size_t)n0); qsort(snap, (size_t)n0, sizeof(Ent), cmp_ent);
+        static const int hd[4][2] = { {1,0}, {-1,0}, {0,1}, {0,-1} };
+        for (int i = 0; i < n0; i++) { Ent e = snap[i]; const char *k = sk(e.x, e.y, e.z);
+            if (strncmp(k, "water", 5)) { ent_rm(S.flow, &S.nfl, e.x, e.y, e.z); continue; }
+            int src = !strcmp(k, "water"), lvl = src ? spread : atoi(k + 7);
+            if (!src && dry > 0 && t - e.start >= dry) { ap(o, "DRY | %d | %d | %d\n", e.x, e.y, e.z); s_set(e.x, e.y, e.z, "air"); ent_rm(S.flow, &S.nfl, e.x, e.y, e.z); changed++; continue; }
+            if (made >= cap || S.nfl >= MAXF) continue;
+            char nm[NM];
+            if (e.y > 0 && is_air(sk(e.x, e.y - 1, e.z))) { snprintf(nm, NM, "water_f%d", spread); ap(o, "FLOW | %d | %d | %d | %s | %d\n", e.x, e.y - 1, e.z, nm, t); s_set(e.x, e.y - 1, e.z, nm); ent_add(S.flow, &S.nfl, e.x, e.y - 1, e.z, t); made++; changed++; continue; }
+            if (lvl > 1) for (int d = 0; d < 4 && made < cap; d++) { int nx = e.x + hd[d][0], nz = e.z + hd[d][1]; if (!inb(nx, e.y, nz) || !is_air(sk(nx, e.y, nz))) continue;
+                snprintf(nm, NM, "water_f%d", lvl - 1); ap(o, "FLOW | %d | %d | %d | %s | %d\n", nx, e.y, nz, nm, t); s_set(nx, e.y, nz, nm); ent_add(S.flow, &S.nfl, nx, e.y, nz, t); made++; changed++; } } }
+    return changed;
+}
+static int tick_pending(void) {   /* can a later turn still change anything? fire always can; flowing water can only by drying */
+    if (S.nf) return 1; if (R("water_dry_turns") <= 0) return 0;
+    for (int i = 0; i < S.nfl; i++) if (strcmp(sk(S.flow[i].x, S.flow[i].y, S.flow[i].z), "water")) return 1; return 0; }
+static void adv(char *o, int turn, int n, const char *verb) {   /* fire and water ticks of every turn passed, then the TURN row + one DAY row per midnight crossed */
+    int dm = R("day_minutes"); long d0 = total_min(turn) / dm, d1 = total_min(turn + n) / dm; char t[96];
+    if (S.nf || S.nfl) for (int k = 1; k <= n; k++) { int ch = tick(o, turn + k); if (!ch && !tick_pending()) break; }
+    snprintf(t, sizeof t, "TURN | %d | %s\n", turn + n, verb); strcat(o, t);
+    for (long d = d0 + 1; d <= d1; d++) { snprintf(t, sizeof t, "DAY | %ld\n", d); strcat(o, t); }
+}
 
 static int v_give(W *w, FILE *L, const char *an, const char *item, int n, const char *why) {
     int smax = R("stack_max"); if (!word_ok(an) || !word_ok(item) || !word_ok(why) || n < 1 || n > smax) return 2;
@@ -216,7 +294,7 @@ static int v_move(W *w, FILE *L, const char *an, int x, int y, int z) {
     Actor *a = actor(w, an, 0);
     if (a && a->has) { int d = abs(a->x - x) + abs(a->y - y) + abs(a->z - z); if (d > mm || d == 0) { fprintf(stderr, "refused: step\n"); return 18; } }
     else if (!actor(w, an, 1)) return 2;
-    char o[512]; snprintf(o, sizeof o, "MOVE | %s | %d | %d | %d\n", an, x, y, z); adv(o, w->turn, tm, "move"); commit(L, o); fprintf(OUT, "at=%d,%d,%d\n", x, y, z); return 0;
+    char *o = OBUF; snprintf(o, OBZ, "MOVE | %s | %d | %d | %d\n", an, x, y, z); adv(o, w->turn, tm, "move"); commit(L, o); fprintf(OUT, "at=%d,%d,%d\n", x, y, z); return 0;
 }
 static int v_mine(W *w, FILE *L, const char *an, const char *tool, int x, int y, int z) {
     int reach = R("reach"), tm = R("turns_mine"), smax = R("stack_max"); if (!word_ok(an) || !word_ok(tool)) return 2;
@@ -230,7 +308,7 @@ static int v_mine(W *w, FILE *L, const char *an, const char *tool, int x, int y,
     if (power < b->minp) { fprintf(stderr, "refused: power %d below %d\n", power, b->minp); return 17; }
     int *pp = dmg_at(w, x, y, z, 0); int prog = (pp ? *pp : 0) + power; int done = prog >= b->hard;
     if (done && b->count > 0) { int *c = bag(a, b->drops, 0); if ((c ? *c : 0) + b->count > smax) { fprintf(stderr, "refused: bag full\n"); return 21; } }
-    char o[1024], t[160]; snprintf(o, sizeof o, "DAMAGE | %s | %s | %d | %d | %d | %d | %d\n", an, tool, x, y, z, power, prog);
+    char *o = OBUF, t[160]; snprintf(o, OBZ, "DAMAGE | %s | %s | %d | %d | %d | %d | %d\n", an, tool, x, y, z, power, prog);
     if (done) { snprintf(t, sizeof t, "MINE | %s | %d | %d | %d | %s\n", an, x, y, z, b->kind); strcat(o, t);
         if (b->count > 0) { snprintf(t, sizeof t, "DROP | %s | %s | %d\n", an, b->drops, b->count); strcat(o, t); } }
     adv(o, w->turn, tm, "mine"); commit(L, o);
@@ -247,7 +325,7 @@ static int v_place(W *w, FILE *L, const char *an, const char *item, int x, int y
     if (need) { static const int dd[6][3] = {{1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1},{0,0,-1}}; int sup = 0;
         for (int i = 0; i < 6; i++) if (inb(x + dd[i][0], y + dd[i][1], z + dd[i][2]) && solid_at(w, x + dd[i][0], y + dd[i][1], z + dd[i][2])) sup = 1;
         if (!sup) { fprintf(stderr, "refused: no support\n"); return 15; } }
-    char o[512]; snprintf(o, sizeof o, "PLACE | %s | %s | %d | %d | %d\n", an, item, x, y, z); adv(o, w->turn, tm, "place"); commit(L, o); fprintf(OUT, "placed\n"); return 0;
+    char *o = OBUF; snprintf(o, OBZ, "PLACE | %s | %s | %d | %d | %d\n", an, item, x, y, z); adv(o, w->turn, tm, "place"); commit(L, o); fprintf(OUT, "placed\n"); return 0;
 }
 static int v_eat(W *w, FILE *L, const char *an, const char *item) {
     int tm = R("turns_eat"); if (!word_ok(an) || !word_ok(item)) return 2;
@@ -255,12 +333,12 @@ static int v_eat(W *w, FILE *L, const char *an, const char *item) {
     int fv = food_value(item); if (fv < 1) { fprintf(stderr, "refused: not food\n"); return 16; }
     int *c = bag(a, item, 0); if (!c || *c < 1) { fprintf(stderr, "refused: no food in bag\n"); return 16; }
     if (a->hunger < 1) { fprintf(stderr, "refused: not hungry\n"); return 23; }
-    char o[512]; snprintf(o, sizeof o, "EAT | %s | %s | %d\n", an, item, fv); adv(o, w->turn, tm, "eat"); commit(L, o);
+    char *o = OBUF; snprintf(o, OBZ, "EAT | %s | %s | %d\n", an, item, fv); adv(o, w->turn, tm, "eat"); commit(L, o);
     int h = a->hunger - fv; if (h < 0) h = 0; h += tm * R("hunger_per_turn"); if (h > R("hunger_max")) h = R("hunger_max"); fprintf(OUT, "ate=%s hunger=%d\n", item, h); return 0;
 }
 static int v_wait(W *w, FILE *L, int n) {
     if (n < 1 || n > R("wait_max_turns")) { fprintf(stderr, "refused: wait n\n"); return 2; }
-    char o[16384]; o[0] = 0; adv(o, w->turn, n, "wait"); commit(L, o); fprintf(OUT, "turn=%d\n", w->turn + n); return 0;
+    char *o = OBUF; o[0] = 0; adv(o, w->turn, n, "wait"); commit(L, o); fprintf(OUT, "turn=%d\n", w->turn + n); return 0;
 }
 static int v_sleep(W *w, FILE *L, const char *an) {
     int mm = minute_of(w->turn), light = light_of(mm), dm = R("day_minutes"), mpt = R("minutes_per_turn"), wake = R("sleep_wake_minute");
@@ -272,7 +350,7 @@ static int v_sleep(W *w, FILE *L, const char *an) {
         int x = a->x + dx, y = a->y + dy, z = a->z + dz; if (inb(x, y, z) && !strcmp(kind_at(w, x, y, z), "bed") && in_reach(a, x, y, z, breach)) { bx = x; by = y; bz = z; found = 1; } }
     if (!found) { fprintf(stderr, "refused: no bed near\n"); return 20; }
     int dt = ((wake - mm) % dm + dm) % dm; int turns = (dt + mpt - 1) / mpt; if (turns < 1) turns = 1;
-    char o[1024], t[160]; snprintf(o, sizeof o, "SLEEP | %s | %d | %d | %d | skipped_turns=%d\n", an, bx, by, bz, turns);
+    char *o = OBUF, t[160]; snprintf(o, OBZ, "SLEEP | %s | %d | %d | %d | skipped_turns=%d\n", an, bx, by, bz, turns);
     snprintf(t, sizeof t, "SPAWNPOINT | %s | %d | %d | %d\n", an, bx, by, bz); strcat(o, t);
     adv(o, w->turn, turns, "sleep"); commit(L, o); fprintf(OUT, "skipped_turns=%d\n", turns); return 0;
 }
@@ -306,7 +384,7 @@ static int v_jump(W *w, FILE *L, const char *an) {
     if (!solid_at(w, a->x, a->y - 1, a->z)) { fprintf(stderr, "refused: no ground under the feet\n"); return 15; }
     for (int k = 1; k <= jh; k++) if (!inb(a->x, a->y + k, a->z) || solid_at(w, a->x, a->y + k, a->z)) { fprintf(stderr, "refused: no room to jump\n"); return 18; }
     if (jh > R("move_max")) { fprintf(stderr, "refused: jump_height above move_max\n"); return 18; }
-    char o[512]; snprintf(o, sizeof o, "MOVE | %s | %d | %d | %d\n", an, a->x, a->y + jh, a->z); adv(o, w->turn, tm, "move");
+    char *o = OBUF; snprintf(o, OBZ, "MOVE | %s | %d | %d | %d\n", an, a->x, a->y + jh, a->z); adv(o, w->turn, tm, "move");
     char t[160]; snprintf(t, sizeof t, "MOVE | %s | %d | %d | %d\n", an, a->x, a->y, a->z); strcat(o, t); adv(o, w->turn + tm, tm, "move");
     commit(L, o); fprintf(OUT, "jumped=%d,%d,%d\n", a->x, a->y, a->z); return 0;   /* BOTH rows or none: one write */
 }
@@ -317,7 +395,79 @@ static int v_seat(W *w, FILE *L, const char *an, const char *who) {   /* who dri
 static int v_reset(W *w, FILE *L, const char *an) {
     int tm = R("turns_move"); if (!word_ok(an)) return 2;
     Actor *a = actor(w, an, 0); if (!a || !a->has) { fprintf(stderr, "refused: unknown actor\n"); return 10; }
-    char o[512]; snprintf(o, sizeof o, "RESET | %s | spawn\n", an); adv(o, w->turn, tm, "move"); commit(L, o); fprintf(OUT, "at=%d,%d,%d\n", a->sx, a->sy, a->sz); return 0;
+    char *o = OBUF; snprintf(o, OBZ, "RESET | %s | spawn\n", an); adv(o, w->turn, tm, "move"); commit(L, o); fprintf(OUT, "at=%d,%d,%d\n", a->sx, a->sy, a->sz); return 0;
+}
+/* ---- shoot (D158, D159): one verb for every GUN row of rules.pdl. The aim is a facing letter (n e s w, optional pitch +1..+9 / -1..-9: rise per RULE pitch_run cells, fired from RULE muzzle_height above her cell) or a target cell
+ * x,y,z (the engine's crosshair, fired from RULE eye_height). The ray is an integer line along the major axis (no floats: every machine replays the same cells), first SOLID cell within the gun's range is the hit; water and air are passed.
+ * effect dmg: each round adds `dmg` to the block's durability (a HIT row, the same table a pickaxe's DAMAGE fills) and a block whose durability reaches its hardness is removed (a MINE row, no drop); a block harder than the gun's max hardness
+ *   only bounces the round, a block of hardness >= RULE indestructible_hardness never breaks; blast > 0 hits every solid cell within that radius of the first hit with dmg - falloff * distance (the bazooka).
+ * effect ignite: the hit cell and every flammable cell within blast of it catch fire (IGNITE rows; D159).  effect water: every burning cell within blast of the hit is put out (EXTING row; a block burnt for at least RULE extinguish_char_pct
+ *   percent of its burn time is charred into its BURN `into`, else it stays whole) and the deposit kind (WATER row) is placed in the last free cell before the hit when that is at least 2 cells away.
+   EXTING | actor | weapon | x | y | z | the kind the block is afterwards (its own kind when unburnt, its BURN into when charred)
+ * Row written first: SHOT | actor | weapon | ammo item | rounds | aim | outcome (the outcome is words for the bar, regenerated and compared on replay). Refusals write nothing: 2 usage, 10 unknown actor, 13 bad aim, 16 no such weapon / not in the bag, 21 table full, 22 starved, 25 out of ammo. ---- */
+static int isqrt_i(int v) { int r = 0; while ((r + 1) * (r + 1) <= v) r++; return r; }
+static int rnd_div(int num, int den) { return num >= 0 ? (2 * num + den) / (2 * den) : -((-2 * num + den) / (2 * den)); }
+typedef struct { int hit, hx, hy, hz, px, py, pz, steps; } Tr;
+static Tr trace(int ex, int ey, int ez, int vx, int vy, int vz, int range) {
+    Tr r; memset(&r, 0, sizeof r); r.px = ex; r.py = ey; r.pz = ez; int n = abs(vx); if (abs(vy) > n) n = abs(vy); if (abs(vz) > n) n = abs(vz); if (n == 0) return r;
+    for (int i = 1; i <= range; i++) { int x = ex + rnd_div(vx * i, n), y = ey + rnd_div(vy * i, n), z = ez + rnd_div(vz * i, n); if (!inb(x, y, z)) return r;
+        Blk *b = blk(sk(x, y, z)); if (b && b->solid) { r.hit = 1; r.hx = x; r.hy = y; r.hz = z; r.steps = i; return r; } r.px = x; r.py = y; r.pz = z; }
+    return r;
+}
+typedef struct { int hits, broke, bounce, unbreak, ign, doused, dep, craters; char kind[NM], bkind[NM]; int prog, hard; } Sh;
+static void hit_block(char *o, const char *an, const Gun *g, int x, int y, int z, int dmg, Sh *s) {
+    const char *kind = sk(x, y, z); Blk *b = blk(kind); if (!b || !b->solid) return;
+    if (b->hard >= R("indestructible_hardness")) { s->unbreak++; snprintf(s->bkind, NM, "%s", kind); return; }
+    if (b->hard > g->maxh) { s->bounce++; snprintf(s->bkind, NM, "%s", kind); return; }
+    int prog = s_dmg(x, y, z) + dmg; ap(o, "HIT | %s | %s | %d | %d | %d | %d | %d\n", an, g->name, x, y, z, dmg, prog); s_setdmg(x, y, z, prog); snprintf(s->kind, NM, "%s", kind); s->prog = prog; s->hard = b->hard;
+    if (prog >= b->hard) { ap(o, "MINE | %s | %d | %d | %d | %s\n", an, x, y, z, kind); s_set(x, y, z, "air"); s_setdmg(x, y, z, 0); ent_rm(S.fire, &S.nf, x, y, z); ent_rm(S.flow, &S.nfl, x, y, z); s->broke++; } else s->hits++;
+}
+static int v_shoot(W *w, FILE *L, const char *an, const char *wn, const char *aim) {
+    if (!word_ok(an) || !word_ok(wn) || strlen(aim) > 40) return 2;
+    Actor *a = actor(w, an, 0); if (!a || !a->has) { fprintf(stderr, "refused: unknown actor\n"); return 10; }
+    if (a->hunger >= R("starve_at")) { fprintf(stderr, "refused: starved (hunger %d)\n", a->hunger); return 22; }
+    Gun *g = gun(wn); if (!g) { fprintf(stderr, "refused: %s is not a weapon\n", wn); return 16; }
+    int *wc = bag(a, wn, 0); if (!wc || *wc < 1) { fprintf(stderr, "refused: no %s in the bag\n", wn); return 16; }
+    int need = g->rounds, *ac = bag(a, g->ammo, 0); if (need < 1 || g->range < 1) return 9;
+    if (!ac || *ac < need) { fprintf(stderr, "refused: out of ammo (need %d %s)\n", need, g->ammo); return 25; }
+    int ex, ey, ez, vx, vy, vz, dx, dz;
+    if (aim[0] && strchr("nesw", aim[0]) && (!aim[1] || ((aim[1] == '+' || aim[1] == '-') && aim[2] >= '0' && aim[2] <= '9' && !aim[3]))) {
+        char d[2] = { aim[0], 0 }; dir_delta(d, &dx, &dz); int p = aim[1] ? (aim[1] == '-' ? -1 : 1) * (aim[2] - '0') : 0, pr = R("pitch_run"); vx = dx * pr; vz = dz * pr; vy = p; ex = a->x; ey = a->y + R("muzzle_height"); ez = a->z; }
+    else { int tx, ty, tz; char tail; if (sscanf(aim, "%d,%d,%d%c", &tx, &ty, &tz, &tail) != 3) { fprintf(stderr, "refused: bad aim\n"); return 13; } ex = a->x; ey = a->y + R("eye_height"); ez = a->z; vx = tx - ex; vy = ty - ey; vz = tz - ez; }
+    if (!vx && !vy && !vz) { fprintf(stderr, "refused: bad aim\n"); return 13; }
+    char *o = OBUF; Sh s; memset(&s, 0, sizeof s); char out[96] = "missed";
+    snprintf(o, OBZ, "SHOT | %s | %s | %s | %d | %s | ", an, wn, g->ammo, need, aim); size_t head = strlen(o); ap(o, "@\n"); /* the outcome is patched in below, before the rows that follow it */
+    char *body = o + strlen(o);   /* rows after the SHOT line are appended here */
+    if (!strcmp(g->eff, "dmg")) {
+        for (int r = 0; r < g->rounds; r++) { Tr t = trace(ex, ey, ez, vx, vy, vz, g->range); if (!t.hit) break;
+            if (g->blast <= 0) hit_block(body, an, g, t.hx, t.hy, t.hz, g->dmg, &s);
+            else { int rb = g->blast; if (rb > 4) rb = 4; s.craters = 1; for (int zz = -rb; zz <= rb; zz++) for (int yy = -rb; yy <= rb; yy++) for (int xx = -rb; xx <= rb; xx++) { int d2 = xx * xx + yy * yy + zz * zz; if (d2 > rb * rb) continue;
+                    int cx = t.hx + xx, cy = t.hy + yy, cz = t.hz + zz; if (!inb(cx, cy, cz)) continue; int dm = g->dmg - g->fall * isqrt_i(d2); if (dm <= 0) continue; hit_block(body, an, g, cx, cy, cz, dm, &s); } } }
+        if (s.craters) { if (s.broke || s.hits) snprintf(out, sizeof out, "crater %d broken %d hit", s.broke, s.hits); else if (s.unbreak || s.bounce) snprintf(out, sizeof out, "blast: no effect"); }
+        else if (s.broke) snprintf(out, sizeof out, "broke %.30s", s.kind);
+        else if (s.hits) snprintf(out, sizeof out, "hit %.26s %d/%d", s.kind, s.prog, s.hard);
+        else if (s.unbreak) snprintf(out, sizeof out, "%.24s is unbreakable", s.bkind);
+        else if (s.bounce) snprintf(out, sizeof out, "too hard: %.30s", s.bkind);
+    } else if (!strcmp(g->eff, "ignite")) {
+        Tr t = trace(ex, ey, ez, vx, vy, vz, g->range);
+        if (t.hit) { int rb = g->blast > 4 ? 4 : g->blast; for (int zz = -rb; zz <= rb; zz++) for (int yy = -rb; yy <= rb; yy++) for (int xx = -rb; xx <= rb; xx++) { if (xx * xx + yy * yy + zz * zz > rb * rb) continue;
+                int cx = t.hx + xx, cy = t.hy + yy, cz = t.hz + zz; if (!inb(cx, cy, cz) || !burn(sk(cx, cy, cz)) || ent_find(S.fire, S.nf, cx, cy, cz) >= 0 || S.nf >= MAXF) continue;
+                ap(body, "IGNITE | %s | %s | %d | %d | %d | %d\n", an, wn, cx, cy, cz, w->turn); ent_add(S.fire, &S.nf, cx, cy, cz, w->turn); s.ign++; }
+            snprintf(out, sizeof out, s.ign ? "set fire: %d blocks" : "nothing to burn", s.ign); }
+    } else if (!strcmp(g->eff, "water")) {
+        Tr t = trace(ex, ey, ez, vx, vy, vz, g->range);
+        if (t.hit) { int rb = g->blast > 4 ? 4 : g->blast; for (int zz = -rb; zz <= rb; zz++) for (int yy = -rb; yy <= rb; yy++) for (int xx = -rb; xx <= rb; xx++) { if (xx * xx + yy * yy + zz * zz > rb * rb) continue;
+                int cx = t.hx + xx, cy = t.hy + yy, cz = t.hz + zz, fi = ent_find(S.fire, S.nf, cx, cy, cz); if (!inb(cx, cy, cz) || fi < 0) continue;
+                Bn *b = burn(sk(cx, cy, cz)); int age = w->turn - S.fire[fi].start; int charred = b && age * 100 >= b->turns * R("extinguish_char_pct");
+                ap(body, "EXTING | %s | %s | %d | %d | %d | %s\n", an, wn, cx, cy, cz, charred ? b->into : sk(cx, cy, cz)); if (charred) s_set(cx, cy, cz, b->into); ent_rm(S.fire, &S.nf, cx, cy, cz); s.doused++; }
+            if (strcmp(g->dep, "-") && t.steps >= 2 && is_air(sk(t.px, t.py, t.pz)) && !(t.px == a->x && t.py == a->y && t.pz == a->z) && S.nfl < MAXF) {
+                ap(body, "WATER | %s | %s | %d | %d | %d | %s | %d\n", an, wn, t.px, t.py, t.pz, g->dep, w->turn); s_set(t.px, t.py, t.pz, g->dep); ent_add(S.flow, &S.nfl, t.px, t.py, t.pz, w->turn); s.dep = 1; }
+            if (s.doused) snprintf(out, sizeof out, "doused %d fire%s", s.doused, s.doused == 1 ? "" : "s"); else if (s.dep) snprintf(out, sizeof out, "splash"); else snprintf(out, sizeof out, "nothing to douse"); }
+    } else return 9;
+    if (g_ofl || SW->nc + S.nov > MAXC - 8 || SW->nd + S.ndm > MAXC - 8) { fprintf(stderr, "refused: the world table is full\n"); return 21; }
+    adv(body, w->turn, g->turns, "shoot");
+    { size_t ol = strlen(out); memmove(o + head + ol, o + head + 1, strlen(o + head + 1) + 1); memcpy(o + head, out, ol); }   /* "@" placeholder (one char) replaced by the outcome words */
+    commit(L, o); fprintf(OUT, "shot=%s %s\n", wn, out); return 0;
 }
 /* intent dispatch shared by replay and verify: derived rows (MINE DROP DAY SPAWNPOINT, TURN other than wait) are regenerated, never replayed */
 /* craft: one RECIPE of rules.pdl (inputs from the bag, output into the bag, a station block such as craft_table within RULE craft_reach); the row is CRAFT|actor|recipe|out|n, the fold looks the inputs up again */
@@ -331,12 +481,14 @@ static int v_craft(W *w, FILE *L, const char *an, const char *rc) {
         if (!found) { fprintf(stderr, "refused: no %s near\n", r->st); return 20; } }
     int *c1 = bag(a, r->i1, 0); if (!c1 || *c1 < r->n1) { fprintf(stderr, "refused: need %d %s\n", r->n1, r->i1); return 16; }
     if (strcmp(r->i2, "-")) { int *c2 = bag(a, r->i2, 0); if (!c2 || *c2 < r->n2) { fprintf(stderr, "refused: need %d %s\n", r->n2, r->i2); return 16; } }
-    char o[512]; snprintf(o, sizeof o, "CRAFT | %s | %s | %s | %d\n", an, rc, r->out, r->on); adv(o, w->turn, tm, "craft"); commit(L, o); fprintf(OUT, "crafted=%s n=%d\n", r->out, r->on); return 0;
+    char *o = OBUF; snprintf(o, OBZ, "CRAFT | %s | %s | %s | %d\n", an, rc, r->out, r->on); adv(o, w->turn, tm, "craft"); commit(L, o); fprintf(OUT, "crafted=%s n=%d\n", r->out, r->on); return 0;
 }
 static W *g_inc_w; static long g_inc_pos;   /* D151: set while a replay runs: the one running fold and how far into dst it has read (was: a full re-fold of dst for every row, n squared) */
 static int intent(FILE *dst, const char *line) {
     char l[512], *f[10]; snprintf(l, sizeof l, "%s", line); int n = split(l, f, 10); W wl, *wp = &wl; if (g_inc_w) { fseek(dst, g_inc_pos, SEEK_SET); fold_rows(g_inc_w, dst); g_inc_pos = ftell(dst); wp = g_inc_w; } else fold(&wl, dst); int r = 0;
-    if (n >= 5 && !strcmp(f[0], "GIVE")) r = v_give(wp, dst, f[1], f[2], atoi(f[3]), f[4]);
+    sim_begin(wp);
+    if (n >= 6 && !strcmp(f[0], "SHOT")) r = v_shoot(wp, dst, f[1], f[2], f[5]);
+    else if (n >= 5 && !strcmp(f[0], "GIVE")) r = v_give(wp, dst, f[1], f[2], atoi(f[3]), f[4]);
     else if (n >= 5 && !strcmp(f[0], "MOVE")) r = v_move(wp, dst, f[1], atoi(f[2]), atoi(f[3]), atoi(f[4]));
     else if (n >= 3 && !strcmp(f[0], "FACE")) r = v_face(wp, dst, f[1], f[2]);
     else if (n >= 3 && !strcmp(f[0], "RESET")) r = v_reset(wp, dst, f[1]);
@@ -351,11 +503,11 @@ static int intent(FILE *dst, const char *line) {
 }
 static int is_intent(const char *s) {
     char l[512], *f[10]; snprintf(l, sizeof l, "%s", s); int n = split(l, f, 10);
-    return n >= 3 && (!strcmp(f[0], "GIVE") || !strcmp(f[0], "MOVE") || !strcmp(f[0], "FACE") || !strcmp(f[0], "RESET") || !strcmp(f[0], "SEAT") || !strcmp(f[0], "DAMAGE") || !strcmp(f[0], "PLACE") || !strcmp(f[0], "SLEEP") || !strcmp(f[0], "EAT") || !strcmp(f[0], "CRAFT") || (!strcmp(f[0], "TURN") && !strcmp(f[2], "wait")));
+    return n >= 3 && (!strcmp(f[0], "SHOT") || !strcmp(f[0], "GIVE") || !strcmp(f[0], "MOVE") || !strcmp(f[0], "FACE") || !strcmp(f[0], "RESET") || !strcmp(f[0], "SEAT") || !strcmp(f[0], "DAMAGE") || !strcmp(f[0], "PLACE") || !strcmp(f[0], "SLEEP") || !strcmp(f[0], "EAT") || !strcmp(f[0], "CRAFT") || (!strcmp(f[0], "TURN") && !strcmp(f[2], "wait")));
 }
 static int is_derived(const char *s) {
     char l[512], *f[10]; snprintf(l, sizeof l, "%s", s); int n = split(l, f, 10);
-    return n >= 2 && (!strcmp(f[0], "MINE") || !strcmp(f[0], "DROP") || !strcmp(f[0], "DAY") || !strcmp(f[0], "SPAWNPOINT") || (!strcmp(f[0], "TURN") && n >= 3));
+    return n >= 2 && (!strcmp(f[0], "HIT") || !strcmp(f[0], "IGNITE") || !strcmp(f[0], "SPREAD") || !strcmp(f[0], "BURNOUT") || !strcmp(f[0], "EXTING") || !strcmp(f[0], "WATER") || !strcmp(f[0], "FLOW") || !strcmp(f[0], "DRY") || !strcmp(f[0], "MINE") || !strcmp(f[0], "DROP") || !strcmp(f[0], "DAY") || !strcmp(f[0], "SPAWNPOINT") || (!strcmp(f[0], "TURN") && n >= 3));
 }
 static W g_replay_w;   /* the one running fold of a replay (D151); zero at program start, cleared again here for a second replay */
 static int replay_into(FILE *src, FILE *dst) {
@@ -516,13 +668,13 @@ int main(int argc, char **argv) {
             if (!strncmp(o, "desk=", 5)) op.desk = o + 5; else if (!strncmp(o, "feed=", 5)) op.feed = o + 5; else if (!strncmp(o, "png=", 4)) op.png = o[4] ? o + 4 : NULL; else if (!strncmp(o, "self=", 5)) op.self = o + 5; else av[k++] = o; }
         ac = k > 2 ? 2 : k; }
     else while (ac > 0 && strchr(av[ac - 1], (int)'=')) { char *o = av[ac - 1]; if (!strncmp(o, "desk=", 5)) op.desk = o + 5; else if (!strncmp(o, "feed=", 5)) op.feed = o + 5; else if (!strncmp(o, "png=", 4)) op.png = o[4] ? o + 4 : NULL; else if (!strncmp(o, "self=", 5)) op.self = o + 5; else break; ac--; }
-    int mut = !strcmp(v, "give") || !strcmp(v, "move") || !strcmp(v, "mine") || !strcmp(v, "place") || !strcmp(v, "wait") || !strcmp(v, "sleep") || !strcmp(v, "craft") || !strcmp(v, "eat") || !strcmp(v, "act") || !strcmp(v, "walk") || !strcmp(v, "face") || !strcmp(v, "jump") || !strcmp(v, "reset") || (!strcmp(v, "seat") && argc == 6);
+    int mut = !strcmp(v, "give") || !strcmp(v, "move") || !strcmp(v, "mine") || !strcmp(v, "place") || !strcmp(v, "wait") || !strcmp(v, "sleep") || !strcmp(v, "craft") || !strcmp(v, "eat") || !strcmp(v, "act") || !strcmp(v, "walk") || !strcmp(v, "face") || !strcmp(v, "jump") || !strcmp(v, "reset") || !strcmp(v, "shoot") || (!strcmp(v, "seat") && argc == 6);
     if (mut && (r = verify(L))) { fclose(L); return r; }
     char cx[3][32]; char *av5[5];   /* a page passes the cell as one word x,y,z (the registry allows 4 params) */
     if ((!strcmp(v, "mine") || !strcmp(v, "place")) && ac == 3 && sscanf(av[2], "%31[-0-9],%31[-0-9],%31[-0-9]", cx[0], cx[1], cx[2]) == 3) {
         av5[0] = av[0]; av5[1] = av[1]; av5[2] = cx[0]; av5[3] = cx[1]; av5[4] = cx[2]; av = av5; ac = 5; }
     char *avm[4]; if (!strcmp(v, "move") && ac == 2 && sscanf(av[1], "%31[-0-9],%31[-0-9],%31[-0-9]", cx[0], cx[1], cx[2]) == 3) { avm[0] = av[0]; avm[1] = cx[0]; avm[2] = cx[1]; avm[3] = cx[2]; av = avm; ac = 4; }   /* a page passes the target as one word x,y,z */
-    fold(&w, L); r = 2;
+    fold(&w, L); sim_begin(&w); r = 2;
     if (!strcmp(v, "give") && ac == 4) r = v_give(&w, L, av[0], av[1], atoi(av[2]), av[3]);
     else if (!strcmp(v, "move") && ac == 4) r = v_move(&w, L, av[0], atoi(av[1]), atoi(av[2]), atoi(av[3]));
     else if (!strcmp(v, "mine") && ac == 5) r = v_mine(&w, L, av[0], av[1], atoi(av[2]), atoi(av[3]), atoi(av[4]));
@@ -532,6 +684,7 @@ int main(int argc, char **argv) {
     else if (!strcmp(v, "eat") && ac == 2) r = v_eat(&w, L, av[0], av[1]);
     else if (!strcmp(v, "craft") && ac == 2) r = v_craft(&w, L, av[0], av[1]);
     else if (!strcmp(v, "walk") && ac == 2) r = v_walk(&w, L, av[0], av[1]);
+    else if (!strcmp(v, "shoot") && ac == 3) r = v_shoot(&w, L, av[0], av[1], av[2]);
     else if (!strcmp(v, "face") && ac == 2) r = v_face(&w, L, av[0], av[1]);
     else if (!strcmp(v, "jump") && ac == 1) r = v_jump(&w, L, av[0]);
     else if (!strcmp(v, "reset") && ac == 1) r = v_reset(&w, L, av[0]);
@@ -545,6 +698,9 @@ int main(int argc, char **argv) {
         if (!a) { fprintf(stderr, "unknown actor\n"); r = 10; } else { fprintf(OUT, "hunger=%d max=%d starved=%d\n", a->hunger, R("hunger_max"), a->hunger >= R("starve_at")); r = 0; } }
     else if (!strcmp(v, "status") && ac == 0) {
         int mm = minute_of(w.turn); fprintf(OUT, "turn=%d minute=%d day=%ld light=%d\n", w.turn, mm, total_min(w.turn) / R("day_minutes"), light_of(mm)); r = 0; }
+    else if (!strcmp(v, "fire") && ac == 0) { Ent f[MAXF], l[MAXF]; memcpy(f, w.fire, sizeof(Ent) * (size_t)w.nf); memcpy(l, w.flow, sizeof(Ent) * (size_t)w.nfl); qsort(f, (size_t)w.nf, sizeof(Ent), cmp_ent); qsort(l, (size_t)w.nfl, sizeof(Ent), cmp_ent);   /* read only: the burning and flowing cells the fold knows, sorted z y x: fire=x,y,z@start;... flow=... ('-' = none) */
+        fputs("fire=", OUT); for (int i = 0; i < w.nf; i++) fprintf(OUT, "%s%d,%d,%d@%d", i ? ";" : "", f[i].x, f[i].y, f[i].z, f[i].start); if (!w.nf) fputc('-', OUT);
+        fputs(" flow=", OUT); for (int i = 0; i < w.nfl; i++) fprintf(OUT, "%s%d,%d,%d@%d", i ? ";" : "", l[i].x, l[i].y, l[i].z, l[i].start); if (!w.nfl) fputc('-', OUT); fputc('\n', OUT); r = 0; }
     else if (!strcmp(v, "cell") && ac == 3) { fprintf(OUT, "%s\n", kind_at(&w, atoi(av[0]), atoi(av[1]), atoi(av[2]))); r = 0; }
     else if (!strcmp(v, "inv") && ac == 1) { Actor *a = actor(&w, av[0], 0);
         if (!a) { fprintf(stderr, "unknown actor\n"); r = 10; } else { for (int i = 0; i < a->ni; i++) if (a->cnt[i]) fprintf(OUT, "%s=%d\n", a->item[i], a->cnt[i]); r = 0; } }
@@ -556,6 +712,6 @@ int main(int argc, char **argv) {
     else if (!strcmp(v, "verify") && ac == 0) { r = verify(L); if (!r) fprintf(OUT, "verified\n"); }
     else if (!strcmp(v, "replay") && ac == 1) {
         FILE *d = fopen(av[0], "w+x"); if (!d) { fprintf(stderr, "refused: destination exists or cannot be created\n"); r = 2; } else { FILE *keep = OUT; OUT = fopen("/dev/null", "w"); r = replay_into(L, d); fclose(OUT); OUT = keep; if (!r && !same(L, d)) r = 14; fclose(d); if (!r) fprintf(OUT, "replayed identical\n"); } }
-    if (!r && (!strcmp(v, "mine") || !strcmp(v, "place") || !strcmp(v, "craft") || !strcmp(v, "eat") || !strcmp(v, "wait") || !strcmp(v, "sleep") || !strcmp(v, "move") || !strcmp(v, "give") || !strcmp(v, "walk") || !strcmp(v, "jump") || !strcmp(v, "reset") || !strcmp(v, "face"))) board_hook(&w, L, argv[3], argv[2], argv[0]);
+    if (!r && (!strcmp(v, "mine") || !strcmp(v, "place") || !strcmp(v, "craft") || !strcmp(v, "eat") || !strcmp(v, "wait") || !strcmp(v, "sleep") || !strcmp(v, "move") || !strcmp(v, "give") || !strcmp(v, "walk") || !strcmp(v, "jump") || !strcmp(v, "reset") || !strcmp(v, "face") || !strcmp(v, "shoot"))) board_hook(&w, L, argv[3], argv[2], argv[0]);
     fclose(L); return r;
 }

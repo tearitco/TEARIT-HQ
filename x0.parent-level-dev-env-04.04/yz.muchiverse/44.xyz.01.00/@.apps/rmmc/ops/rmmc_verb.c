@@ -4,6 +4,7 @@
  * rmmc_project_op to redraw the PROJECTION the engine reads, and writes play/result.txt ("ok" or "refused: <reason> [exit N]", a PROJECTION; the ledger is the authority).
  * Environment: RMMC_LEDGER (default <house>/@.apps/rpg-edit-hq/state/games/rmmc/game/ledger.txt: the editor instance, never the shared #.desktop/vox_ledger.txt), RMMC_DESK (the projection folder, default the island desk of this book),
  *   RMMC_SEED (default <desk>/seed), RMMC_ACTOR (default asa), RMMC_CALLER (human or harness: when set, it must equal the actor's seat row or the verb refuses with exit 24 and writes NOTHING; unset = a direct call, no check).
+ * shoot (D158): a held item with a GUN row (rules.pdl) is fired by `mine`, or the page `shoot` fires GAME_ARG "weapon [aim]".
  * Exit: 0 accepted; vox_op's own code when it refuses (10 unknown actor, 11 off the island, 14 ledger not reproducible, 15 no ground, 18 blocked); 24 not your seat; 2 unknown verb or bad argument (mine place pick: not wired).
  * Only the verbs named below are accepted (verbgen check reads the verb comparisons below against verbs.pdl).
  * Build: gcc -std=gnu11 -Wall -Wextra -O2 -o +x/rmmc_verb.+x rmmc_verb.c */
@@ -16,7 +17,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 static int known(const char *v) {
-    return !strcmp(v, "spawn") || !strcmp(v, "walk") || !strcmp(v, "face") || !strcmp(v, "jump") || !strcmp(v, "reset") || !strcmp(v, "seat") || !strcmp(v, "mine") || !strcmp(v, "place") || !strcmp(v, "craft"); }
+    return !strcmp(v, "spawn") || !strcmp(v, "walk") || !strcmp(v, "face") || !strcmp(v, "jump") || !strcmp(v, "reset") || !strcmp(v, "seat") || !strcmp(v, "mine") || !strcmp(v, "place") || !strcmp(v, "craft") || !strcmp(v, "shoot"); }
 static int run(char *const av[], char *out, size_t osz) {
     int p[2]; if (pipe(p)) return 2; pid_t c = fork(); if (c < 0) return 2;
     if (c == 0) { alarm(20); dup2(p[1], 1); dup2(p[1], 2); close(p[0]); close(p[1]); execv(av[0], av); _exit(127); }
@@ -32,6 +33,14 @@ static int picked_tool(const char *book, const char *data, char *out, size_t n) 
     char rp[PATH_MAX + 96], l[256]; snprintf(rp, sizeof rp, "%s/rules.pdl", data); f = fopen(rp, "r"); if (!f) return 0; int ok = 0;
     while (fgets(l, sizeof l, f)) { char k[16], a[64]; if (sscanf(l, " %15[^| ] | %63[^| \r\n]", k, a) == 2 && !strcmp(k, "TOOL") && !strcmp(a, item)) { ok = 1; break; } }
     fclose(f); if (ok) snprintf(out, n, "%s", item); return ok; }
+/* a held item with a GUN row in vox/rules.pdl is FIRED by the use key (b) instead of swung (D158): data decides, no weapon list in C. Returns 1 and the item name when `item` (or, when item is empty, the picked hotbar item) has a GUN row */
+static int is_gun(const char *data, const char *item) {
+    if (!item[0]) return 0; char rp[PATH_MAX + 96], l[256]; snprintf(rp, sizeof rp, "%s/rules.pdl", data); FILE *f = fopen(rp, "r"); if (!f) return 0; int ok = 0;
+    while (fgets(l, sizeof l, f)) { char k[16], a[64]; if (sscanf(l, " %15[^| ] | %63[^| \r\n]", k, a) == 2 && !strcmp(k, "GUN") && !strcmp(a, item)) { ok = 1; break; } }
+    fclose(f); return ok; }
+static int picked_gun(const char *book, const char *data, char *out, size_t n) {
+    char pp[PATH_MAX + 96], item[64] = ""; snprintf(pp, sizeof pp, "%s/play/pick.txt", book); FILE *f = fopen(pp, "r"); if (!f) return 0;
+    if (fgets(item, sizeof item, f)) item[strcspn(item, "\r\n'| ")] = 0; fclose(f); if (!is_gun(data, item)) return 0; snprintf(out, n, "%s", item); return 1; }
 /* facing from the LEDGER, by the rule the projection draws with (rmmc_project_op: the last horizontal MOVE delta or the last FACE row, whichever is later; a jump moves only in y and keeps it): so what she visibly faces is the column mine and place act on */
 static char facing_of(const char *ledger, const char *actor) {
     FILE *f = fopen(ledger, "r"); if (!f) return 0; char l[256], dir = 0; int px = 0, pz = 0, have = 0;
@@ -60,7 +69,7 @@ int main(int argc, char **argv) {
     const char *actor = getenv("RMMC_ACTOR"); if (!actor || !*actor) actor = "asa";
     { char d[PATH_MAX + 130]; snprintf(d, sizeof d, "%s", led); for (char *p = d + 1; *p; p++) if (*p == '/') { *p = 0; mkdir(d, 0755); *p = '/'; } char *sl = strrchr(d, '/'); if (sl) { *sl = 0; mkdir(d, 0755); } }   /* the ledger folder is made on the first verb (mkdir -p) */
     snprintf(dir, sizeof dir, "%s/play", book); mkdir(dir, 0755); snprintf(rp, sizeof rp, "%s/result.txt", dir);
-    char out[600] = ""; int code = 0;
+    char out[600] = "", gunname[64] = ""; int code = 0;
     { const char *who = getenv("RMMC_CALLER");   /* the seat check: nothing is written when it is not this caller's turn */
       if (who && *who && strcmp(v, "seat")) { char *av[] = { vop, "seat", data, led, (char *)actor, NULL }; char o2[200]; int c2 = run(av, o2, sizeof o2);
           if (c2 == 0 && strncmp(o2, "seat=", 5) == 0 && strcmp(o2 + 5, who)) { snprintf(out, sizeof out, "not your seat (the seat is %s)", o2 + 5); result(rp, 24, out); fprintf(stderr, "%s\n", out); return 24; } } }
@@ -72,6 +81,15 @@ int main(int argc, char **argv) {
     else if (!strcmp(v, "face")) { char *av[] = { vop, "face", data, led, (char *)actor, a1, NULL }; code = run(av, out, sizeof out); }
     else if (!strcmp(v, "jump")) { char *av[] = { vop, "jump", data, led, (char *)actor, NULL }; code = run(av, out, sizeof out); }
     else if (!strcmp(v, "reset")) { char *av[] = { vop, "reset", data, led, (char *)actor, NULL }; code = run(av, out, sizeof out); }
+    else if (!strcmp(v, "shoot") || (!strcmp(v, "mine") && picked_gun(book, data, gunname, sizeof gunname))) {   /* SHOOT (D158): the verb page `shoot` (GAME_ARG = weapon [n|e|s|w[+-1..9]]) or the use key with a gun held. The aim is the cell under the crosshair when the board aims (RMMC_AIM), else the facing; vox_op traces the ray, checks the ammo, writes SHOT and the consequences */
+        char wn[64] = "", aim[64] = "", o2[200]; int x, y, z, fx, fy, fz; const char *am = getenv("RMMC_AIM");
+        if (!strcmp(v, "shoot") && a1[0]) snprintf(wn, sizeof wn, "%s", a1); else snprintf(wn, sizeof wn, "%s", gunname);
+        if (!wn[0] && !strcmp(v, "shoot")) { char pp[PATH_MAX + 96]; snprintf(pp, sizeof pp, "%s/play/pick.txt", book); FILE *pf = fopen(pp, "r"); if (pf) { if (fgets(wn, sizeof wn, pf)) wn[strcspn(wn, "\r\n'| ")] = 0; fclose(pf); } }
+        if (!is_gun(data, wn)) { snprintf(out, sizeof out, "%s is not a weapon: pick a gun in the hotbar", wn[0] ? wn : "nothing"); code = 16; }
+        else { if (!strcmp(v, "shoot") && a2[0]) snprintf(aim, sizeof aim, "%s", a2);
+            else if (am && *am && strcmp(am, "none") && sscanf(am, "%d,%d,%d,%d,%d,%d", &x, &y, &z, &fx, &fy, &fz) == 6) snprintf(aim, sizeof aim, "%d,%d,%d", x, y, z);
+            else { char *wa[] = { vop, "where", data, led, (char *)actor, NULL }; char fc = '-'; if (run(wa, o2, sizeof o2) == 0) { char *fp = strstr(o2, "face="); if (fp) fc = fp[5]; } if (!strchr("nesw", fc)) fc = facing_of(led, actor); if (!strchr("nesw", fc)) fc = 's'; snprintf(aim, sizeof aim, "%c", fc); }
+            char *av[] = { vop, "shoot", data, led, (char *)actor, wn, aim, NULL }; code = run(av, out, sizeof out); } }
     else if ((!strcmp(v, "mine") || !strcmp(v, "place")) && getenv("RMMC_AIM") && *getenv("RMMC_AIM")) {      /* AIM (D147): the block under the crosshair, "x,y,z,fx,fy,fz" in vox cells (the driver converts the engine's aim.txt). mine digs x,y,z; place fills the cell on the face you look at. vox_op checks reach and writes the row */
         int x, y, z, fx, fy, fz; const char *am = getenv("RMMC_AIM");
         if (!strcmp(am, "none")) { snprintf(out, sizeof out, "nothing under the crosshair"); code = 13; }

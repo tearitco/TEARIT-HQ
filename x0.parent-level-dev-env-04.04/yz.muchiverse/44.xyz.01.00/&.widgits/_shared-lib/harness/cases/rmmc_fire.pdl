@@ -1,0 +1,359 @@
+# rmmc_fire (2026-11-27, D159): fire and water as ROWS plus the turn count. Flamethrower (effect ignite, blast 1), water gun (effect water, blast 2, deposits water_f3), the tick that spreads, burns out, floods and dries (vox_op tick()),
+# the read verb `fire` (fire=x,y,z@start;... flow=...). The scratch rules make planks catch at 100 percent (BURN planks 5 turns, catch 100) so the spread is hand-computable; the shipped 40 percent is a hash roll (RULE fire_seed) and is checked for DETERMINISM, not for a value.
+# Hand timeline (flamer at turn 1, so IGNITE start 1; the shot's own turn ticks at t = 2; planks burn 5 turns; a block burnt for >= 50 percent of that (age * 100 >= 250, i.e. age 3) chars when doused):
+#   z=5, planks x=21 22 23, she stands at (28,1,5): the flame hits (23) and ignites the cells within 1: 22 and 23. t=2: 22 spreads to 21 (SPREAD @2). Nothing else changes until t=6 (22 and 23 age 5: BURNOUT, charcoal) and t=7 (21 age 5).
+RESULTS | ../results/rmmc_fire.txt
+CASE | build
+SCRATCH
+MKDIR | b
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/b/vox.+x | $HOUSE/@.apps/vox/ops/vox_op.c
+EXPECT_EXIT | 0 | the real vox_op compiles
+MKDIR | dF
+MKDIR | dC
+COPY | @.apps/rmmc/vox/rules.pdl | dF/rules.pdl
+COPY | @.apps/rmmc/vox/blocks.pdl | dF/blocks.pdl
+COPY | @.apps/rmmc/vox/rules.pdl | dC/rules.pdl
+COPY | @.apps/rmmc/vox/blocks.pdl | dC/blocks.pdl
+RUN | sed | -i | s#BURN \p planks \p 5 \p 40 \p charcoal#BURN \p planks \p 5 \p 100 \p charcoal# | $T/dF/rules.pdl
+RUN | sed | -i | s#BURN \p planks \p 5 \p 40 \p charcoal#BURN \p planks \p 5 \p 100 \p charcoal# | $T/dC/rules.pdl
+RUN | sed | -i | s#RULE \p fire_cells_per_turn \p 32#RULE \p fire_cells_per_turn \p 1# | $T/dC/rules.pdl
+EXPECT_HAS | dC/rules.pdl | fire_cells_per_turn \p 1 | the capped data dir really has cap 1
+EXPECT_HAS | dF/rules.pdl | BURN \p planks \p 5 \p 100 | the scratch planks catch at 100 percent
+EXPECT_HAS | dF/rules.pdl | GUN \p flamer | the flamethrower is a GUN row (effect ignite)
+EXPECT_HAS | dF/rules.pdl | GUN \p watergun | the water gun is a GUN row (effect water)
+WRITE | dF/terrain.pdl | TERRAIN \p 0 \p 0 \p 0 \p 40 \p 0 \p 20 \p dirt\nTERRAIN \p 21 \p 1 \p 5 \p 23 \p 1 \p 5 \p planks\nTERRAIN \p 20 \p 1 \p 8 \p 23 \p 1 \p 8 \p planks\nTERRAIN \p 19 \p 1 \p 8 \p 19 \p 1 \p 8 \p water\nTERRAIN \p 21 \p 1 \p 11 \p 23 \p 1 \p 11 \p planks\nTERRAIN \p 23 \p 2 \p 14 \p 23 \p 2 \p 14 \p planks\n
+WRITE | dC/terrain.pdl | TERRAIN \p 0 \p 0 \p 0 \p 40 \p 0 \p 20 \p dirt\nTERRAIN \p 21 \p 1 \p 11 \p 23 \p 1 \p 11 \p planks\n
+
+CASE | flame-spreads-and-burns-out-without-water
+RUN | $T/b/vox.+x | move | $T/dF | $T/f1 | asa | 28 | 1 | 5
+RUN | $T/b/vox.+x | give | $T/dF | $T/f1 | asa | flamer | 1 | t
+RUN | $T/b/vox.+x | give | $T/dF | $T/f1 | asa | fuel | 3 | t
+RUN | $T/b/vox.+x | shoot | $T/dF | $T/f1 | asa | flamer | w
+EXPECT_OUT | shot=flamer set fire: 2 blocks | the flame hits planks (23,1,5) and ignites the 2 flammable cells within 1: (22) and (23) (the floor is dirt: not flammable)
+EXPECT_HAS | f1 | IGNITE \p asa \p flamer \p 22 \p 1 \p 5 \p 1 | IGNITE row, start turn 1
+EXPECT_HAS | f1 | IGNITE \p asa \p flamer \p 23 \p 1 \p 5 \p 1 | and the second
+EXPECT_HAS | f1 | SPREAD \p 21 \p 1 \p 5 \p 2 | the same shot's turn: 22 sets 21 alight at turn 2 (catch 100 percent)
+RUN | $T/b/vox.+x | fire | $T/dF | $T/f1
+EXPECT_OUT | fire=21,1,5@2;22,1,5@1;23,1,5@1 flow=- | three blocks burning, sorted z y x, with the turn each started
+RUN | $T/b/vox.+x | bag | $T/dF | $T/f1 | asa
+EXPECT_OUT_IS | bag=flamer:1,fuel:2 | one fuel spent
+RUN | $T/b/vox.+x | wait | $T/dF | $T/f1 | 3
+RUN | $T/b/vox.+x | cell | $T/dF | $T/f1 | 23 | 1 | 5
+EXPECT_OUT_IS | planks | turn 5: 23 has burned 4 turns: not yet
+RUN | $T/b/vox.+x | wait | $T/dF | $T/f1 | 1
+RUN | $T/b/vox.+x | cell | $T/dF | $T/f1 | 23 | 1 | 5
+EXPECT_OUT_IS | charcoal | turn 6: 23 (started 1) has burned 5 turns: charcoal
+RUN | $T/b/vox.+x | cell | $T/dF | $T/f1 | 22 | 1 | 5
+EXPECT_OUT_IS | charcoal | and 22
+RUN | $T/b/vox.+x | cell | $T/dF | $T/f1 | 21 | 1 | 5
+EXPECT_OUT_IS | planks | 21 started at 2: still burning
+RUN | $T/b/vox.+x | fire | $T/dF | $T/f1
+EXPECT_OUT | fire=21,1,5@2 flow=- | only 21 is still on fire
+RUN | $T/b/vox.+x | wait | $T/dF | $T/f1 | 1
+RUN | $T/b/vox.+x | cell | $T/dF | $T/f1 | 21 | 1 | 5
+EXPECT_OUT_IS | charcoal | turn 7: 21 is burnt out too
+RUN | $T/b/vox.+x | fire | $T/dF | $T/f1
+EXPECT_OUT | fire=- flow=- | nothing burns any more
+RUN | $T/b/vox.+x | wait | $T/dF | $T/f1 | 5000
+RUN | $T/b/vox.+x | status | $T/dF | $T/f1
+EXPECT_OUT | turn=5007 | a long wait with nothing burning is ONE row: the turn is 5007
+RUN | $T/b/vox.+x | verify | $T/dF | $T/f1
+EXPECT_OUT | verified | the whole fire ledger replays byte for byte
+RUN | $T/b/vox.+x | replay | $T/dF | $T/f1 | $T/f1.replay
+RUN | cmp | $T/f1 | $T/f1.replay
+EXPECT_EXIT | 0 | replay identical, so the fire (IGNITE, SPREAD, BURNOUT rows) is reproducible from the intent rows alone
+
+CASE | water-gun-puts-it-out-and-the-pour-flows-then-dries
+RUN | $T/b/vox.+x | move | $T/dF | $T/f2 | asa | 28 | 1 | 5
+RUN | $T/b/vox.+x | give | $T/dF | $T/f2 | asa | flamer | 1 | t
+RUN | $T/b/vox.+x | give | $T/dF | $T/f2 | asa | fuel | 3 | t
+RUN | $T/b/vox.+x | give | $T/dF | $T/f2 | asa | watergun | 1 | t
+RUN | $T/b/vox.+x | give | $T/dF | $T/f2 | asa | waterpack | 3 | t
+RUN | $T/b/vox.+x | shoot | $T/dF | $T/f2 | asa | flamer | w
+RUN | $T/b/vox.+x | shoot | $T/dF | $T/f2 | asa | watergun | w
+EXPECT_OUT | shot=watergun doused 3 fires | the water gun (radius 2) at the burning block puts out ALL THREE: 21 (d2 4), 22, 23
+EXPECT_HAS | f2 | EXTING \p asa \p watergun \p 21 \p 1 \p 5 \p planks | 21 put out at age 0: stays whole (its own kind, planks)
+EXPECT_HAS | f2 | EXTING \p asa \p watergun \p 23 \p 1 \p 5 \p planks | 23 put out at age 1 (below 50 percent of 5 turns): stays whole
+RUN | $T/b/vox.+x | fire | $T/dF | $T/f2
+EXPECT_OUT | fire=- | the fire is gone, and nothing re-ignites it (no burning neighbour)
+RUN | $T/b/vox.+x | cell | $T/dF | $T/f2 | 22 | 1 | 5
+EXPECT_OUT_IS | planks | the planks are still planks (unburnt)
+RUN | $T/b/vox.+x | cell | $T/dF | $T/f2 | 24 | 1 | 5
+EXPECT_OUT_IS | water_f3 | the water deposited in the last free cell before the hit
+EXPECT_HAS | f2 | WATER \p asa \p watergun \p 24 \p 1 \p 5 \p water_f3 \p 2 | the WATER row (turn 2)
+EXPECT_HAS | f2 | FLOW \p 25 \p 1 \p 5 \p water_f2 \p 3 | it flows sideways one step in the same shot's turn (level 3 gives level 2) onto the ground: +x
+EXPECT_HAS | f2 | FLOW \p 24 \p 1 \p 6 \p water_f2 \p 3 | +z
+EXPECT_HAS | f2 | FLOW \p 24 \p 1 \p 4 \p water_f2 \p 3 | -z
+EXPECT_LACKS | f2 | FLOW \p 23 | and not into the planks (a solid cell)
+RUN | $T/b/vox.+x | wait | $T/dF | $T/f2 | 40
+RUN | $T/b/vox.+x | fire | $T/dF | $T/f2
+EXPECT_OUT | fire=- flow=- | after 40 turns every poured cell has dried (RULE water_dry_turns 8)
+RUN | $T/b/vox.+x | cell | $T/dF | $T/f2 | 24 | 1 | 5
+EXPECT_OUT_IS | air | the puddle is gone
+RUN | $T/b/vox.+x | cell | $T/dF | $T/f2 | 22 | 1 | 5
+EXPECT_OUT_IS | planks | the doused planks never burnt
+RUN | $T/b/vox.+x | verify | $T/dF | $T/f2
+EXPECT_OUT | verified | the douse-and-dry ledger verifies
+
+CASE | a-late-douse-leaves-charcoal-and-the-wrong-order-does-not-help
+RUN | $T/b/vox.+x | move | $T/dF | $T/f3 | asa | 28 | 1 | 5
+RUN | $T/b/vox.+x | give | $T/dF | $T/f3 | asa | flamer | 1 | t
+RUN | $T/b/vox.+x | give | $T/dF | $T/f3 | asa | fuel | 3 | t
+RUN | $T/b/vox.+x | give | $T/dF | $T/f3 | asa | watergun | 1 | t
+RUN | $T/b/vox.+x | give | $T/dF | $T/f3 | asa | waterpack | 3 | t
+RUN | $T/b/vox.+x | shoot | $T/dF | $T/f3 | asa | flamer | w
+RUN | $T/b/vox.+x | wait | $T/dF | $T/f3 | 2
+RUN | $T/b/vox.+x | shoot | $T/dF | $T/f3 | asa | watergun | w
+EXPECT_HAS | f3 | EXTING \p asa \p watergun \p 22 \p 1 \p 5 \p charcoal | at turn 4 the fire on 22 has burnt 3 turns (3 * 100 >= 5 * 50): it chars when put out
+EXPECT_HAS | f3 | EXTING \p asa \p watergun \p 23 \p 1 \p 5 \p charcoal | and 23
+EXPECT_HAS | f3 | EXTING \p asa \p watergun \p 21 \p 1 \p 5 \p planks | but 21 (burning since turn 2, age 2: 200 < 250) stays whole
+RUN | $T/b/vox.+x | cell | $T/dF | $T/f3 | 21 | 1 | 5
+EXPECT_OUT_IS | planks | 21 is planks
+RUN | $T/b/vox.+x | cell | $T/dF | $T/f3 | 23 | 1 | 5
+EXPECT_OUT_IS | charcoal | 23 is charcoal (partly burnt)
+RUN | $T/b/vox.+x | move | $T/dF | $T/f4 | asa | 28 | 1 | 5
+RUN | $T/b/vox.+x | give | $T/dF | $T/f4 | asa | flamer | 1 | t
+RUN | $T/b/vox.+x | give | $T/dF | $T/f4 | asa | fuel | 3 | t
+RUN | $T/b/vox.+x | give | $T/dF | $T/f4 | asa | watergun | 1 | t
+RUN | $T/b/vox.+x | give | $T/dF | $T/f4 | asa | waterpack | 3 | t
+RUN | $T/b/vox.+x | shoot | $T/dF | $T/f4 | asa | watergun | w
+EXPECT_OUT | shot=watergun splash | water FIRST: nothing burns yet, the gun only wets the ground (a splash)
+RUN | $T/b/vox.+x | shoot | $T/dF | $T/f4 | asa | flamer | w
+EXPECT_OUT | shot=flamer set fire: 2 blocks | the flame flies through the water (not solid) and still ignites the planks
+RUN | $T/b/vox.+x | wait | $T/dF | $T/f4 | 6
+RUN | $T/b/vox.+x | cell | $T/dF | $T/f4 | 23 | 1 | 5
+EXPECT_OUT_IS | charcoal | WRONG ORDER: water before fire protects nothing, the planks burn out (control: no water, the same result as the first case)
+RUN | $T/b/vox.+x | shoot | $T/dF | $T/f4 | asa | flamer | w
+EXPECT_OUT | nothing to burn | the burnt line is charcoal: a flame at it lights nothing (and still costs fuel)
+RUN | $T/b/vox.+x | shoot | $T/dF | $T/f4 | asa | flamer | w
+RUN | $T/b/vox.+x | shoot | $T/dF | $T/f4 | asa | flamer | w
+EXPECT_EXIT | 25 | NEGATIVE: 3 fuel, three flames used: the next is refused with 25
+EXPECT_OUT | out of ammo | and says why
+
+CASE | fire-never-enters-water-and-lakes-never-flow
+RUN | $T/b/vox.+x | move | $T/dF | $T/f5 | asa | 28 | 1 | 8
+RUN | $T/b/vox.+x | give | $T/dF | $T/f5 | asa | flamer | 1 | t
+RUN | $T/b/vox.+x | give | $T/dF | $T/f5 | asa | fuel | 3 | t
+RUN | $T/b/vox.+x | give | $T/dF | $T/f5 | asa | watergun | 1 | t
+RUN | $T/b/vox.+x | give | $T/dF | $T/f5 | asa | waterpack | 3 | t
+RUN | $T/b/vox.+x | shoot | $T/dF | $T/f5 | asa | flamer | w
+RUN | $T/b/vox.+x | wait | $T/dF | $T/f5 | 1
+RUN | $T/b/vox.+x | fire | $T/dF | $T/f5
+EXPECT_OUT | fire=20,1,8@3;21,1,8@2;22,1,8@1;23,1,8@1 | the whole 4-block line burns by turn 3 (20 caught at turn 3)
+EXPECT_LACKS | f5 | SPREAD \p 19 | the fire did NOT spread into the water block at (19,1,8)
+RUN | $T/b/vox.+x | shoot | $T/dF | $T/f5 | asa | watergun | w
+EXPECT_OUT | shot=watergun doused 3 fires | radius 2 around 23 reaches 21, 22, 23 but not 20 (d2 9)
+RUN | $T/b/vox.+x | fire | $T/dF | $T/f5
+EXPECT_OUT | fire=20,1,8@3;21,1,8@4 | NOT fully doused: 20 is still burning and sets the doused 21 alight again at turn 4
+RUN | $T/b/vox.+x | wait | $T/dF | $T/f5 | 60
+RUN | $T/b/vox.+x | cell | $T/dF | $T/f5 | 19 | 1 | 8
+EXPECT_OUT_IS | water | the lake block beside the fire is still water
+RUN | $T/b/vox.+x | cell | $T/dF | $T/f5 | 18 | 1 | 8
+EXPECT_OUT_IS | air | and it flowed nowhere (terrain water is not a poured source)
+RUN | $T/b/vox.+x | fire | $T/dF | $T/f5
+EXPECT_OUT | fire=- | everything burnt out in the end
+
+CASE | the-per-turn-cap-slows-fire
+RUN | $T/b/vox.+x | move | $T/dC | $T/f6 | asa | 28 | 1 | 11
+RUN | $T/b/vox.+x | give | $T/dC | $T/f6 | asa | flamer | 1 | t
+RUN | $T/b/vox.+x | give | $T/dC | $T/f6 | asa | fuel | 3 | t
+RUN | $T/b/vox.+x | shoot | $T/dC | $T/f6 | asa | flamer | w
+RUN | $T/b/vox.+x | fire | $T/dC | $T/f6
+EXPECT_OUT | fire=21,1,11@2;22,1,11@1;23,1,11@1 | cap 1: only the first sorted burning block (22) acted at turn 2 and spread to 21
+RUN | $T/b/vox.+x | wait | $T/dC | $T/f6 | 5
+RUN | $T/b/vox.+x | cell | $T/dC | $T/f6 | 21 | 1 | 11
+EXPECT_OUT_IS | charcoal | turn 7: with cap 1 the lowest block (21) is served every turn and burns out at 7
+RUN | $T/b/vox.+x | cell | $T/dC | $T/f6 | 23 | 1 | 11
+EXPECT_OUT_IS | planks | 23 has to wait: with no cap it would be charcoal since turn 6
+RUN | $T/b/vox.+x | wait | $T/dC | $T/f6 | 1
+RUN | $T/b/vox.+x | cell | $T/dC | $T/f6 | 22 | 1 | 11
+EXPECT_OUT_IS | charcoal | turn 8: 22
+RUN | $T/b/vox.+x | wait | $T/dC | $T/f6 | 1
+RUN | $T/b/vox.+x | cell | $T/dC | $T/f6 | 23 | 1 | 11
+EXPECT_OUT_IS | charcoal | turn 9: 23
+
+CASE | water-falls-one-level-then-spreads
+RUN | $T/b/vox.+x | move | $T/dF | $T/f7 | asa | 28 | 2 | 14
+RUN | $T/b/vox.+x | give | $T/dF | $T/f7 | asa | watergun | 1 | t
+RUN | $T/b/vox.+x | give | $T/dF | $T/f7 | asa | waterpack | 3 | t
+RUN | $T/b/vox.+x | shoot | $T/dF | $T/f7 | asa | watergun | w
+EXPECT_OUT | shot=watergun splash | a shot at a block high in the air pours water in front of it
+EXPECT_HAS | f7 | WATER \p asa \p watergun \p 24 \p 2 \p 14 \p water_f3 \p 1 | the poured cell (24,2,14)
+EXPECT_HAS | f7 | FLOW \p 24 \p 1 \p 14 \p water_f3 \p 2 | with air below it the water FALLS one level in the same turn (full level again)
+RUN | $T/b/vox.+x | cell | $T/dF | $T/f7 | 24 | 1 | 14
+EXPECT_OUT_IS | water_f3 | the cell one level down holds water
+RUN | $T/b/vox.+x | wait | $T/dF | $T/f7 | 1
+RUN | $T/b/vox.+x | cell | $T/dF | $T/f7 | 25 | 1 | 14
+EXPECT_OUT_IS | water_f2 | on the ground it spreads sideways at level 2
+RUN | $T/b/vox.+x | cell | $T/dF | $T/f7 | 25 | 2 | 14
+EXPECT_OUT_IS | water_f2 | and the cell above (supported by that water) spreads too
+RUN | $T/b/vox.+x | cell | $T/dF | $T/f7 | 24 | 0 | 14
+EXPECT_OUT_IS | dirt | the floor under it is untouched
+RUN | $T/b/vox.+x | verify | $T/dF | $T/f7
+EXPECT_OUT | verified | the flow ledger verifies
+
+CASE | forged-fire-rows-are-refused
+RUN | cp | $T/f1 | $T/g1
+RUN | sed | -i | /^BURNOUT/d | $T/g1
+RUN | $T/b/vox.+x | verify | $T/dF | $T/g1
+EXPECT_EXIT | 14 | FORGED: BURNOUT rows deleted (a fire that never ends) is refused
+RUN | cp | $T/f1 | $T/g2
+APPEND | g2 | SPREAD \p 30 \p 1 \p 5 \p 7\n
+RUN | $T/b/vox.+x | verify | $T/dF | $T/g2
+EXPECT_EXIT | 14 | FORGED: a made-up SPREAD (fire at a cell nobody lit) is refused
+RUN | cp | $T/f2 | $T/g3
+RUN | sed | -i | s#water_f3 \p 2#water_f3 \p 3# | $T/g3
+RUN | cmp | -s | $T/f2 | $T/g3
+EXPECT_EXIT | 1 | forgery 3 really changed the file (vacuity guard)
+RUN | $T/b/vox.+x | verify | $T/dF | $T/g3
+EXPECT_EXIT | 14 | FORGED: a WATER row with another start turn is refused
+RUN | $T/b/vox.+x | verify | $T/dF | $T/f2
+EXPECT_OUT | verified | CONTROL: the untouched ledger verifies
+
+CASE | sabotage-fire-and-water
+MKDIR | m
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m1.c
+RUN | sed | -i | s#if (roll100(t, nx, ny, nz) < nb->catch_pct) {#if (0) {# | $T/m/m1.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m1.c
+EXPECT_EXIT | 1 | mutant 1 (fire never spreads) really differs
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m/m1.+x | $T/m/m1.c
+EXPECT_EXIT | 0 | mutant 1 compiles
+RUN | $T/m/m1.+x | move | $T/dF | $T/s1 | asa | 28 | 1 | 5
+RUN | $T/m/m1.+x | give | $T/dF | $T/s1 | asa | flamer | 1 | t
+RUN | $T/m/m1.+x | give | $T/dF | $T/s1 | asa | fuel | 3 | t
+RUN | $T/m/m1.+x | shoot | $T/dF | $T/s1 | asa | flamer | w
+RUN | $T/m/m1.+x | fire | $T/dF | $T/s1
+EXPECT_OUT_LACKS | 21,1,5@2 | SABOTAGE 1 (no spread) is caught: block 21 is never lit
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m2.c
+RUN | sed | -i | s#if (t - f.start >= b->turns) {#if (0) {# | $T/m/m2.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m2.c
+EXPECT_EXIT | 1 | mutant 2 (fire never burns out) really differs
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m/m2.+x | $T/m/m2.c
+EXPECT_EXIT | 0 | mutant 2 compiles
+RUN | $T/m/m2.+x | move | $T/dF | $T/s2 | asa | 28 | 1 | 5
+RUN | $T/m/m2.+x | give | $T/dF | $T/s2 | asa | flamer | 1 | t
+RUN | $T/m/m2.+x | give | $T/dF | $T/s2 | asa | fuel | 3 | t
+RUN | $T/m/m2.+x | shoot | $T/dF | $T/s2 | asa | flamer | w
+RUN | $T/m/m2.+x | wait | $T/dF | $T/s2 | 6
+RUN | $T/m/m2.+x | cell | $T/dF | $T/s2 | 23 | 1 | 5
+EXPECT_OUT_LACKS | charcoal | SABOTAGE 2 (burn time ignored) is caught
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m3.c
+RUN | sed | -i | s#int cx = t.hx + xx, cy = t.hy + yy, cz = t.hz + zz, fi = ent_find(S.fire, S.nf, cx, cy, cz); if (!inb(cx, cy, cz) \p\p fi < 0) continue;#int cx = t.hx + xx, cy = t.hy + yy, cz = t.hz + zz, fi = ent_find(S.fire, S.nf, cx, cy, cz); if (1) continue;# | $T/m/m3.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m3.c
+EXPECT_EXIT | 1 | mutant 3 (the water gun puts nothing out) really differs
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m/m3.+x | $T/m/m3.c
+EXPECT_EXIT | 0 | mutant 3 compiles
+RUN | $T/m/m3.+x | move | $T/dF | $T/s3 | asa | 28 | 1 | 5
+RUN | $T/m/m3.+x | give | $T/dF | $T/s3 | asa | flamer | 1 | t
+RUN | $T/m/m3.+x | give | $T/dF | $T/s3 | asa | fuel | 3 | t
+RUN | $T/m/m3.+x | give | $T/dF | $T/s3 | asa | watergun | 1 | t
+RUN | $T/m/m3.+x | give | $T/dF | $T/s3 | asa | waterpack | 3 | t
+RUN | $T/m/m3.+x | shoot | $T/dF | $T/s3 | asa | flamer | w
+RUN | $T/m/m3.+x | shoot | $T/dF | $T/s3 | asa | watergun | w
+RUN | $T/m/m3.+x | fire | $T/dF | $T/s3
+EXPECT_OUT_LACKS | fire=- | SABOTAGE 3 (water does not douse) is caught: the fire is still there
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m4.c
+RUN | sed | -i | s#int charred = b && age \* 100 >= b->turns \* R("extinguish_char_pct");#int charred = 0;# | $T/m/m4.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m4.c
+EXPECT_EXIT | 1 | mutant 4 (a doused block never chars) really differs
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m/m4.+x | $T/m/m4.c
+EXPECT_EXIT | 0 | mutant 4 compiles
+RUN | $T/m/m4.+x | move | $T/dF | $T/s4 | asa | 28 | 1 | 5
+RUN | $T/m/m4.+x | give | $T/dF | $T/s4 | asa | flamer | 1 | t
+RUN | $T/m/m4.+x | give | $T/dF | $T/s4 | asa | fuel | 3 | t
+RUN | $T/m/m4.+x | give | $T/dF | $T/s4 | asa | watergun | 1 | t
+RUN | $T/m/m4.+x | give | $T/dF | $T/s4 | asa | waterpack | 3 | t
+RUN | $T/m/m4.+x | shoot | $T/dF | $T/s4 | asa | flamer | w
+RUN | $T/m/m4.+x | wait | $T/dF | $T/s4 | 2
+RUN | $T/m/m4.+x | shoot | $T/dF | $T/s4 | asa | watergun | w
+RUN | $T/m/m4.+x | cell | $T/dF | $T/s4 | 23 | 1 | 5
+EXPECT_OUT_LACKS | charcoal | SABOTAGE 4 (late douse never chars) is caught
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m5.c
+RUN | sed | -i | s#if (e.y > 0 && is_air(sk(e.x, e.y - 1, e.z))) {#if (0) {# | $T/m/m5.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m5.c
+EXPECT_EXIT | 1 | mutant 5 (water never falls) really differs
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m/m5.+x | $T/m/m5.c
+EXPECT_EXIT | 0 | mutant 5 compiles
+RUN | $T/m/m5.+x | move | $T/dF | $T/s5 | asa | 28 | 2 | 14
+RUN | $T/m/m5.+x | give | $T/dF | $T/s5 | asa | watergun | 1 | t
+RUN | $T/m/m5.+x | give | $T/dF | $T/s5 | asa | waterpack | 3 | t
+RUN | $T/m/m5.+x | shoot | $T/dF | $T/s5 | asa | watergun | w
+RUN | $T/m/m5.+x | cell | $T/dF | $T/s5 | 24 | 1 | 14
+EXPECT_OUT_LACKS | water_f3 | SABOTAGE 5 (no falling) is caught: the cell below stays empty
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m6.c
+RUN | sed | -i | s#if (!src && dry > 0 && t - e.start >= dry) {#if (0) {# | $T/m/m6.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m6.c
+EXPECT_EXIT | 1 | mutant 6 (water never dries) really differs
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m/m6.+x | $T/m/m6.c
+EXPECT_EXIT | 0 | mutant 6 compiles
+RUN | $T/m/m6.+x | move | $T/dF | $T/s6 | asa | 28 | 1 | 5
+RUN | $T/m/m6.+x | give | $T/dF | $T/s6 | asa | flamer | 1 | t
+RUN | $T/m/m6.+x | give | $T/dF | $T/s6 | asa | fuel | 3 | t
+RUN | $T/m/m6.+x | give | $T/dF | $T/s6 | asa | watergun | 1 | t
+RUN | $T/m/m6.+x | give | $T/dF | $T/s6 | asa | waterpack | 3 | t
+RUN | $T/m/m6.+x | shoot | $T/dF | $T/s6 | asa | flamer | w
+RUN | $T/m/m6.+x | shoot | $T/dF | $T/s6 | asa | watergun | w
+RUN | $T/m/m6.+x | wait | $T/dF | $T/s6 | 40
+RUN | $T/m/m6.+x | fire | $T/dF | $T/s6
+EXPECT_OUT_LACKS | flow=- | SABOTAGE 6 (puddles never dry) is caught
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m7.c
+RUN | sed | -i | s#for (int i = 0; i < n0 && done < cap; i++) {#for (int i = 0; i < n0; i++) {# | $T/m/m7.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m7.c
+EXPECT_EXIT | 1 | mutant 7 (the per-turn cap ignored) really differs
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m/m7.+x | $T/m/m7.c
+EXPECT_EXIT | 0 | mutant 7 compiles
+RUN | $T/m/m7.+x | move | $T/dC | $T/s7 | asa | 28 | 1 | 11
+RUN | $T/m/m7.+x | give | $T/dC | $T/s7 | asa | flamer | 1 | t
+RUN | $T/m/m7.+x | give | $T/dC | $T/s7 | asa | fuel | 3 | t
+RUN | $T/m/m7.+x | shoot | $T/dC | $T/s7 | asa | flamer | w
+RUN | $T/m/m7.+x | wait | $T/dC | $T/s7 | 5
+RUN | $T/m/m7.+x | cell | $T/dC | $T/s7 | 23 | 1 | 11
+EXPECT_OUT_LACKS | planks | SABOTAGE 7 (cap ignored) is caught: with a cap of 1 block 23 must still be planks at turn 7
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m8.c
+RUN | sed | -i | s#!burn(sk(cx, cy, cz)) \p\p ent_find(S.fire, S.nf, cx, cy, cz) >= 0 \p\p S.nf >= MAXF#ent_find(S.fire, S.nf, cx, cy, cz) >= 0 \p\p S.nf >= MAXF# | $T/m/m8.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m8.c
+EXPECT_EXIT | 1 | mutant 8 (the flame lights anything) really differs
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m/m8.+x | $T/m/m8.c
+EXPECT_EXIT | 0 | mutant 8 compiles
+RUN | $T/m/m8.+x | move | $T/dF | $T/s8 | asa | 28 | 1 | 5
+RUN | $T/m/m8.+x | give | $T/dF | $T/s8 | asa | flamer | 1 | t
+RUN | $T/m/m8.+x | give | $T/dF | $T/s8 | asa | fuel | 3 | t
+RUN | $T/m/m8.+x | shoot | $T/dF | $T/s8 | asa | flamer | w
+EXPECT_OUT_LACKS | set fire: 2 blocks | SABOTAGE 8 (non-flammable blocks catch fire) is caught: the dirt floor is lit too
+RUN | cp | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m9.c
+RUN | sed | -i | s#ent_add(w->fire, &w->nf, atoi(f\[3\]), atoi(f\[4\]), atoi(f\[5\]), atoi(f\[6\]));#;# | $T/m/m9.c
+RUN | cmp | -s | $HOUSE/@.apps/vox/ops/vox_op.c | $T/m/m9.c
+EXPECT_EXIT | 1 | mutant 9 (the fold forgets IGNITE) really differs
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m/m9.+x | $T/m/m9.c
+EXPECT_EXIT | 0 | mutant 9 compiles
+RUN | $T/m/m9.+x | verify | $T/dF | $T/f1
+EXPECT_OUT_LACKS | verified | SABOTAGE 9 (a fold that forgets the fire) is caught: the genuine fire ledger no longer verifies
+CLEAN |
+CASE | the-projection-draws-fire-char-and-wet-cubes
+SCRATCH
+INCLUDE | ../fixtures/rmmc_house.pdl
+MKDIR | h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | 140 | 6 | 100
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | planks | 2 | test
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | flamer | 1 | test
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | fuel | 2 | test
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | watergun | 1 | test
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | give | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | waterpack | 2 | test
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | place | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | planks | 141 | 6 | 100
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | shoot | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | flamer | e
+EXPECT_OUT | set fire: 1 blocks | the flame lights the one planks block at (141,6,100)
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001 | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
+EXPECT_EXIT | 0 | the projection runs on a fire ledger
+EXPECT_HAS | h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/events.txt | 141 100 240 128 28 fire:3 0 2 0 | a fire cube at column (141,100), level 6 - shift 3 = 3, in the fire colour
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | wait | $T/h/@.apps/rmmc/vox | $T/led.txt | 6
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001 | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
+EXPECT_HAS | h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/events.txt | 141 100 30 30 34 char:3 0 2 0 | after the burn-out the cube is a charcoal cube
+EXPECT_LACKS | h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/events.txt | fire:3 | and the fire cube is gone
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | move | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | 138 | 6 | 100
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | shoot | $T/h/@.apps/rmmc/vox | $T/led.txt | asa | watergun | e
+EXPECT_OUT | splash | the water gun at the charcoal 3 cells away pours water in front of it
+RUN | $T/h/@.apps/rmmc/ops/+x/rmmc_project_op.+x | project | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/seed | $T/h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001 | $T/led.txt | $T/h/@.apps/rmmc/pose.pdl | $T/h/@.apps/rmmc/vox/terrain.heightmap
+EXPECT_HAS | h/@.apps/rmmc/rmmc-pchq/pieces/system/maps/rmmc/rmmc-0001/events.txt | 140 100 60 110 214 wet:3 0 2 3 | a water cube at (140,100) level 3, pattern 3 = flow level 3 (a shallow layer in the engine)
+RUN | $T/h/@.apps/vox/ops/+x/vox_op.+x | verify | $T/h/@.apps/rmmc/vox | $T/led.txt
+EXPECT_OUT | verified | the real-data fire ledger verifies
+CLEAN |
