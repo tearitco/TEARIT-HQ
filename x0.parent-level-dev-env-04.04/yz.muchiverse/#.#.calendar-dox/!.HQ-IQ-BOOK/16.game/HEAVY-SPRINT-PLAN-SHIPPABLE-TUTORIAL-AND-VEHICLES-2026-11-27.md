@@ -76,3 +76,8 @@ Repo `https://github.com/tearitco/TEARIT-HQ.git`, branch `claude`. Decision log 
 | **civ-snes** (D157, D160; plan `CIV-SNES-2D-AND-3D-PLAN-2026-11-27.md`) | PLAYABLE on debil, polish in progress | cases civ_snes 129, pages 40, tutorial 45, setup 161, driver 47 on debil (agent-reported); setup: size small to huge, difficulty, 1 to 3 rivals, random or real Earth (ETOPO5), 8 civs as data; plain 2D blank-blue cause found (z slice) but not yet seen fixed live | live photos of the new art, sizes, rivals, difficulty, Books dropdown, Blueprintz; the video; real art; the ETOPO5 file is NOT in git; commit `c609153e3` swept 14 foreign files (correction text `/tmp/claude-1000/corr.txt` not yet committed: a permission layer denied the empty commit) |
 
 **Process lessons of this sprint:** an agent that commits a whole directory sweeps other agents' files (explicit one-file pathspecs only); an agent stopped on a local temperature that comes from the owner's browsers (the 70 C gate covers heavy LOCAL work only, debil work is not gated); a fix that was never re-photographed must not be reported as done; three agents run in parallel on three debil displays (:5 civ, :6 vehicles, :7 building), each with its own mirror.
+
+## 10. Progress table (2026-11-28)
+| Track | State |
+|---|---|
+| E. Vehicles, first cut | DESIGN + DATA ONLY: D161 (hypotheses and pass criteria written), car rows in `@.apps/rmmc/vox/rules.pdl`. No code, no measurement, no live proof. Next steps are listed at the end of D161 in the decision log. |

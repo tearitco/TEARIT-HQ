@@ -87,3 +87,70 @@ RECIPE | bulletsrec | bullets | 12 | gravel | 1 | - | 0 | craft_table
 RECIPE | rocketsrec | rockets | 2 | sand | 2 | gravel | 2 | craft_table
 RECIPE | fuelrec | fuel | 6 | leaves | 4 | - | 0 | -
 RECIPE | waterrec | waterpack | 8 | snow | 2 | - | 0 | -
+# vehicles, first cut (D161, owner 2026-11-28 "then we will try car/plane we planned"): a car is ROWS. Derived numbers (mass, top speed, acceleration) are computed from them on every read (vox_op derive / vstate), never stored.
+# Units: mass in grams (density kg per cubic metre x volume in cubic decimetres = grams), force in newtons, power in watts, speed in micrometres per second (integer fixed point, no float), time in milliseconds, 1 cell = veh_cell_um micrometres.
+# MATERIAL | id | density (kg per m3)
+MATERIAL | steel | 7800
+MATERIAL | iron | 7200
+MATERIAL | alloy | 2700
+MATERIAL | rubber | 1100
+MATERIAL | fabric | 600
+# MODEL | id | length (cells, front-to-back) | width (cells) | height (cells)       the footprint; local cell (f, r): f = 0 at the rear .. length-1 at the nose, r = 0 at the left .. width-1 at the right; the origin is the rear-left cell
+MODEL | car | 4 | 2 | 2
+# PART | model | id | kind | material | volume (dm3) | attached to (axle id for a wheel, - none)       kinds: chassis axle wheel engine seat door (mass = density x volume, summed)
+PART | car | chassis | chassis | steel  | 60 | -
+PART | car | axle_f  | axle    | alloy  | 30 | -
+PART | car | axle_r  | axle    | alloy  | 30 | -
+PART | car | wheel_fl | wheel  | rubber | 30 | axle_f
+PART | car | wheel_fr | wheel  | rubber | 30 | axle_f
+PART | car | wheel_rl | wheel  | rubber | 30 | axle_r
+PART | car | wheel_rr | wheel  | rubber | 30 | axle_r
+PART | car | engine  | engine  | iron   | 25 | -
+PART | car | seat_l  | seat    | fabric | 60 | -
+PART | car | seat_r  | seat    | fabric | 60 | -
+PART | car | door_l  | door    | alloy  | 25 | -
+PART | car | door_r  | door    | alloy  | 25 | -
+# AXLE | model | axle part id | steered (1/0) | driven (1/0)      only DRIVEN axles propel: their wheels carry the drive force
+AXLE | car | axle_f | 1 | 0
+AXLE | car | axle_r | 0 | 1
+# ENGINE | model | engine part id | power (W) | max drive force (N)       drive force = min(max force, power / speed), then capped by the traction of the driven wheels (RULE veh_mu_pct)
+ENGINE | car | engine | 14000 | 3500
+# SEAT | model | seat id (the word the player uses) | part id | f | r | door id | role (driver can drive)
+SEAT | car | driver    | seat_l | 1 | 0 | door_l | driver
+SEAT | car | passenger | seat_r | 1 | 1 | door_r | passenger
+# DOOR | model | door part id | side (l = left, r = right: the cell beside the car at the seat's f) | key item (a locked door needs it in the bag to be unlocked; - none)
+DOOR | car | door_l | l | car_key
+DOOR | car | door_r | r | car_key
+# VBODY | model | name | f0 | r0 | y0 | f1 | r1 | y1 (sixteenths of a cell from the rear-left-bottom corner, heading local) | r | g | b : the boxes the engine draws (the generic box: event cube), no code per model
+VBODY | car | floor  | 0  | 0  | 2  | 64 | 32 | 9  | 60 60 66
+VBODY | car | hood   | 40 | 1  | 9  | 64 | 31 | 17 | 200 40 40
+VBODY | car | trunk  | 0  | 1  | 9  | 14 | 31 | 17 | 200 40 40
+VBODY | car | seat_l | 16 | 4  | 9  | 22 | 14 | 19 | 40 40 50
+VBODY | car | seat_r | 16 | 18 | 9  | 22 | 28 | 19 | 40 40 50
+VBODY | car | screen | 36 | 1  | 17 | 38 | 31 | 27 | 150 200 230
+VBODY | car | wheel_fl | 44 | -2 | 0 | 58 | 4  | 11 | 20 20 20
+VBODY | car | wheel_fr | 44 | 28 | 0 | 58 | 34 | 11 | 20 20 20
+VBODY | car | wheel_rl | 6  | -2 | 0 | 20 | 4  | 11 | 20 20 20
+VBODY | car | wheel_rr | 6  | 28 | 0 | 20 | 34 | 11 | 20 20 20
+# vehicle rules (all numbers): dt per drive row, cell size, the most cells one row may move, gravity, rolling resistance (per mille of weight), air drag (milli newtons per (m/s)^2), tyre grip (percent of the driven weight), full brake force,
+# reverse drive (percent of forward, speed cap), steering (slowest speed that can turn, speed kept after a turn in percent, drive rows before the next turn), enter reach, the fastest speed one may get out at, ground following, deepest water a car may enter (0 = none)
+RULE | veh_dt_ms | 100
+RULE | veh_cell_um | 1000000
+RULE | veh_max_cells | 8
+RULE | veh_g_mms2 | 9810
+RULE | veh_roll_permille | 15
+RULE | veh_drag_milli | 1200
+RULE | veh_mu_pct | 80
+RULE | veh_brake_n | 6000
+RULE | veh_rev_pct | 40
+RULE | veh_rev_max_um | 5000000
+RULE | veh_steer_min_um | 1500000
+RULE | veh_turn_keep_pct | 85
+RULE | veh_steer_cooldown | 3
+RULE | veh_enter_reach | 2
+RULE | veh_exit_max_um | 2000000
+RULE | veh_step_up | 1
+RULE | veh_fall_max | 1
+RULE | veh_water_max_depth | 0
+RULE | veh_notice | 4
+RULE | turns_drive | 0
