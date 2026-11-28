@@ -141,3 +141,12 @@ Labels as above. Commits on `claude`: 65b4546e9 (setup part 1), ab158bf86 (part 
 | Victory | conquest or space race (r) | none | not built |
 | Save / load | save slots | the ledger IS the save (replay is exact); no slot menu | partial |
 | Fidelity of the picture | tile graphics with unit icons (r) | textured 16x16 tiles with the pieces painted on them (this pass), the same atlas for the flat and the extruded view | partial (placeholder art drawn by code) |
+
+## 14. Video recipe (2026-11-28; a recipe only, NOT recorded)
+
+Status: no video was recorded. The 2026-11-28 live attempt on debil (:5) produced one honest 3D first-person photograph with textured terrain (`civ-photos/p05_y.png`) and then the window picture stopped changing (three screenshots of identical size after camera keys); the flat-view blank-blue fix (driver `sync_z`) and the new settler/warrior/city sprites are therefore proven by harness and code reading only, NOT yet seen in the 2D window. Do this first, then record.
+
+1. Fresh state on debil: move `play/ledger.txt` aside (the driver now re-projects when the ledger goes), restart the driver by exact pid, `rpg_edit_hq.+x play`.
+2. Relay key script (one code per line, 400 ms apart, `]` first to possess `rig:civ`, `0` toggles 2D/3D, `y` is first person and a second delivery of the same code inside 100 ms is dropped by `dup_ms`): setup keys (size, civ, rivals, seed), Space to start, `m` select settler, arrows to open land, `b` found city, `1` or `2` choose production, Space x6 end turns, `0` to 3D, `0` back to 2D, then watch the fog for a rival unit appearing.
+3. Frames: `dump_frame_png_op.+x --root` every 2 s while the script runs (engine idles out after 270 s: any key wakes it; append a byte to `bv_screen_changed.txt` to force a redraw), then `nice -n 15 ffmpeg -threads 2 -framerate 2 -i %04d.png -c:v libx264 -pix_fmt yuv420p out.mp4`, no audio, to a scratch path.
+4. Open the frames before claiming anything; list what still looks like a prototype (code-drawn art, no animation, text bar sentences).
