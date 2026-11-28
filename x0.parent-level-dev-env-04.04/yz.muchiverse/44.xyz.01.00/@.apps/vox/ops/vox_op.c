@@ -157,8 +157,8 @@ static int *dmg_at(W *w, int x, int y, int z, int make) {
 }
 
 /* the fold: ledger rows -> world */
-static void fold(W *w, FILE *L) {
-    char l[512], *f[10]; memset(w, 0, sizeof *w); rewind(L);
+static void fold_rows(W *w, FILE *L) {   /* the row loop alone: folds from L's CURRENT position to the end into the state already in w (D151) */
+    char l[512], *f[10];
     while (fgets(l, sizeof l, L)) { int n = split(l, f, 10);
         if (n >= 5 && !strcmp(f[0], "GIVE")) { Actor *a = actor(w, f[1], 1); int *c = a ? bag(a, f[2], 1) : NULL; if (c) *c += atoi(f[3]); }
         else if (n >= 5 && !strcmp(f[0], "MOVE")) { Actor *a = actor(w, f[1], 1); if (a) { if (!a->has) { a->sx = atoi(f[2]); a->sy = atoi(f[3]); a->sz = atoi(f[4]); } a->x = atoi(f[2]); a->y = atoi(f[3]); a->z = atoi(f[4]); a->has = 1; } }
@@ -178,6 +178,7 @@ static void fold(W *w, FILE *L) {
             for (int i = 0; i < w->na; i++) if (w->a[i].has) { w->a[i].hunger += (t - w->turn) * hpt; if (w->a[i].hunger > hmax) w->a[i].hunger = hmax; }
             w->turn = t; } }
 }
+static void fold(W *w, FILE *L) { memset(w, 0, sizeof *w); rewind(L); fold_rows(w, L); }
 /* hunger rises only on TURN rows (manual turns; no wall clock): every actor that has spawned gains hunger_per_turn per turn, capped at hunger_max; EAT lowers it */
 static int food_value(const char *item) {   /* RULE food_<item>; -1 = not food */
     char k[NM + 8]; snprintf(k, sizeof k, "food_%s", item);
@@ -332,19 +333,20 @@ static int v_craft(W *w, FILE *L, const char *an, const char *rc) {
     if (strcmp(r->i2, "-")) { int *c2 = bag(a, r->i2, 0); if (!c2 || *c2 < r->n2) { fprintf(stderr, "refused: need %d %s\n", r->n2, r->i2); return 16; } }
     char o[512]; snprintf(o, sizeof o, "CRAFT | %s | %s | %s | %d\n", an, rc, r->out, r->on); adv(o, w->turn, tm, "craft"); commit(L, o); fprintf(OUT, "crafted=%s n=%d\n", r->out, r->on); return 0;
 }
+static W *g_inc_w; static long g_inc_pos;   /* D151: set while a replay runs: the one running fold and how far into dst it has read (was: a full re-fold of dst for every row, n squared) */
 static int intent(FILE *dst, const char *line) {
-    char l[512], *f[10]; snprintf(l, sizeof l, "%s", line); int n = split(l, f, 10); W w; fold(&w, dst); int r = 0;
-    if (n >= 5 && !strcmp(f[0], "GIVE")) r = v_give(&w, dst, f[1], f[2], atoi(f[3]), f[4]);
-    else if (n >= 5 && !strcmp(f[0], "MOVE")) r = v_move(&w, dst, f[1], atoi(f[2]), atoi(f[3]), atoi(f[4]));
-    else if (n >= 3 && !strcmp(f[0], "FACE")) r = v_face(&w, dst, f[1], f[2]);
-    else if (n >= 3 && !strcmp(f[0], "RESET")) r = v_reset(&w, dst, f[1]);
-    else if (n >= 3 && !strcmp(f[0], "SEAT")) r = v_seat(&w, dst, f[1], f[2]);
-    else if (n >= 8 && !strcmp(f[0], "DAMAGE")) r = v_mine(&w, dst, f[1], f[2], atoi(f[3]), atoi(f[4]), atoi(f[5]));
-    else if (n >= 6 && !strcmp(f[0], "PLACE")) r = v_place(&w, dst, f[1], f[2], atoi(f[3]), atoi(f[4]), atoi(f[5]));
-    else if (n >= 3 && !strcmp(f[0], "TURN") && !strcmp(f[2], "wait")) { int k = atoi(f[1]) - w.turn; r = v_wait(&w, dst, k); }
-    else if (n >= 6 && !strcmp(f[0], "SLEEP")) r = v_sleep(&w, dst, f[1]);
-    else if (n >= 4 && !strcmp(f[0], "EAT")) r = v_eat(&w, dst, f[1], f[2]);
-    else if (n >= 5 && !strcmp(f[0], "CRAFT")) r = v_craft(&w, dst, f[1], f[2]);
+    char l[512], *f[10]; snprintf(l, sizeof l, "%s", line); int n = split(l, f, 10); W wl, *wp = &wl; if (g_inc_w) { fseek(dst, g_inc_pos, SEEK_SET); fold_rows(g_inc_w, dst); g_inc_pos = ftell(dst); wp = g_inc_w; } else fold(&wl, dst); int r = 0;
+    if (n >= 5 && !strcmp(f[0], "GIVE")) r = v_give(wp, dst, f[1], f[2], atoi(f[3]), f[4]);
+    else if (n >= 5 && !strcmp(f[0], "MOVE")) r = v_move(wp, dst, f[1], atoi(f[2]), atoi(f[3]), atoi(f[4]));
+    else if (n >= 3 && !strcmp(f[0], "FACE")) r = v_face(wp, dst, f[1], f[2]);
+    else if (n >= 3 && !strcmp(f[0], "RESET")) r = v_reset(wp, dst, f[1]);
+    else if (n >= 3 && !strcmp(f[0], "SEAT")) r = v_seat(wp, dst, f[1], f[2]);
+    else if (n >= 8 && !strcmp(f[0], "DAMAGE")) r = v_mine(wp, dst, f[1], f[2], atoi(f[3]), atoi(f[4]), atoi(f[5]));
+    else if (n >= 6 && !strcmp(f[0], "PLACE")) r = v_place(wp, dst, f[1], f[2], atoi(f[3]), atoi(f[4]), atoi(f[5]));
+    else if (n >= 3 && !strcmp(f[0], "TURN") && !strcmp(f[2], "wait")) { int k = atoi(f[1]) - wp->turn; r = v_wait(wp, dst, k); }
+    else if (n >= 6 && !strcmp(f[0], "SLEEP")) r = v_sleep(wp, dst, f[1]);
+    else if (n >= 4 && !strcmp(f[0], "EAT")) r = v_eat(wp, dst, f[1], f[2]);
+    else if (n >= 5 && !strcmp(f[0], "CRAFT")) r = v_craft(wp, dst, f[1], f[2]);
     return r;
 }
 static int is_intent(const char *s) {
@@ -355,13 +357,14 @@ static int is_derived(const char *s) {
     char l[512], *f[10]; snprintf(l, sizeof l, "%s", s); int n = split(l, f, 10);
     return n >= 2 && (!strcmp(f[0], "MINE") || !strcmp(f[0], "DROP") || !strcmp(f[0], "DAY") || !strcmp(f[0], "SPAWNPOINT") || (!strcmp(f[0], "TURN") && n >= 3));
 }
+static W g_replay_w;   /* the one running fold of a replay (D151); zero at program start, cleared again here for a second replay */
 static int replay_into(FILE *src, FILE *dst) {
-    char l[512]; rewind(src);
+    char l[512]; int rr = 0; rewind(src); memset(&g_replay_w, 0, sizeof g_replay_w); g_inc_w = &g_replay_w; g_inc_pos = 0;
     while (fgets(l, sizeof l, src)) {
-        if (is_intent(l)) { if (intent(dst, l)) return 14; }
-        else if (!is_derived(l)) return 14;          /* a row of no known kind */
+        if (is_intent(l)) { if (intent(dst, l)) { rr = 14; break; } }
+        else if (!is_derived(l)) { rr = 14; break; }          /* a row of no known kind */
     }
-    return 0;
+    g_inc_w = NULL; return rr;
 }
 static int same(FILE *a, FILE *b) {
     rewind(a); rewind(b); int x, y;
