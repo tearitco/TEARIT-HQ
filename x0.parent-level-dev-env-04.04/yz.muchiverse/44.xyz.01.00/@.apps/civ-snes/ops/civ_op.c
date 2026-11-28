@@ -20,6 +20,7 @@
  * exit: 0 ok, 2 usage, 4 refused (nothing written, "refused: <why>" on stdout), 5 io / missing rule, 14 ledger refused.
  * Build: gcc -std=gnu11 -Wall -Wextra -O2 -o +x/civ_op.+x civ_op.c */
 #define _POSIX_C_SOURCE 200809L
+#define _DEFAULT_SOURCE   /* realpath, strdup on glibc 2.36 (debil) need it as well */
 #include <limits.h>
 #include <stdint.h>
 #include <ctype.h>

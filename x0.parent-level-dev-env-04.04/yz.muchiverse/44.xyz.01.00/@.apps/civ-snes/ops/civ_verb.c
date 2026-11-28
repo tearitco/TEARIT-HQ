@@ -7,6 +7,7 @@
  * Only the verbs named below are accepted (verbgen check reads the verb comparisons below against verbs.pdl).
  * Build: gcc -std=gnu11 -Wall -Wextra -O2 -o +x/civ_verb.+x civ_verb.c */
 #define _POSIX_C_SOURCE 200809L
+#define _DEFAULT_SOURCE   /* realpath, strdup on glibc 2.36 (debil) need it as well */
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
