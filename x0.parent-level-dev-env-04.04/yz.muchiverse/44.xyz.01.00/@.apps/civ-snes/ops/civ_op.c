@@ -428,7 +428,11 @@ static int cmd_lesson(World *W, const char *file, int civ) {
 /* ---------- the projection: ONE desk read by the 2D and the 3D board ---------- */
 /* ---------- the art: every tile is DRAWN by this op from rules and hash-free patterns (a pure function of the civ colours), 16 x 16 px, SNES-Civ-like: textured terrain, and the pieces drawn ON the terrain tile (settler, warrior, city castle in the owner's colour).
  * The flat 2D view blits cells.txt + cells.rgba, the 3D view textures the floor with the same atlas: one picture for both. Atlas: 0 fog, 1..5 terrain (water grass forest hills mountain), 6 + ((civ-1)*3 + kind) * 5 + terrain = piece on terrain (kind 0 settler 1 warrior 2 city). */
-#define NTILES 67      /* 0 black, 1..5 terrain, 6..65 pieces on terrain, 66 = fog: the flat view paints tile 0 as the sea colour (it means "no tile there"), so unseen cells use their own opaque black tile */
+/* fog: eight smoke tiles as the tearit-map board draws them (tearit_map_op.c slots 14..21: a cloud texture, one of eight chosen per cell by (x*3+y*5)&7 so the fog is not one stamped square). The sine tables are the same values precomputed (no libm). */
+static const double FOG_SU[16] = {0.000000000000, 8.419054176823, 15.556377756908, 20.325372908804, 21.999999999852, 20.325311058979, 15.556263473376, 8.418904858296, -0.000161621025, -8.419203494896, -15.556492039601, -20.325434757533, -21.999999998664, -20.325249208056, -15.556149189004, -8.418755539315};
+static const double FOG_SV[16] = {0.000000000000, 11.313729277752, 15.999999999892, 11.313646162455, -0.000117542563, -11.313812392437, -15.999999999029, -11.313563046549, 0.000235085127, 11.313895506512, 15.999999997302, 11.313479930031, -0.000352627690, -11.313978619977, -15.999999994711, -11.313396812903};
+#define NFOG 8
+#define NTILES 74      /* 0 black, 1..5 terrain, 6..65 pieces on terrain, 66..73 = fog smoke: the flat view paints tile 0 as the sea colour (it means "no tile there"), so unseen cells use their own opaque tiles */
 static const char *SPR[3][16] = {
   { "................", ".......oo.......", "......owwo......", "......owwo......", ".......oo.......", ".....ooXXoo.....", "....oXXXXXXo....", "....oXXXXXXoXo..", "....oXXXXXXoXXo.", ".....oXXXXo.oo..", ".....oXooXo.....", ".....oXo.oXo....", ".....oXo.oXo....", ".....ooo.ooo....", "................", "................" },
   { ".............o..", ".............o..", ".......oo....o..", "......ooooo..o..", "......owwwo..o..", ".......oo....o..", "....ooXXXXoo.o..", "...oXXXXXXXXoo..", "...oXXoXXXXoXo..", "...oXXoXXXXoXo..", "...ooXoXXXXoo...", ".....oXooXo.....", ".....oXo.oXo....", ".....oXo.oXo....", ".....ooo.ooo....", "................" },
@@ -458,9 +462,9 @@ static int write_file(const char *path, const char *data, size_t n) {
 static int cmd_project(World *W, int civ, const char *dir, const char *sel) {
     static char cells[MAXT * 8 + 256], mapt[MAXT + 128], ev[MAXT * 80], atl[16 * 16 * NTILES * 4]; size_t nc = 0, nm = 0, ne = 0; char p[PATH_MAX + 32];
     mkdir(dir, 0755);
-    nc += (size_t)snprintf(cells + nc, sizeof cells - nc, "width=%d\nheight=%d\ntile_px=16\natlas_cols=1\natlas_tiles=67\ncells\n", W->w, W->h);
+    nc += (size_t)snprintf(cells + nc, sizeof cells - nc, "width=%d\nheight=%d\ntile_px=16\natlas_cols=1\natlas_tiles=%d\ncells\n", W->w, W->h, NTILES);
     for (int y = 0; y < W->h; y++) { for (int x = 0; x < W->w; x++) { int t, g; City *c = city_at(W, x, y);
-            if (!vis(W, civ, x, y)) { t = NTILES - 1; g = '#'; } else if (c) { t = piece_tile(c->civ, 2, W->ter[y * W->w + x]); g = "ABCD"[c->civ - 1]; } else { int k = W->ter[y * W->w + x]; Unit *pu = unit_at(W, x, y); t = pu ? piece_tile(pu->civ, pu->kind, k) : k + 1; g = tglyph[k]; }
+            if (!vis(W, civ, x, y)) { t = NTILES - NFOG + ((x * 3 + y * 5) & 7); g = '#'; } else if (c) { t = piece_tile(c->civ, 2, W->ter[y * W->w + x]); g = "ABCD"[c->civ - 1]; } else { int k = W->ter[y * W->w + x]; Unit *pu = unit_at(W, x, y); t = pu ? piece_tile(pu->civ, pu->kind, k) : k + 1; g = tglyph[k]; }
             nc += (size_t)snprintf(cells + nc, sizeof cells - nc, "%s%d,0", x ? " " : "", t); mapt[nm++] = (char)g; }
         cells[nc++] = '\n'; mapt[nm++] = '\n'; }
     for (int i = 0; i < W->nu; i++) { Unit *u = &W->u[i]; if (!u->alive || !vis(W, civ, u->x, u->y)) continue;
@@ -472,8 +476,10 @@ static int cmd_project(World *W, int civ, const char *dir, const char *sel) {
     unsigned char tile[10][3]; memcpy(tile, TILE, sizeof tile);
     for (int s = 1; s <= 4 && s <= W->nciv; s++) { tile[5 + s][0] = (unsigned char)rule_civ(W->civid[s], "r"); tile[5 + s][1] = (unsigned char)rule_civ(W->civid[s], "g"); tile[5 + s][2] = (unsigned char)rule_civ(W->civid[s], "b"); }      /* a city tile is its owner civ colour */
     memset(atl, 0, sizeof atl); for (int i = 0; i < 256; i++) atl[i * 4 + 3] = (char)255;      /* tile 0: unseen = black */
-    for (int i = 0; i < 256; i++) { char *p = atl + (NTILES - 1) * 1024 + i * 4; int px = i % 16, py = i / 16, ln = (py == 8 && px >= 2 && px <= 13);      /* the fog tile as the Grok civ drew it (202.snes-civ render.c: near-black 0.06,0.06,0.09 with a faint line 0.09,0.09,0.12 across the middle), opaque so the flat view does not paint sea */
-        p[0] = (char)(ln ? 23 : 15); p[1] = (char)(ln ? 23 : 15); p[2] = (char)(ln ? 31 : 23); p[3] = (char)255; }
+    for (int f = 0; f < NFOG; f++) for (int i = 0; i < 256; i++) { char *p = atl + (NTILES - NFOG + f) * 1024 + i * 4; int px = i % 16, py = i / 16, u = (px + f * 3) & 15, v = (py + f * 5) & 15;      /* the smoke tile as tearit_map_op.c draws it: a sine ripple plus two wisps, grey-blue, opaque so the flat view does not paint sea */
+        int n = (int)(FOG_SU[u] + FOG_SV[v]), d2 = (u - 7) * (u - 7) + (v - 4) * (v - 4), wisp = d2 < 10 ? 55 : d2 < 26 ? 28 : 0, d3 = (u - 12) * (u - 12) + (v - 11) * (v - 11), base;
+        wisp += d3 < 8 ? 36 : 0; base = 176 + n + wisp; if (base < 150) base = 150; if (base > 242) base = 242;
+        p[0] = (char)base; p[1] = (char)(base + 2 > 255 ? 255 : base + 2); p[2] = (char)(base + 12 > 255 ? 255 : base + 12); p[3] = (char)255; }
     for (int k = 0; k < 5; k++) paint_tile((unsigned char *)atl + (size_t)(k + 1) * 1024, k, -1, tile[0]);
     for (int s = 1; s <= 4; s++) { unsigned char col[3] = { tile[5 + s][0], tile[5 + s][1], tile[5 + s][2] }; for (int kind = 0; kind < 3; kind++) for (int k = 0; k < 5; k++) paint_tile((unsigned char *)atl + (size_t)piece_tile(s, kind, k) * 1024, k, kind, col); }
     for (int i = 0; i < W->nc; i++) { City *c = &W->c[i]; if (!vis(W, civ, c->x, c->y)) continue;      /* a city is a tower in 3D: a brown trunk with a flag block of the owner's colour */
