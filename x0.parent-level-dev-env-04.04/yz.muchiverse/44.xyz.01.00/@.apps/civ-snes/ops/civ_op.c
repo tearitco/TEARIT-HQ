@@ -456,6 +456,12 @@ static int cmd_project(World *W, int civ, const char *dir, const char *sel) {
     snprintf(p, sizeof p, "%s/events.txt", dir); rc |= write_file(p, ev, ne);
     snprintf(p, sizeof p, "%s/extrusion.pdl", dir); rc |= write_file(p, ext, strlen(ext));
     snprintf(p, sizeof p, "%s/cells.rgba", dir); rc |= write_file(p, atl, sizeof atl);
+    {   /* the FLAT view (bv_render_2d) draws this desk's map.txt in these colours when ascii_legend.txt exists: glyph|height|r|g|b|asset|name|char, the SAME colours as the atlas tiles above (one palette, one derivation) */
+        char lg[2400]; size_t nl = 0; static const char *gname[] = { "water", "grass", "forest", "hills", "mountain" };
+        for (int k = 0; k < 5; k++) nl += (size_t)snprintf(lg + nl, sizeof lg - nl, "%c|%d|%d|%d|%d|-|%s|%c\n", tglyph[k], k == 3 ? 3 : k == 4 ? 5 : 1, tile[k + 1][0], tile[k + 1][1], tile[k + 1][2], gname[k], tglyph[k]);
+        for (int s = 1; s <= 4; s++) nl += (size_t)snprintf(lg + nl, sizeof lg - nl, "%c|2|%d|%d|%d|-|city|%c\n", "ABCD"[s - 1], tile[5 + s][0], tile[5 + s][1], tile[5 + s][2], "ABCD"[s - 1]);
+        nl += (size_t)snprintf(lg + nl, sizeof lg - nl, "#|1|0|0|0|-|unseen|#\n");
+        snprintf(p, sizeof p, "%s/ascii_legend.txt", dir); rc |= write_file(p, lg, nl); }
     /* the engine reloads when cells.marker GROWS (house marker rule): append one byte, restart at 4096 */
     snprintf(p, sizeof p, "%s/cells.marker", dir); struct stat st; int restart = stat(p, &st) == 0 && st.st_size >= 4096;
     FILE *m = fopen(p, restart ? "w" : "a"); if (m) { fputc('1', m); fclose(m); } else rc |= 5;

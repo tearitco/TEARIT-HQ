@@ -1,3 +1,4 @@
+# NOTE: the editor forwards ONLY the GAMEKEY codes of its own instance keybinds (rpg-edit-hq-pchq/pieces/system/keybinds.pdl, untracked live data): arrows, space, b, g, m, 0-9 and Home work as is; n, r, PgUp, PgDn, End and BackSpace need `GAMEKEY` rows with codes 110, 114, 65365, 65366, 65367, 65288 added there (an owner decision, not done on the live editor); m (select next unit), g (random seed) and Home (backspace in the setup, north-west when playing) are the same functions on keys it already forwards.
 # keys.pdl - what each key of civ-snes DOES (CONFIG; the driver holds no verb of its own). The camera keys Y U I O P belong to the board (D152): they are never bound here, and `l` (release) is the engine's.
 # Key names are the GAMEKEY names of civ-snes-pchq/pieces/system/keybinds.pdl (name -> key code).
 # KEYVERB | key | verb | arg      PLAY mode (a ledger exists): the verb page that key plays
@@ -14,6 +15,7 @@ KEYVERB | 1         | build  | warrior
 KEYVERB | 2         | build  | settler
 KEYVERB | space     | endturn | -
 KEYVERB | n         | select | next
+KEYVERB | m         | select | next
 # SETUPKEY | key | action | arg    SETUP mode (no ledger yet): the action of `civ_op setup`; space plays the `start` verb page (the NEW row); r = a random seed
 SETUPKEY | up        | prev   | -
 SETUPKEY | down      | next   | -
@@ -21,6 +23,8 @@ SETUPKEY | left      | dec    | -
 SETUPKEY | right     | inc    | -
 SETUPKEY | space     | start  | -
 SETUPKEY | r         | random | -
+SETUPKEY | g         | random | -
+SETUPKEY | home      | back   | -
 SETUPKEY | backspace | back   | -
 SETUPKEY | 0         | digit  | 0
 SETUPKEY | 1         | digit  | 1

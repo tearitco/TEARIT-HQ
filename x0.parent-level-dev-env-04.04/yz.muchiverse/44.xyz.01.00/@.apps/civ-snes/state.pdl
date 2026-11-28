@@ -11,6 +11,7 @@ FILE | tutorial.pdl | CONFIG | nobody at run time: lesson 1 | -
 FILE | cells.txt | PROJECTION | civ_op project (atomic write) | civ_op <ledger> project <civ> <desk>
 FILE | map.txt | PROJECTION | civ_op project | civ_op <ledger> project <civ> <desk>
 FILE | events.txt | PROJECTION | civ_op project (the units as pieces) | civ_op <ledger> project <civ> <desk>
+FILE | ascii_legend.txt | PROJECTION | civ_op project (the colours the flat view draws map.txt with: the same palette as the atlas) | civ_op <ledger> project <civ> <desk>
 FILE | extrusion.pdl | PROJECTION | civ_op project (glyph heights for the 3D view) | civ_op <ledger> project <civ> <desk>
 FILE | cells.rgba | PROJECTION | civ_op project (the flat-colour tile atlas, 8 tiles) | civ_op <ledger> project <civ> <desk>
 FILE | cells.marker | PROJECTION | civ_op project APPENDS one byte per run (the engine reloads when its SIZE grows, the house marker rule), restarts at 1 byte after 4096: not byte-identical on a re-run, identical after the folder is deleted | delete it and it restarts

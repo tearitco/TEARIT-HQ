@@ -11,6 +11,8 @@ GAMEKEY      | space | 32
 GAMEKEY      | b | 98
 GAMEKEY      | n | 110
 GAMEKEY      | r | 114
+GAMEKEY      | m | 109      # the editor already forwards m (craft in rmmc): select next unit without any change to the editor keybinds
+GAMEKEY      | g | 103      # the editor already forwards g (place in rmmc): a random seed in the setup
 GAMEKEY      | home | 65360
 GAMEKEY      | pgup | 65365
 GAMEKEY      | pgdn | 65366

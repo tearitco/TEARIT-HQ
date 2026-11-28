@@ -78,7 +78,7 @@ static int game_key(const char *name) { int kv_ = -1; for (int i = 0; i < nkv; i
     if (!strcmp(verb, "select")) { sel_fix(1); snprintf(msg, sizeof msg, sel[0] ? "selected %s" : "no unit has moves", sel); project_desk(); return 0; }
     if (!strcmp(verb, "move") && step_ms > 0) { long tn = now_ms(); if (g_last_step && tn - g_last_step < step_ms) return 0; }
     sel_fix(0);
-    if (!strcmp(verb, "move") || !strcmp(verb, "found")) { if (!sel[0]) { snprintf(msg, sizeof msg, "no unit selected: press N"); return 1; } snprintf(args, sizeof args, "%s %s", sel, arg); }
+    if (!strcmp(verb, "move") || !strcmp(verb, "found")) { if (!sel[0]) { snprintf(msg, sizeof msg, "no unit selected: press M"); return 1; } snprintf(args, sizeof args, "%s %s", sel, arg); }
     else if (!strcmp(verb, "build")) { char cid[24]; if (!first_city(cid, sizeof cid)) { snprintf(msg, sizeof msg, "you have no city yet: found one with B"); return 1; } snprintf(args, sizeof args, "%s %s", cid, arg); }
     else if (!strcmp(verb, "endturn")) args[0] = 0; else snprintf(args, sizeof args, "%s", arg);
     int rc = play_verb(verb, args, msg, sizeof msg); if (!strcmp(verb, "move")) g_last_step = now_ms();
