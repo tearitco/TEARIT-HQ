@@ -1,5 +1,5 @@
 # text.pdl - the words of the "next" line of the side panel (CONFIG). The panel is the same for every civ; the line says what to do next.
-TEXT | next_pick | Next: press ] to pick your settler
+TEXT | next_pick | Next: press N to pick your settler
 TEXT | next_walk | Next: arrows walk the settler to open land
 TEXT | next_found | Next: press B to found a city here
 TEXT | next_endturn | Next: press Space to end the turn

@@ -1,5 +1,6 @@
-# keys.pdl - what each key of civ-snes DOES: one verb page (CONFIG; the driver holds no verb of its own). The camera keys Y U I O P belong to the board (D152): they are never bound here, the digits are the game's.
-# KEYVERB | key (what the player presses) | verb | arg
+# keys.pdl - what each key of civ-snes DOES (CONFIG; the driver holds no verb of its own). The camera keys Y U I O P belong to the board (D152): they are never bound here, and `l` (release) is the engine's.
+# Key names are the GAMEKEY names of civ-snes-pchq/pieces/system/keybinds.pdl (name -> key code).
+# KEYVERB | key | verb | arg      PLAY mode (a ledger exists): the verb page that key plays
 KEYVERB | up        | move   | n
 KEYVERB | down      | move   | s
 KEYVERB | left      | move   | w
@@ -12,8 +13,26 @@ KEYVERB | b         | found  | -
 KEYVERB | 1         | build  | warrior
 KEYVERB | 2         | build  | settler
 KEYVERB | space     | endturn | -
-KEYVERB | bracket   | select | next
-# RULE rows: poll_ms = how often the driver looks at the relay file; step_ms = the shortest time between two moves (a held arrow repeats; a press inside it is dropped)
+KEYVERB | n         | select | next
+# SETUPKEY | key | action | arg    SETUP mode (no ledger yet): the action of `civ_op setup`; space plays the `start` verb page (the NEW row); r = a random seed
+SETUPKEY | up        | prev   | -
+SETUPKEY | down      | next   | -
+SETUPKEY | left      | dec    | -
+SETUPKEY | right     | inc    | -
+SETUPKEY | space     | start  | -
+SETUPKEY | r         | random | -
+SETUPKEY | backspace | back   | -
+SETUPKEY | 0         | digit  | 0
+SETUPKEY | 1         | digit  | 1
+SETUPKEY | 2         | digit  | 2
+SETUPKEY | 3         | digit  | 3
+SETUPKEY | 4         | digit  | 4
+SETUPKEY | 5         | digit  | 5
+SETUPKEY | 6         | digit  | 6
+SETUPKEY | 7         | digit  | 7
+SETUPKEY | 8         | digit  | 8
+SETUPKEY | 9         | digit  | 9
+# RULE rows: poll_ms = how often the driver looks at the relay file; idle_poll_ms = the same 3 s after the last key; step_ms = the shortest time between two moves (a held arrow repeats; a press inside it is dropped)
 RULE | poll_ms | 50
 RULE | idle_poll_ms | 120
 RULE | step_ms | 100

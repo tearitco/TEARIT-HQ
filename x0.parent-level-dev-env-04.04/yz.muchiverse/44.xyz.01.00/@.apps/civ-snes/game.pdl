@@ -1,0 +1,8 @@
+# Play starts civ_driver (2026-11-27, D157): it tails the key relay while the rig:civ token is possessed and turns the keys into the verb pages of civ_op (setup first, then play). Same row shape as @.apps/rmmc/game.pdl.
+GAME   | name        | civ-snes
+GAME   | title       | Civ SNES
+GAME   | kind        | editor
+GAME   | ruleset     | default
+GAME   | driver      | {book}/ops/+x/civ_driver.+x {house} {editor}/state/interact_relay.txt --feed {editor}/state/game_ui.txt --editor-pkg {editor}/rpg-edit-hq-pchq --lock {editor}/state/civ_driver.lock
+GAME   | clock       | pause
+GAME   | export      | {house}/&.widgits/_shared-lib/ops/+x/game_core.+x {book} {state} export {out}

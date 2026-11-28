@@ -21,6 +21,7 @@ EXPECT_HAS | house/@.apps/civ-snes/events/found/event_pkg/pages/page_1/event.ir.
 EXPECT_HAS | house/@.apps/civ-snes/events/build/event_pkg/pages/page_1/event.ir.pdl | type=civ_verb \p verb=build | the build page names the registered command
 EXPECT_HAS | house/@.apps/civ-snes/events/endturn/event_pkg/pages/page_1/event.ir.pdl | type=civ_verb \p verb=endturn | the endturn page names the registered command
 EXPECT_HAS | house/@.apps/civ-snes/events/seat/event_pkg/pages/page_1/event.ir.pdl | type=civ_verb \p verb=seat | the seat page names the registered command
+EXPECT_HAS | house/@.apps/civ-snes/events/start/event_pkg/pages/page_1/event.ir.pdl | type=civ_verb \p verb=start | the start page (the setup commit) names it too
 EXPECT_HAS | house/@.apps/civ-snes/events/endturn/event_pkg/pages/page_1/condition.pdl | COND \p trigger \p ui | a verb page has a ui trigger
 ENV | CIV_LEDGER | $T/led.txt
 ENV | CIV_DESK | $T/desk

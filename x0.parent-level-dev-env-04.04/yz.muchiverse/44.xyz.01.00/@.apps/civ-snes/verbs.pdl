@@ -9,3 +9,4 @@ VERB | found   | yes | ui | unit      | a settler becomes a city on its tile (re
 VERB | build   | yes | ui | city kind | what a city makes: settler or warrior (refused 4 when it already makes that)
 VERB | endturn | yes | ui |           | Next turn: append TURN n+1, then production, births, fresh move points, then the rival agent plays (the only thing that advances time)
 VERB | seat    | yes | ui | civ who   | who plays a civ: human or agent:basic (a row; the last row wins)
+VERB | start   | yes | ui |           | commit the setup (play/setup.txt: size, map, difficulty, rivals, civ, seed) as the one NEW row; refused 4 when a game already exists

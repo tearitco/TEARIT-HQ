@@ -427,7 +427,7 @@ static const unsigned char TILE[10][3] = { {0,0,0}, {40,90,200}, {90,170,70}, {3
 static int write_file(const char *path, const char *data, size_t n) {
     char tmp[PATH_MAX + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", path); FILE *f = fopen(tmp, "w"); if (!f) return 5;
     int ok = fwrite(data, 1, n, f) == n; fclose(f); if (!ok || rename(tmp, path)) return 5; return 0; }
-static int cmd_project(World *W, int civ, const char *dir) {
+static int cmd_project(World *W, int civ, const char *dir, const char *sel) {
     static char cells[MAXT * 8 + 256], mapt[MAXT + 128], ev[MAXT * 40], atl[16 * 16 * 10 * 4]; size_t nc = 0, nm = 0, ne = 0; char p[PATH_MAX + 32];
     mkdir(dir, 0755);
     nc += (size_t)snprintf(cells + nc, sizeof cells - nc, "width=%d\nheight=%d\ntile_px=16\natlas_cols=1\natlas_tiles=10\ncells\n", W->w, W->h);
@@ -438,7 +438,8 @@ static int cmd_project(World *W, int civ, const char *dir) {
     for (int i = 0; i < W->nu; i++) { Unit *u = &W->u[i]; if (!u->alive || !vis(W, civ, u->x, u->y)) continue;
         int cr = rule_civ(W->civid[u->civ], "r"), cg = rule_civ(W->civid[u->civ], "g"), cb = rule_civ(W->civid[u->civ], "b"), lt = u->kind ? 0 : 90;      /* the piece wears its civ colour: the warrior as is, the settler lighter */
         int r = cr + (255 - cr) * lt / 255, g = cg + (255 - cg) * lt / 255, b = cb + (255 - cb) * lt / 255;
-        ne += (size_t)snprintf(ev + ne, sizeof ev - ne, "%d %d %d %d %d block 0 2 1\n", u->x, u->y, r, g, b); }
+        if (sel && !strcmp(u->id, sel)) ne += (size_t)snprintf(ev + ne, sizeof ev - ne, "%d %d %d %d %d rig:civ 0 2 0\n", u->x, u->y, r, g, b);      /* the selected unit is the TOKEN the player possesses (the engine forwards the game keys only while a rig: token is possessed) */
+        else ne += (size_t)snprintf(ev + ne, sizeof ev - ne, "%d %d %d %d %d block 0 2 1\n", u->x, u->y, r, g, b); }
     unsigned char tile[10][3]; memcpy(tile, TILE, sizeof tile);
     for (int s = 1; s <= 4 && s <= W->nciv; s++) { tile[5 + s][0] = (unsigned char)rule_civ(W->civid[s], "r"); tile[5 + s][1] = (unsigned char)rule_civ(W->civid[s], "g"); tile[5 + s][2] = (unsigned char)rule_civ(W->civid[s], "b"); }      /* a city tile is its owner civ colour */
     for (int t = 0; t < 10; t++) for (int i = 0; i < 256; i++) { size_t o = ((size_t)t * 256 + (size_t)i) * 4; int edge = (i % 16 == 0 || i / 16 == 0) && t > 0, sh = edge ? 12 : 0;
@@ -548,7 +549,7 @@ int main(int argc, char **argv) {
         if (strcmp(argv[4], "show") && draft_save(argv[3], &d)) return 5;
         draft_show(&d); return 0; }
     if (!strcmp(verb, "preview")) { if (argc < 5) return 2; Draft d; draft_load(argv[3], &d); int rc0 = do_new(&W, &d.s, &R);
-        if (rc0) { printf("refused: %s\n", msg); return rc0; } return cmd_project(&W, 0, argv[4]); }
+        if (rc0) { printf("refused: %s\n", msg); return rc0; } return cmd_project(&W, 0, argv[4], "u1"); }
     if (!strcmp(verb, "new") || !strcmp(verb, "start")) {
         Setup S; if (!strcmp(verb, "start")) { if (argc < 4) return 2; Draft d; draft_load(argv[3], &d); S = d.s; }
         else { if (argc < 4) return 2; S.seed = (unsigned)strtoul(argv[3], NULL, 10); S.size = argc > 4 ? name_idx(sizename, NSIZE, argv[4]) : rule("default_size"); S.diff = argc > 5 ? name_idx(diffname, 3, argv[5]) : rule("default_diff");
@@ -572,7 +573,7 @@ int main(int argc, char **argv) {
     if (!strcmp(verb, "nextunit")) { int civ = argc > 3 ? civ_of(argv[3]) : 1, after = -1; if (argc > 4) for (int i = 0; i < W.nu; i++) if (!strcmp(W.u[i].id, argv[4])) after = i;
         for (int k = 1; k <= W.nu; k++) { Unit *u = &W.u[(after + k + W.nu) % W.nu]; if (u->alive && u->civ == civ && u->mp > 0) { printf("%s\n", u->id); return 0; } } printf("none\n"); return 4; }
     if (!strcmp(verb, "lesson")) { if (argc < 4) { return 2; } return cmd_lesson(&W, argv[3], argc > 4 ? civ_of(argv[4]) : 1); }
-    if (!strcmp(verb, "project")) { if (argc < 5) return 2; return cmd_project(&W, civ_of(argv[3]), argv[4]); }
+    if (!strcmp(verb, "project")) { if (argc < 5) return 2; return cmd_project(&W, civ_of(argv[3]), argv[4], argc > 5 ? argv[5] : ""); }
     if (!strcmp(verb, "move")) { if (argc < 5) return 2; Unit *u = unit_id(&W, argv[3]); int d = dir_of(argv[4]);
         if (!u) rc = refuse("no such unit"); else if (d < 0) rc = refuse("direction is n ne e se s sw w nw"); else rc = do_move(&W, u, d, &R); }
     else if (!strcmp(verb, "found")) { if (argc < 4) return 2; Unit *u = unit_id(&W, argv[3]); rc = u ? do_found(&W, u, &R) : refuse("no such unit"); }

@@ -1,0 +1,120 @@
+# civ_snes_driver - the REAL civ_driver (D157) in a scratch house with a fake relay file: keys (codes, as the engine appends them while the rig:civ token is possessed) become SETUP actions, then the verb pages of the game; the left-bar feed names the civ and the lesson step.
+# No window here: that the engine forwards the keys and the editor draws the feed is the live run on debil (photographs). Pins: HAND = forced by keys.pdl / rules.pdl rows or the small seed-4 world (row 6 "~~~.^..T.TT" of the small world: 5,6 is grass).
+RESULTS | ../results/civ_snes_driver.txt
+CASE | setup-then-play-from-keys
+SCRATCH
+ENV | BLUEPRINTZ_DEBUG_FILE | /nonexistent
+MKDIR | house/xyzfs
+MKDIR | house/@.apps/civ-snes/ops/+x
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/house/@.apps/civ-snes/ops/+x/civ_op.+x | $HOUSE/@.apps/civ-snes/ops/civ_op.c
+EXPECT_EXIT | 0 | the rule op compiles
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/house/@.apps/civ-snes/ops/+x/civ_verb.+x | $HOUSE/@.apps/civ-snes/ops/civ_verb.c
+EXPECT_EXIT | 0 | the verb engine compiles
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/house/@.apps/civ-snes/ops/+x/civ_driver.+x | $HOUSE/@.apps/civ-snes/ops/civ_driver.c
+EXPECT_EXIT | 0 | the driver compiles with -Wall -Wextra -Werror
+COPY | @.apps/civ-snes/rules.pdl | house/@.apps/civ-snes/rules.pdl
+COPY | @.apps/civ-snes/text.pdl | house/@.apps/civ-snes/text.pdl
+COPY | @.apps/civ-snes/keys.pdl | house/@.apps/civ-snes/keys.pdl
+COPY | @.apps/civ-snes/tutorial.pdl | house/@.apps/civ-snes/tutorial.pdl
+MKDIR | house/@.apps/civ-snes/civ-snes-pchq/pieces/system
+COPY | @.apps/civ-snes/civ-snes-pchq/pieces/system/keybinds.pdl | house/@.apps/civ-snes/civ-snes-pchq/pieces/system/keybinds.pdl
+ENV | CIV_LEDGER | $T/led.txt
+ENV | CIV_DESK | $T/desk
+# camera keys y u i o p (121 117 105 111 112) and l (108) are not GAMEKEYs: nothing reacts (CONTROL: bound nowhere in keys.pdl)
+RUN | grep | -c | -E | ^KEYVERB +[\p] +[yuiop] +[\p] | $HOUSE/@.apps/civ-snes/keys.pdl
+EXPECT_OUT | 0 | the camera keys Y U I O P are bound to no verb in keys.pdl
+RUN | grep | -c | -E | GAMEKEY +[\p] +[a-z0-9]+ +[\p] +(121\p117\p105\p111\p112\p108)$ | $HOUSE/@.apps/civ-snes/civ-snes-pchq/pieces/system/keybinds.pdl
+EXPECT_OUT | 0 | and none of their codes (121 117 105 111 112) is a GAMEKEY, so the engine keeps them
+# ---- SETUP from keys: right right = size small; down down right = difficulty hard; down down down = the Seed option, 8 backspaces and 4 = seed 4; space = start
+WRITE | relay.txt | 121 1\n112 2\n1001 3\n1001 4\n1003 5\n1003 6\n1001 7\n1003 8\n1003 9\n1003 10\n65288 11\n65288 12\n65288 13\n65288 14\n65288 15\n65288 16\n65288 17\n65288 18\n52 19\n
+RUN | $T/house/@.apps/civ-snes/ops/+x/civ_driver.+x | $T/house | $T/relay.txt | --from-start | --once | --feed | $T/feed0.txt
+EXPECT_EXIT | 0 | the setup keys are all accepted
+EXPECT_HAS | $T/house/@.apps/civ-snes/play/setup.txt | size=0\ndiff=2\nrivals=1\nmap=0\nseed=4\npick=0\nopt=5\n | the draft after the keys: small, hard, 1 rival, random map, seed 4, Romans, focus on the Seed option
+EXPECT_NOFILE | led.txt | NO ledger yet: choosing options writes no game fact (the draft is a preference)
+EXPECT_HAS | $T/feed0.txt | nick_line=Setup: you are Romans | the setup bar names the civ you will play
+EXPECT_HAS | $T/feed0.txt | party_0_label=> Romans | the civ list is the left bar's pals list, the pick marked
+EXPECT_HAS | $T/feed0.txt | stat_line2=Seed: 4 | the focused option is shown
+EXPECT_HAS | $T/feed0.txt | Pick the options with the arrows, then press Space. | and the lesson sentence says what to do
+EXPECT_FILE | desk/cells.txt | the setup screen wrote the preview desk (the same files the game desk is)
+EXPECT_HAS | $T/desk/cells.txt | width=20\nheight=14\n | the preview is the SMALL map the draft chose
+# ---- start = space
+WRITE | relay2.txt | 32 1\n
+RUN | $T/house/@.apps/civ-snes/ops/+x/civ_driver.+x | $T/house | $T/relay2.txt | --from-start | --once | --feed | $T/feed1.txt
+EXPECT_EXIT | 0 | space starts the game
+EXPECT_HAS | $T/led.txt | NEW\p4\p20\p14\p | the NEW row of the draft
+RUN | grep | -c | \psmall\phard\p1\prandom\p | $T/led.txt
+EXPECT_OUT | 1 | the setup is IN the ledger row
+EXPECT_HAS | $T/feed1.txt | nick_line=Romans T0 | after the start the bar names the civ and the turn
+EXPECT_HAS | $T/feed1.txt | 2/5 arrows: step | and the lesson moves on to step 2
+EXPECT_HAS | $T/desk/events.txt | rig:civ | the selected unit is the rig:civ TOKEN the player possesses
+RUN | $T/house/@.apps/civ-snes/ops/+x/civ_op.+x | $T/led.txt | verify
+EXPECT_EXIT | 0 | the started ledger replays
+# ---- PLAY from keys: up = move the settler north, b = found, 2 = build settler, space = end turn; n and a camera key change nothing
+WRITE | relay3.txt | 1002 1\n98 2\n50 3\n32 4\n121 5\n
+RUN | $T/house/@.apps/civ-snes/ops/+x/civ_driver.+x | $T/house | $T/relay3.txt | --from-start | --once | --feed | $T/feed2.txt
+EXPECT_EXIT | 0 | the play keys are accepted
+EXPECT_HAS | $T/led.txt | MOVE\pu1\p5\p7\p5\p6\p | up moved the selected settler u1 north from 5,7 to 5,6 (the cost is the terrain rule, PIN 2: a rough tile)
+EXPECT_HAS | $T/led.txt | FOUND\pu1\pc1\p5\p6 | b founded the city
+EXPECT_HAS | $T/led.txt | BUILD\pc1\psettler | 2 made the city build settlers
+EXPECT_HAS | $T/led.txt | TURN\p1 | space ended the turn
+EXPECT_HAS | $T/feed2.txt | lesson done! | the lesson reads done from the ledger rows
+EXPECT_HAS | $T/feed2.txt | nick_line=Romans T1 | the turn counter moved
+RUN | grep | -c | -E | ^(MOVE)[\p]u1[\p] | $T/led.txt
+EXPECT_OUT | 1 | exactly one human MOVE row (the camera key 121 added none)
+RUN | grep | -c | ^TURN | $T/led.txt
+EXPECT_OUT | 1 | exactly one TURN row
+# ---- ONE DATA for 2D and 3D: the book package has ONE desk folder, the board manifest lists exactly it, and both views read the same files (cells.txt + map.txt for the flat view, the same plus extrusion.pdl and events.txt for the extruded one)
+RUN | find | $HOUSE/@.apps/civ-snes/civ-snes-pchq | -name | cells.txt
+EXPECT_OUT | civ-snes-pchq/pieces/system/maps/civ-snes/civ-0001/cells.txt | the package has its one cells.txt in the desk the board manifest names
+RUN | grep | -c | desk_[0-9]*_id | $HOUSE/@.apps/civ-snes/civ-snes-pchq/pieces/system/maps/civ-snes/game.pdl
+EXPECT_OUT | 1 | the board manifest lists ONE desk (civ-0001), so no second map file can exist beside it
+RUN | find | $HOUSE/@.apps/civ-snes/civ-snes-pchq | -name | map.txt | -o | -name | cells.txt | -o | -name | extrusion.pdl
+CAPTURE | pk_files
+RUN | grep | -c | civ-0001 | $HOUSE/@.apps/civ-snes/civ-snes-pchq/pieces/system/maps/civ-snes/game.pdl
+EXPECT_OUT | 2 | the manifest names desk civ-0001 (id and label)
+RUN | grep | -c | GAME.*driver.*civ_driver | $HOUSE/@.apps/civ-snes/game.pdl
+EXPECT_OUT | 1 | the GAME \p driver row starts civ_driver (the editor Play)
+RUN | grep | -c | civ-0001 | $HOUSE/@.apps/civ-snes/rooms.pdl
+EXPECT_OUT | 2 | the book room row names the same desk (id and map)
+RUN | $T/house/@.apps/civ-snes/ops/+x/civ_op.+x | $T/led.txt | project | civ1 | $T/dparity | u2
+RUN | cmp | $T/dparity/cells.txt | $T/desk/cells.txt
+EXPECT_EXIT | 0 | the desk the driver wrote and a fresh projection of the same ledger are byte-identical in cells.txt: one derivation, one data, for both views
+RUN | cmp | $T/dparity/map.txt | $T/desk/map.txt
+EXPECT_EXIT | 0 | and in map.txt
+# a refusal is shown, writes nothing
+WRITE | relay4.txt | 98 1\n
+RUN | $T/house/@.apps/civ-snes/ops/+x/civ_driver.+x | $T/house | $T/relay4.txt | --from-start | --once | --feed | $T/feed3.txt
+EXPECT_EXIT | 4 | NEGATIVE-b-with-no-settler-left-is-refused (the settler became the city)
+RUN | grep | -c | ^FOUND | $T/led.txt
+EXPECT_OUT | 2 | and writes no row (the human city and the rival city only)
+# ---- the keys come from keys.pdl: a mutated keys.pdl changes what a key does
+MKDIR | k2/@.apps/civ-snes
+RUN | cp | -r | $T/house/@.apps | $T/k2/
+RUN | sed | -i | s/KEYVERB \p up        \p move   \p n/KEYVERB \p up        \p move   \p s/ | $T/k2/@.apps/civ-snes/keys.pdl
+RUN | cmp | -s | $T/k2/@.apps/civ-snes/keys.pdl | $T/house/@.apps/civ-snes/keys.pdl
+EXPECT_EXIT | 1 | the edited keys.pdl differs
+MKDIR | k2/xyzfs
+RUN | rm | -rf | $T/k2/@.apps/civ-snes/play
+ENV | CIV_LEDGER | $T/led2.txt
+ENV | CIV_DESK | $T/desk2
+RUN | $T/k2/@.apps/civ-snes/ops/+x/civ_op.+x | $T/led2.txt | new | 4 | small
+WRITE | relay5.txt | 1002 1\n
+RUN | $T/k2/@.apps/civ-snes/ops/+x/civ_driver.+x | $T/k2 | $T/relay5.txt | --from-start | --once
+EXPECT_HAS | $T/led2.txt | MOVE\pu1\p5\p7\p5\p8\p1 | DATA: with `up` mapped to s in keys.pdl the up arrow walks SOUTH (5,8: grass, cost 1; HAND row 8 of the small world is "..T....~", index 5 is a dot), not north
+# ---- SABOTAGE d1: a driver that always treats keys as SETUP keys never plays the game
+MKDIR | m1
+COPY | @.apps/civ-snes/ops/civ_driver.c | m1/civ_driver.c
+RUN | sed | -i | s/int rc = ledger_started() ? game_key(gk) : setup_key(gk, pkg);/int rc = setup_key(gk, pkg);/ | $T/m1/civ_driver.c
+RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_driver.c | $T/m1/civ_driver.c
+EXPECT_EXIT | 1 | SABOTAGE d1: the mutant source differs (the sed matched)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/m1/civ_driver.+x | $T/m1/civ_driver.c
+EXPECT_EXIT | 0 | SABOTAGE d1: compiles
+ENV | CIV_LEDGER | $T/led3.txt
+ENV | CIV_DESK | $T/desk3
+RUN | $T/house/@.apps/civ-snes/ops/+x/civ_op.+x | $T/led3.txt | new | 4 | small
+WRITE | relay6.txt | 1002 1\n
+RUN | rm | -rf | $T/house/@.apps/civ-snes/play
+RUN | $T/m1/civ_driver.+x | $T/house | $T/relay6.txt | --from-start | --once
+RUN | grep | -c | ^MOVE | $T/led3.txt
+EXPECT_OUT | 0 | SABOTAGE d1 CAUGHT: the mutant driver writes no MOVE for the up arrow (the real driver does, shown above)
+CLEAN |

@@ -18,3 +18,6 @@ FILE | cells.marker | PROJECTION | civ_op project APPENDS one byte per run (the 
 FILE | result.txt | PROJECTION | the verb page wrapper writes "ok" or "refused: <why>" after each verb | deleted any time
 FILE | sel.txt | PREFERENCE | the driver writes the selected unit id (a UI cursor; no outcome reads it) | deleted any time (nothing selected)
 FILE | game_ui.txt | PROJECTION | the driver writes the side panel keys (nick_line, stat_line, stat_line2, next) only when the bytes change | rewritten by the driver
+FILE | setup.txt | PREFERENCE | civ_op setup (the draft of the setup screen: size, map, difficulty, rivals, civ, seed, focus; a cursor, no outcome reads it until `start` writes the NEW row) | deleted any time (the RULE defaults, a random seed)
+FILE | game.pdl | CONFIG | nobody at run time: what the editor's Play starts | -
+FILE | rooms.pdl | CONFIG | nobody at run time | -

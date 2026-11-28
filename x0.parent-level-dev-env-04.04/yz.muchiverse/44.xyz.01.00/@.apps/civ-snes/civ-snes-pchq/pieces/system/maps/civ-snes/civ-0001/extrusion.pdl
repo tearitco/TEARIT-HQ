@@ -1,0 +1,10 @@
+EXTRUDE | ~ | 1
+EXTRUDE | . | 1
+EXTRUDE | T | 2
+EXTRUDE | ^ | 3
+EXTRUDE | M | 5
+EXTRUDE | A | 2
+EXTRUDE | B | 2
+EXTRUDE | C | 2
+EXTRUDE | D | 2
+EXTRUDE | # | 1

@@ -14,7 +14,7 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
-static int known(const char *v) { return !strcmp(v, "move") || !strcmp(v, "found") || !strcmp(v, "build") || !strcmp(v, "endturn") || !strcmp(v, "seat"); }
+static int known(const char *v) { return !strcmp(v, "move") || !strcmp(v, "found") || !strcmp(v, "build") || !strcmp(v, "endturn") || !strcmp(v, "seat") || !strcmp(v, "start"); }
 static int run(char *const av[], char *out, size_t osz) {
     int p[2]; if (pipe(p)) return 2; pid_t c = fork(); if (c < 0) return 2;
     if (c == 0) { alarm(20); dup2(p[1], 1); dup2(p[1], 2); close(p[0]); close(p[1]); execv(av[0], av); _exit(127); }
@@ -41,8 +41,9 @@ int main(int argc, char **argv) {
     else if (!strcmp(v, "found")) { char *av[] = { op, led, "found", a1, NULL }; code = run(av, out, sizeof out); }
     else if (!strcmp(v, "build")) { char *av[] = { op, led, "build", a1, a2, NULL }; code = run(av, out, sizeof out); }
     else if (!strcmp(v, "endturn")) { char *av[] = { op, led, "endturn", NULL }; code = run(av, out, sizeof out); }
+    else if (!strcmp(v, "start")) { char dr[PATH_MAX + 64]; snprintf(dr, sizeof dr, "%s/play/setup.txt", book); char *av[] = { op, led, "start", dr, NULL }; code = run(av, out, sizeof out); }
     else { char *av[] = { op, led, "seat", a1, a2, NULL }; code = run(av, out, sizeof out); }
-    if (code == 0 && desk[0]) { char o2[300]; char *av[] = { op, led, "project", (char *)see, desk, NULL }; if (run(av, o2, sizeof o2)) { snprintf(out, sizeof out, "desk failed"); code = 5; } }
+    if (code == 0 && desk[0]) { char o2[300]; const char *sel = getenv("CIV_SEL"); char *av[] = { op, led, "project", (char *)see, desk, (char *)(sel && *sel ? sel : NULL), NULL }; if (run(av, o2, sizeof o2)) { snprintf(out, sizeof out, "desk failed"); code = 5; } }
     if (code == 4 && !strncmp(out, "refused: ", 9)) memmove(out, out + 9, strlen(out + 9) + 1);
     FILE *f = fopen(rp, "w"); if (f) { if (code == 0) fputs("ok\n", f); else fprintf(f, "refused: %s\n", out[0] ? out : "no reason given"); fclose(f); }
     return code; }

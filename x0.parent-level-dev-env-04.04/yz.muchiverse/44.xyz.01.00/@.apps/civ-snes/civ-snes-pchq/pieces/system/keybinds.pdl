@@ -1,0 +1,41 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | file_id            | keybinds
+META         | note               | civ-snes book keybinds (2026-11-27, D157): the shape of rmmc's. While the rig:civ token is POSSESSED (In: ON, Enter on the piece) the engine does not move the cursor with the GAMEKEY keys: it appends `<code> <ms>` to the instance state/interact_relay.txt and civ_driver turns each into a verb page (keys.pdl names the verb). The camera keys y u i o p and l are the engine's and are not listed as GAMEKEY.
+# GAMEKEY | name | keycode      arrows 1000 left, 1001 right, 1002 up, 1003 down (as rpg-pet and rmmc); space 32; raw X keysyms for Home 65360, PgUp 65365, PgDn 65366, End 65367, BackSpace 65288
+GAMEKEY      | left | 1000
+GAMEKEY      | right | 1001
+GAMEKEY      | up | 1002
+GAMEKEY      | down | 1003
+GAMEKEY      | space | 32
+GAMEKEY      | b | 98
+GAMEKEY      | n | 110
+GAMEKEY      | r | 114
+GAMEKEY      | home | 65360
+GAMEKEY      | pgup | 65365
+GAMEKEY      | pgdn | 65366
+GAMEKEY      | end | 65367
+GAMEKEY      | backspace | 65288
+GAMEKEY      | 0 | 48
+GAMEKEY      | 1 | 49
+GAMEKEY      | 2 | 50
+GAMEKEY      | 3 | 51
+GAMEKEY      | 4 | 52
+GAMEKEY      | 5 | 53
+GAMEKEY      | 6 | 54
+GAMEKEY      | 7 | 55
+GAMEKEY      | 8 | 56
+GAMEKEY      | 9 | 57
+
+KEY          | render_mode_toggle | 112       # 'p'  toggle 2D <-> 3D (camera keys are Y U I O P, D152)
+KEY          | pov_mode_1         | 121       # 'y'  first person
+KEY          | pov_mode_2         | 117       # 'u'  third person
+KEY          | pov_mode_3         | 105       # 'i'  free roam
+KEY          | pov_mode_4         | 111       # 'o'  bird's eye
+KEY          | pov_mode_1_alt     | 0
+KEY          | pov_mode_2_alt     | 0
+
+KEY          | possess_next            | 93     # ]  take the rig:civ token
+KEY          | possess_prev            | 91     # [
+KEY          | possess_release_alt     | 108    # l  let go
+KEY          | possess_enter_anywhere  | 1      # Enter with nothing under the cursor takes the token
