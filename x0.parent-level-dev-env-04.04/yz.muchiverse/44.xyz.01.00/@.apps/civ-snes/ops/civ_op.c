@@ -22,6 +22,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include <limits.h>
 #include <stdint.h>
+#include <ctype.h>
 #include <dirent.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -311,6 +312,31 @@ static void cmd_ui(World *W, int civ, const char *sel) {
 static void cmd_status(World *W) {
     { int nu1 = 0, nu2 = 0; for (int i = 0; i < W->nu; i++) if (W->u[i].alive) { if (W->u[i].civ == 1) nu1++; else nu2++; } printf("turn=%d cities=%d/%d units=%d/%d seats=%s/%s\n", W->turn, ncity_of(W, 1), ncity_of(W, 2), nu1, nu2, W->seat_agent[1] ? "agent:basic" : "human", W->seat_agent[2] ? "agent:basic" : "human"); } }
 
+/* ---------- lesson: the tutorial grade, DERIVED from the ledger rows (never stored) ---------- */
+static int step_done(World *W, const char *check, const char *arg, int civ, int *found_at) {
+    int n = 0;
+    for (int i = 0; i < g_n; i++) { char a[20], b[20]; const char *l = g_lines[i];
+        if (!strcmp(check, "moved") && sscanf(l, "MOVE|%19[^|]|", a) == 1) { Unit *u = unit_id(W, a); if (!u) for (int k = 0; k < W->nu; k++) if (!strcmp(W->u[k].id, a)) u = &W->u[k]; if (u && u->civ == civ) n++; }
+        else if (!strcmp(check, "found") && sscanf(l, "FOUND|%19[^|]|", a) == 1) { for (int k = 0; k < W->nu; k++) if (!strcmp(W->u[k].id, a) && W->u[k].civ == civ) n++; }
+        else if (!strcmp(check, "build") && sscanf(l, "BUILD|%19[^|]|%19s", a, b) == 2) { City *c = city_id(W, a); if (c && c->civ == civ && !strcmp(b, arg)) n++; }
+        else if (!strcmp(check, "turn")) { if (!strncmp(l, "FOUND|", 6) && *found_at < 0 && sscanf(l, "FOUND|%19[^|]|", a) == 1) { for (int k = 0; k < W->nu; k++) if (!strcmp(W->u[k].id, a) && W->u[k].civ == civ) *found_at = i; } if (!strncmp(l, "TURN|", 5) && *found_at >= 0 && i > *found_at) n++; } }
+    return n >= (isdigit((unsigned char)arg[0]) ? atoi(arg) : 1); }
+static int cmd_lesson(World *W, const char *file, int civ) {
+    FILE *f = fopen(file, "r"); char ln[LINE * 2]; if (!f) return 5;
+    struct { char id[24], label[64], sentence[160], check[16], arg[24]; } st[16]; int ns = 0, lmax = 20, smax = 60; char title[80] = "";
+    while (fgets(ln, sizeof ln, f) && ns < 16) { ln[strcspn(ln, "\r\n")] = 0; char *x[6]; int nf = 0; char *s = ln;
+        while (nf < 6) { while (*s == ' ') s++; x[nf++] = s; char *b = strstr(s, " | "); if (!b) break; *b = 0; s = b + 3; }
+        for (int i = 0; i < nf; i++) { char *e = x[i] + strlen(x[i]); while (e > x[i] && e[-1] == ' ') *--e = 0; }
+        if (nf >= 3 && !strcmp(x[0], "RULE")) { if (!strcmp(x[1], "label_max")) lmax = atoi(x[2]); if (!strcmp(x[1], "sentence_max")) smax = atoi(x[2]); }
+        else if (nf >= 3 && !strcmp(x[0], "LESSON")) snprintf(title, sizeof title, "%s", x[2]);
+        else if (nf >= 6 && !strcmp(x[0], "STEP")) { snprintf(st[ns].id, 24, "%s", x[1]); snprintf(st[ns].label, 64, "%s", x[2]); snprintf(st[ns].sentence, 160, "%s", x[3]); snprintf(st[ns].check, 16, "%s", x[4]); snprintf(st[ns].arg, 24, "%s", x[5]); ns++; } }
+    fclose(f); if (!ns) return 5;
+    for (int i = 0; i < ns; i++) if ((int)strlen(st[i].label) > lmax || (int)strlen(st[i].sentence) > smax) { printf("too long: step %s\n", st[i].id); return 4; }
+    int found_at = -1, cur = 0; while (cur < ns && step_done(W, st[cur].check, st[cur].arg, civ, &found_at)) { cur++; found_at = -1; }
+    printf("title=%s\n", title);
+    if (cur >= ns) { printf("step=%d/%d\nlabel=lesson done!\ngoal=Lesson complete. Well done.\ndone=1\n", ns, ns); return 0; }
+    printf("step=%d/%d\nlabel=%s\ngoal=%s\ndone=0\n", cur + 1, ns, st[cur].label, st[cur].sentence); return 0; }
+
 /* ---------- the projection: ONE desk read by the 2D and the 3D board ---------- */
 /* atlas tiles: 0 fog, 1 water, 2 grass, 3 forest, 4 hills, 5 mountain, 6 city civ1, 7 city civ2 (flat colours, a stopgap: placeholder art) */
 static const unsigned char TILE[8][3] = { {0,0,0}, {40,90,200}, {90,170,70}, {30,110,50}, {150,130,80}, {170,170,175}, {80,140,255}, {255,90,80} };
@@ -383,6 +409,7 @@ int main(int argc, char **argv) {
     if (!strcmp(verb, "ui")) { cmd_ui(&W, argc > 3 ? civ_of(argv[3]) : 1, argc > 4 ? argv[4] : ""); return 0; }
     if (!strcmp(verb, "nextunit")) { int civ = argc > 3 ? civ_of(argv[3]) : 1, after = -1; if (argc > 4) for (int i = 0; i < W.nu; i++) if (!strcmp(W.u[i].id, argv[4])) after = i;
         for (int k = 1; k <= W.nu; k++) { Unit *u = &W.u[(after + k + W.nu) % W.nu]; if (u->alive && u->civ == civ && u->mp > 0) { printf("%s\n", u->id); return 0; } } printf("none\n"); return 4; }
+    if (!strcmp(verb, "lesson")) { if (argc < 4) { return 2; } return cmd_lesson(&W, argv[3], argc > 4 ? civ_of(argv[4]) : 1); }
     if (!strcmp(verb, "project")) { if (argc < 5) return 2; return cmd_project(&W, civ_of(argv[3]), argv[4]); }
     if (!strcmp(verb, "move")) { if (argc < 5) return 2; Unit *u = unit_id(&W, argv[3]); int d = dir_of(argv[4]);
         if (!u) rc = refuse("no such unit"); else if (d < 0) rc = refuse("direction is n ne e se s sw w nw"); else rc = do_move(&W, u, d, &R); }

@@ -1,0 +1,111 @@
+# civ_snes_tutorial - lesson 1 of civ-snes as a STRANGER (D157, the shape of rmmc_stranger / D146): a person who only reads what the screen says finishes it. Each step: (1) the lesson op must SAY the step (label + sentence), (2) the case does the
+# thing the sentence NAMES through the verb the key maps to in keys.pdl (a stranger does not read config: the case reads the KEY WORD in the sentence, "arrow", "B", "2", "Space", and maps it to the verb by its own table below), (3) the next step must appear.
+# The grade is DERIVED from the ledger (no stored progress). Not covered here: that the editor draws the three left-bar lines and that the key reaches the driver (no driver yet; the live window is the owner's and the debil editor run is NOT DONE).
+RESULTS | ../results/civ_snes_tutorial.txt
+CASE | a-stranger-finishes-lesson-1-from-the-words-only
+SCRATCH
+MKDIR | app/ops/+x
+COPY | @.apps/civ-snes/rules.pdl | app/rules.pdl
+COPY | @.apps/civ-snes/text.pdl | app/text.pdl
+COPY | @.apps/civ-snes/tutorial.pdl | app/tutorial.pdl
+COPY | @.apps/civ-snes/keys.pdl | app/keys.pdl
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/app/ops/+x/civ_op.+x | $HOUSE/@.apps/civ-snes/ops/civ_op.c
+EXPECT_EXIT | 0 | the op compiles
+RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | new | 4
+RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | lesson | $T/app/tutorial.pdl | civ1
+EXPECT_OUT | label=1/4 arrows: step | step 1: the bar says what to do (label)
+EXPECT_OUT | goal=Press an arrow key to walk one step with your settler. | and the sentence names the key
+RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | ui | civ1
+EXPECT_OUT | next=Next: press ] to pick your settler | the side panel's NEXT line at the very start (the settler is not selected yet)
+RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | ui | civ1 | u1
+EXPECT_OUT | stat_line=u1 settler  moves 1 | once u1 is picked the bar says what it is and its moves
+EXPECT_OUT | next=Next: press B to found a city here | the NEXT line for a settler on open land
+# a lesson step that is not done stays put: pressing the wrong thing changes nothing (CONTROL)
+RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | endturn
+RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | lesson | $T/app/tutorial.pdl | civ1
+EXPECT_OUT | step=1/4 | CONTROL: ending the turn first does not skip the walk step (the grade is the rows, each step its own row kind)
+# the key mapping the sentences name
+RUN | grep | -c | ^KEYVERB \p up *\p move *\p n$ | $T/app/keys.pdl
+EXPECT_OUT | 1 | the arrow key is bound to move
+RUN | grep | -c | ^KEYVERB \p b *\p found | $T/app/keys.pdl
+EXPECT_OUT | 1 | B is bound to found
+RUN | grep | -c | ^KEYVERB \p 2 *\p build *\p settler | $T/app/keys.pdl
+EXPECT_OUT | 1 | 2 is bound to build settler
+RUN | grep | -c | ^KEYVERB \p space *\p endturn | $T/app/keys.pdl
+EXPECT_OUT | 1 | Space is bound to endturn
+# step 1: an arrow
+RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | move | u1 | n
+EXPECT_EXIT | 0 | an arrow walked the settler north
+RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | lesson | $T/app/tutorial.pdl | civ1
+EXPECT_OUT | label=2/4 B: found city | step 2: the bar moved on
+# step 2: B
+RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | found | u1
+EXPECT_EXIT | 0 | B founded the city
+RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | lesson | $T/app/tutorial.pdl | civ1
+EXPECT_OUT | label=3/4 2: make settler | step 3
+# step 3: the digit 2
+RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | build | c2 | settler
+EXPECT_EXIT | 0 | 2 made the city build a settler
+RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | lesson | $T/app/tutorial.pdl | civ1
+EXPECT_OUT | label=4/4 Space: end turn | step 4
+EXPECT_OUT | done=0 | and it is not finished yet
+# step 4: Space
+RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | endturn
+RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | lesson | $T/app/tutorial.pdl | civ1
+EXPECT_OUT | label=lesson done! | the bar says lesson done
+EXPECT_OUT | done=1 | finished
+RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | ui | civ1
+EXPECT_OUT | next=Next: move a unit, or Space to end the turn | after the lesson the panel keeps naming the next thing (the warrior still has moves)
+# NEGATIVES on the grader: a stranger who walks and ends the turn but never founds stays on step 2
+RUN | $T/app/ops/+x/civ_op.+x | $T/m.txt | new | 4
+RUN | $T/app/ops/+x/civ_op.+x | $T/m.txt | move | u1 | n
+RUN | $T/app/ops/+x/civ_op.+x | $T/m.txt | endturn
+RUN | $T/app/ops/+x/civ_op.+x | $T/m.txt | lesson | $T/app/tutorial.pdl | civ1
+EXPECT_OUT | step=2/4 | NEGATIVE-ending-the-turn-without-founding-does-not-pass-the-found-step-or-the-turn-step
+# fit: every label and sentence fits the bar
+WRITE | app/long.pdl | RULE \p label_max \p 20\nLESSON \p l \p long\nSTEP \p a \p this label is far too long for the bar \p x \p moved \p 1\n
+RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | lesson | $T/app/long.pdl | civ1
+EXPECT_EXIT | 4 | NEGATIVE-a-label-longer-than-the-bar-is-refused
+RUN | $T/app/ops/+x/civ_op.+x | $T/l.txt | lesson | $T/app/tutorial.pdl | civ1
+EXPECT_EXIT | 0 | CONTROL: the real lesson fits (labels 20, sentences 60)
+# keys: the camera keys Y U I O P (D152) are never bound to a game verb
+RUN | grep | -c | -i | ^KEYVERB \p [yuiop] *\p | $T/app/keys.pdl
+EXPECT_OUT | 0 | the camera keys y u i o p are not bound to game verbs
+RUN | grep | -c | -i | ^KEYVERB \p [b] *\p | $T/app/keys.pdl
+EXPECT_OUT | 1 | CONTROL: the same grep finds the bound key b (so the zero above can fail)
+# ---- the real grader on a scene where the TURN came BEFORE the city: the turn step must stay open
+RUN | $T/app/ops/+x/civ_op.+x | $T/n.txt | new | 4
+RUN | $T/app/ops/+x/civ_op.+x | $T/n.txt | move | u1 | n
+RUN | $T/app/ops/+x/civ_op.+x | $T/n.txt | endturn
+RUN | $T/app/ops/+x/civ_op.+x | $T/n.txt | found | u1
+RUN | $T/app/ops/+x/civ_op.+x | $T/n.txt | build | c2 | settler
+RUN | $T/app/ops/+x/civ_op.+x | $T/n.txt | lesson | $T/app/tutorial.pdl | civ1
+EXPECT_OUT | label=4/4 Space: end turn | HAND: moved, found and build are done; the only TURN row is BEFORE the FOUND row, so step 4 is still open
+# ---- SABOTAGE: every TURN row counts (no anchor on the city)
+MKDIR | lm1/ops/+x
+COPY | @.apps/civ-snes/rules.pdl | lm1/rules.pdl
+COPY | @.apps/civ-snes/text.pdl | lm1/text.pdl
+COPY | @.apps/civ-snes/ops/civ_op.c | lm1/civ_op.c
+RUN | sed | -i | s/\*found_at >= 0 \&\& i > \*found_at) n++/1) n++/ | $T/lm1/civ_op.c
+RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_op.c | $T/lm1/civ_op.c
+EXPECT_EXIT | 1 | SABOTAGE lm1: the mutant source differs from the real source (the sed matched)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/lm1/ops/+x/civ_op.+x | $T/lm1/civ_op.c
+EXPECT_EXIT | 0 | SABOTAGE lm1: the mutant compiles
+RUN | $T/lm1/ops/+x/civ_op.+x | $T/n.txt | lesson | $T/app/tutorial.pdl | civ1
+EXPECT_OUT | done=1 | SABOTAGE lm1 CAUGHT: with any TURN counting, the lesson finishes without a turn after the city (the real op: step 4/4, done=0)
+# ---- SABOTAGE: a step is done with zero rows
+MKDIR | lm2/ops/+x
+COPY | @.apps/civ-snes/rules.pdl | lm2/rules.pdl
+COPY | @.apps/civ-snes/text.pdl | lm2/text.pdl
+COPY | @.apps/civ-snes/ops/civ_op.c | lm2/civ_op.c
+RUN | sed | -i | s/return n >= (isdigit((unsigned char)arg\[0\]) ? atoi(arg) : 1);/return n >= 0;/ | $T/lm2/civ_op.c
+RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_op.c | $T/lm2/civ_op.c
+EXPECT_EXIT | 1 | SABOTAGE lm2: the mutant source differs from the real source (the sed matched)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/lm2/ops/+x/civ_op.+x | $T/lm2/civ_op.c
+EXPECT_EXIT | 0 | SABOTAGE lm2: the mutant compiles
+RUN | $T/lm2/ops/+x/civ_op.+x | $T/l.txt | lesson | $T/app/tutorial.pdl | civ1
+EXPECT_OUT | done=1 | SABOTAGE lm2 CAUGHT: with a grader that needs no rows the lesson is done on the final ledger (so also at the start; the real op shows step 1 on a fresh game, shown above)
+RUN | $T/lm2/ops/+x/civ_op.+x | $T/f.txt | new | 4
+RUN | $T/lm2/ops/+x/civ_op.+x | $T/f.txt | lesson | $T/app/tutorial.pdl | civ1
+EXPECT_OUT | done=1 | SABOTAGE lm2 CAUGHT at the start: a fresh game is already done (the real op: step=1/4, shown above)
+CLEAN |

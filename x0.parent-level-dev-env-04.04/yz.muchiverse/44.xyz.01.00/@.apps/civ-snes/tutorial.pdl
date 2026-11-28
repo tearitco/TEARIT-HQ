@@ -1,0 +1,11 @@
+# tutorial.pdl - lesson 1 of civ-snes (CONFIG). The grade is DERIVED FROM THE LEDGER, never stored (the rmmc shape, D146): `civ_op <ledger> lesson <this file> civ1` reads the rows and prints the step the person is on.
+# LESSON | id | title
+# STEP | id | label (at most 20 characters: the left bar is about 20 wide) | sentence (what to do, in plain words naming the key) | check | arg
+# checks: moved = a MOVE row by a unit of the civ; found = a FOUND row by a unit of the civ; build = a BUILD row of a city of the civ naming <arg>; turn = a TURN row after the first FOUND row
+RULE | label_max | 20
+RULE | sentence_max | 60
+LESSON | l1 | Found your first city
+STEP | walk  | 1/4 arrows: step | Press an arrow key to walk one step with your settler. | moved | 1
+STEP | found | 2/4 B: found city | Press B on open land to found a city. | found | 1
+STEP | build | 3/4 2: make settler | Press 2 to make the city build a settler. | build | settler
+STEP | turn  | 4/4 Space: end turn | Press Space to end the turn. | turn | 1
