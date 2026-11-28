@@ -11,11 +11,11 @@ COPY | @.apps/civ-snes/tutorial.pdl | app/tutorial.pdl
 COPY | @.apps/civ-snes/keys.pdl | app/keys.pdl
 RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/app/ops/+x/civ_op.+x | $HOUSE/@.apps/civ-snes/ops/civ_op.c
 EXPECT_EXIT | 0 | the op compiles
-# ---- step 1 is the SETUP (owner 2026-11-27): before any ledger exists the lesson says "Enter: start"; choosing options does not pass it; only the NEW row (start) does
+# ---- step 1 is the SETUP (owner 2026-11-27): before any ledger exists the lesson says "Space: start"; choosing options does not pass it; only the NEW row (start) does
 RUN | $T/app/ops/+x/civ_op.+x | $T/pre.txt | lesson | $T/app/tutorial.pdl | civ1
 EXPECT_OUT | step=1/5 | with NO ledger the lesson is at step 1 (the setup)
-EXPECT_OUT | label=1/5 Enter: start | the bar names the key
-EXPECT_OUT | goal=Pick the options with the arrows, then press Enter. | and the sentence names the arrows and Enter (the words a stranger reads)
+EXPECT_OUT | label=1/5 Space: start | the bar names the key
+EXPECT_OUT | goal=Pick the options with the arrows, then press Space. | and the sentence names the arrows and Space (the words a stranger reads)
 RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/pre_draft.txt | next
 RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/pre_draft.txt | inc
 EXPECT_OUT | stat_line=Map: earth | the stranger pressed Down then Right: the Map option changed
@@ -26,7 +26,7 @@ RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/pre_draft.txt | prev
 RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/pre_draft.txt | dec
 RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/pre_draft.txt | next
 RUN | $T/app/ops/+x/civ_op.+x | $T/pre.txt | start | $T/pre_draft.txt
-EXPECT_EXIT | 0 | Enter = start: one NEW row
+EXPECT_EXIT | 0 | Space = start: one NEW row
 RUN | $T/app/ops/+x/civ_op.+x | $T/pre.txt | lesson | $T/app/tutorial.pdl | civ1
 EXPECT_OUT | step=2/5 | after the NEW row the bar moves on to the walk step
 EXPECT_OUT | label=2/5 arrows: step | the next label

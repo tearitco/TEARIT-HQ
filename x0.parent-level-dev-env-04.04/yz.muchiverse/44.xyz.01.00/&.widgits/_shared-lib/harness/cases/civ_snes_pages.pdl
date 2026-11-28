@@ -33,7 +33,7 @@ RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/house/@.apps
 EXPECT_EXIT | 0 | the move page was played
 EXPECT_HAS | led.txt | MOVE\pu2\p6\p7\p6\p6\p1 | a move page appended one MOVE row through the op
 EXPECT_HAS | house/@.apps/civ-snes/play/result.txt | ok | the page engine reports ok
-EXPECT_HAS | desk/events.txt | 6 6 40 80 230 block 0 2 1 | the desk was re-projected after the accepted verb (the warrior piece is on 6,6)
+EXPECT_HAS | desk/events.txt | 6 6 210 40 40 block 0 2 1 | the desk was re-projected after the accepted verb (the warrior piece is on 6,6, in the colour of civ 1 = the Romans, RULE civ_1_r g b 210 40 40)
 EXPECT_HAS | desk/cells.txt | width=20 | the desk header is there
 ENV | GAME_ARG | u9 e
 RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/house/@.apps/civ-snes/events/move | $T/house | ui
@@ -82,6 +82,7 @@ RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/h2/@.apps/civ-snes/ops/+x/civ_verb.+
 EXPECT_EXIT | 0 | the mutant compiles
 RUN | cp | $T/house/@.apps/civ-snes/ops/+x/civ_op.+x | $T/h2/@.apps/civ-snes/ops/+x/civ_op.+x
 RUN | cp | $T/house/@.apps/civ-snes/rules.pdl | $T/h2/@.apps/civ-snes/rules.pdl
+RUN | cp | $T/house/@.apps/civ-snes/text.pdl | $T/h2/@.apps/civ-snes/text.pdl
 ENV | CIV_LEDGER | $T/l2.txt
 ENV | CIV_DESK | $T/desk2
 RUN | $T/h2/@.apps/civ-snes/ops/+x/civ_op.+x | $T/l2.txt | new | 4 | small

@@ -13,7 +13,7 @@ RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/app/ops/+x/ci
 EXPECT_EXIT | 0 | the op compiles with -Wall -Wextra -Werror
 # ---- presets: the default is the BIGGEST; the sizes are RULE rows (HAND: w x h)
 RUN | grep | -c | RULE \p size_ | $T/app/rules.pdl
-EXPECT_OUT | 15 | HAND: three presets x five rows (w h noise edge land) are RULE rows
+EXPECT_OUT | 20 | HAND: four presets x five rows (w h noise edge land) are RULE rows
 RUN | grep | -c | default_size \p 2 | $T/app/rules.pdl
 EXPECT_OUT | 1 | HAND: default_size 2 = large, the biggest preset
 RUN | $T/app/ops/+x/civ_op.+x | - | world | 4
@@ -22,8 +22,8 @@ RUN | $T/app/ops/+x/civ_op.+x | - | world | 4 | small
 EXPECT_OUT | of 280 | HAND: small is 20 x 14 = 280 (the original slice map)
 RUN | $T/app/ops/+x/civ_op.+x | - | world | 4 | medium
 EXPECT_OUT | of 660 | HAND: medium is 30 x 22 = 660
-RUN | $T/app/ops/+x/civ_op.+x | - | world | 4 | huge
-EXPECT_EXIT | 2 | NEGATIVE-an-unknown-size-is-not-a-world
+RUN | $T/app/ops/+x/civ_op.+x | - | world | 4 | giant
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-size-giant-is-not-a-world
 MKDIR | g
 RUN | $T/app/ops/+x/civ_op.+x | $T/g/ledger.txt | new | 4
 EXPECT_EXIT | 0 | new with only a seed uses the RULE defaults
@@ -40,9 +40,9 @@ RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | show
 EXPECT_OUT | stat_line=Size: large 40x30 | the first option is Size, the default is large 40x30
 EXPECT_OUT | option2=  Map: random | the options are listed (the focus mark is the greater-than sign)
 RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | inc
-EXPECT_OUT | stat_line=Size: small 20x14 | inc wraps: large to small
+EXPECT_OUT | stat_line=Size: huge 60x40 | inc: large to huge (the four presets small medium large huge)
 RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | dec
-EXPECT_OUT | stat_line=Size: large 40x30 | dec wraps back
+EXPECT_OUT | stat_line=Size: large 40x30 | dec goes back to large
 RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | next
 RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | inc
 EXPECT_OUT | stat_line=Map: earth | the second option switches the map to earth
@@ -55,6 +55,13 @@ RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | inc
 EXPECT_OUT | stat_line=Rivals: 3 | 1 to 3
 RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | inc
 EXPECT_OUT | stat_line=Rivals: 1 | wraps 3 to 1
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | next
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | inc
+EXPECT_OUT | stat_line=Civ: Egyptians | the Civ option picks who you play: Romans then Egyptians (civs are data: civ_count and text.pdl)
+EXPECT_OUT | party_1_cls=active | the civ list (the left bar pals list) marks the picked civ active
+EXPECT_OUT | party_0_cls=idle | and the others idle
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | dec
+EXPECT_OUT | stat_line=Civ: Romans | dec goes back
 RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | digit | 5
 EXPECT_EXIT | 4 | NEGATIVE-digits-type-only-into-the-Seed-option
 RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/dr.txt | next
@@ -161,7 +168,7 @@ RUN | sed | -i | 1s/\plarge\p/\psmall\p/ | $T/fb.txt
 RUN | $T/app/ops/+x/civ_op.+x | $T/fb.txt | verify
 EXPECT_EXIT | 14 | NEGATIVE-a-hand-edited-size-is-refused
 RUN | cp | $T/g/ledger.txt | $T/fc.txt
-RUN | sed | -i | 1s/\plarge\p/\phuge\p/ | $T/fc.txt
+RUN | sed | -i | 1s/\plarge\p/\pgiant\p/ | $T/fc.txt
 RUN | $T/app/ops/+x/civ_op.+x | $T/fc.txt | verify
 EXPECT_EXIT | 14 | NEGATIVE-an-unknown-size-name-is-refused
 RUN | cp | $T/g/ledger.txt | $T/fd.txt
@@ -194,7 +201,7 @@ CAPTURE | e3
 EXPECT_NE | $e1 | $e3 | CONTROL: the earth map is not the random map
 RUN | $T/app/ops/+x/civ_op.+x | - | world | 99 | large | earth
 EXPECT_OUT | land=350 of 1200 | the earth has the same land and water for any seed (only the forest and grass split uses the seed); PIN 350
-EXPECT_HAS | $T/s/ledger.txt | UNIT\pu1\pciv1\psettler\p20\p5\n | HAND: civ1 targets 49 N 8 E = tile x (8+180)*40/360 = 20, y (75-49)*30/135 = 5; that tile is grass in the earth world, so it is the start
+EXPECT_HAS | $T/s/ledger.txt | UNIT\pu1\pciv1\psettler\p22\p7\n | HAND: the Romans (civ_1) wish 42 N 12 E = tile x (12+180)*40/360 = 21, y (75-42)*30/135 = 7; PIN: the nearest grass to (21,7) is 22,7
 MKDIR | e
 RUN | $T/app/ops/+x/civ_op.+x | $T/e/l.txt | new | 4 | large | normal | 3 | earth
 RUN | grep | -c | UNIT.u7.civ4.settler | $T/e/l.txt
@@ -277,4 +284,160 @@ RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/q4/ops/+x/civ_op.+x | $T/q4/civ_op.c
 EXPECT_EXIT | 0 | SABOTAGE q4: compiles
 RUN | $T/q4/ops/+x/civ_op.+x | $T/q4/l.txt | new | 4 | large | normal | 0
 EXPECT_EXIT | 0 | SABOTAGE q4 CAUGHT: without the rival-count clause a game with no rival is accepted (the real op: exit 4)
+# ================= the earth at EVERY preset, a fact per size (HAND geography), a hash per size
+RUN | $T/app/ops/+x/civ_op.+x | - | earthtile | small | 0 | -30
+EXPECT_OUT | water=1 | HAND small: 0 N 30 W (mid-Atlantic) is water
+RUN | $T/app/ops/+x/civ_op.+x | - | earthtile | small | 28 | 87
+EXPECT_OUT | water=0 | HAND small: 28 N 87 E (the Himalaya) is land
+CAPTURE | hs
+RUN | $T/app/ops/+x/civ_op.+x | - | earthtile | medium | 0 | -30
+EXPECT_OUT | water=1 | HAND medium: the mid-Atlantic is water
+RUN | $T/app/ops/+x/civ_op.+x | - | earthtile | medium | 25 | 15
+EXPECT_OUT | water=0 | HAND medium: 25 N 15 E (the Sahara) is land
+CAPTURE | hm
+RUN | $T/app/ops/+x/civ_op.+x | - | earthtile | large | 0 | -30
+EXPECT_OUT | water=1 | HAND large: the mid-Atlantic is water
+RUN | $T/app/ops/+x/civ_op.+x | - | earthtile | large | -25 | 135
+EXPECT_OUT | water=0 | HAND large: 25 S 135 E (central Australia) is land
+CAPTURE | hl
+RUN | $T/app/ops/+x/civ_op.+x | - | earthtile | huge | 0 | -30
+EXPECT_OUT | water=1 | HAND huge: the mid-Atlantic is water
+RUN | $T/app/ops/+x/civ_op.+x | - | earthtile | huge | 28 | 87
+EXPECT_OUT | class=mountain | HAND huge: the Himalaya at the finest grid is mountain (above earth_mount 1800 m)
+CAPTURE | hh
+EXPECT_NE | $hs | $hm | CONTROL: the small and the medium earth grids hash differently (one hash per size)
+EXPECT_NE | $hm | $hl | CONTROL: medium and large differ
+EXPECT_NE | $hl | $hh | CONTROL: large and huge differ
+RUN | $T/app/ops/+x/civ_op.+x | - | world | 4 | huge | earth
+EXPECT_OUT | of 2400 | HAND: the huge earth is 60 x 40 = 2400 tiles
+RUN | $T/app/ops/+x/civ_op.+x | - | world | 4 | small | earth
+EXPECT_OUT | of 280 | HAND: the small earth is 20 x 14 = 280 tiles
+MKDIR | eh
+RUN | $T/app/ops/+x/civ_op.+x | $T/eh/l.txt | new | 4 | huge | normal | 1 | earth
+EXPECT_EXIT | 0 | an earth game on the huge preset starts
+RUN | grep | -c | NEW.4.60.40 | $T/eh/l.txt
+EXPECT_OUT | 1 | and its NEW row names 60 x 40
+RUN | $T/app/ops/+x/civ_op.+x | $T/eh/l.txt | verify
+EXPECT_EXIT | 0 | and replays
+MKDIR | es
+RUN | $T/app/ops/+x/civ_op.+x | $T/es/l.txt | new | 4 | small | normal | 1 | earth
+EXPECT_EXIT | 0 | an earth game on the small preset starts and replays (the earth exists at every size)
+RUN | $T/app/ops/+x/civ_op.+x | $T/es/l.txt | verify
+EXPECT_EXIT | 0 | small earth replays
+# ================= WHICH CIV you play (data: civ_count, RULE civ_<k>_*, text.pdl)
+MKDIR | cr
+MKDIR | ca
+RUN | $T/app/ops/+x/civ_op.+x | $T/cr/l.txt | new | 4 | large | normal | 1 | earth | romans
+RUN | $T/app/ops/+x/civ_op.+x | $T/ca/l.txt | new | 4 | large | normal | 1 | earth | aztecs
+EXPECT_EXIT | 0 | the player may pick the Aztecs
+EXPECT_HAS | $T/ca/l.txt | UNIT\pu1\pciv1\psettler\p10\p13\n | HAND: the Aztecs wish 19 N 99 W = tile x (-99+180)*40/360 = 9, y (75-19)*30/135 = 12; PIN: the nearest grass is 10,13 (Mexico, not Italy)
+EXPECT_HAS | $T/cr/l.txt | UNIT\pu1\pciv1\psettler\p22\p7\n | the Romans start in Italy
+RUN | grep | -c | \paztecs$ | $T/ca/l.txt
+EXPECT_OUT | 1 | the pick is recorded in the NEW row (the last field)
+RUN | cmp | -s | $T/cr/l.txt | $T/ca/l.txt
+EXPECT_EXIT | 1 | CONTROL: pick A and pick B give different ledgers (different start positions on the earth)
+RUN | $T/app/ops/+x/civ_op.+x | $T/ca/l.txt | verify
+EXPECT_EXIT | 0 | the Aztec game replays
+RUN | $T/app/ops/+x/civ_op.+x | $T/ca/l.txt | ui | civ1
+EXPECT_OUT | civ=Aztecs | the HUD names the civ you play
+EXPECT_OUT | leader=Montezuma | and its leader
+EXPECT_OUT | colour=teal | and its colour
+EXPECT_OUT | rgb=40,200,200 | HAND: RULE civ_5_r g b = 40 200 200
+EXPECT_OUT | party_0_label=> Aztecs | the left bar list marks the player first
+EXPECT_OUT | party_1_label=Romans | the rivals are the next civs of the list: the Aztecs are index 5, so the first rival is the Romans (index 1)
+RUN | $T/app/ops/+x/civ_op.+x | $T/ca/l.txt | project | all | $T/dca
+RUN | grep | -c | 10 13 40 200 200 block | $T/dca/events.txt
+EXPECT_OUT | 0 | the settler became no city yet: the Aztec settler wears the lighter Aztec colour, not the plain one (CONTROL: no plain-colour piece at the settler tile)
+RUN | grep | -c | 40 200 200 | $T/dca/events.txt
+EXPECT_OUT | 1 | HAND: exactly one Aztec piece wears the plain Aztec colour (the warrior; the settler is lighter)
+RUN | grep | -c | 210 40 40 | $T/dca/events.txt
+EXPECT_OUT | 1 | HAND: the rival Romans' warrior wears the Roman colour: the owner is shown by colour in the SAME desk the 2D and the 3D board read
+RUN | $T/app/ops/+x/civ_op.+x | $T/ca/l.txt | found | u1
+RUN | $T/app/ops/+x/civ_op.+x | $T/ca/l.txt | project | all | $T/dca2
+RUN | od | -An | -tu1 | -j | 6212 | -N | 3 | $T/dca2/cells.rgba
+EXPECT_OUT | 40 200 200 | HAND: atlas tile 6 (the city of civ1) is RGBA, pixel (1,1) at byte 6 x 1024 + (16 + 1) x 4 = 6212 (the border pixel is shaded), and holds the Aztec colour 40 200 200
+RUN | $T/app/ops/+x/civ_op.+x | $T/ca/l.txt | project | all | $T/dca3
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/drc.txt | next
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/drc.txt | inc
+EXPECT_OUT | stat_line=Map: earth | (draft: map earth)
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/drc.txt | next
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/drc.txt | next
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/drc.txt | next
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/drc.txt | inc
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/drc.txt | inc
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/drc.txt | inc
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/drc.txt | inc
+EXPECT_OUT | stat_line=Civ: Aztecs | four incs from Romans: Egyptians, Chinese, Americans, Aztecs
+RUN | $T/app/ops/+x/civ_op.+x | $T/cdr.txt | start | $T/drc.txt
+EXPECT_EXIT | 0 | the setup screen's pick is committed by start
+RUN | grep | -c | \paztecs$ | $T/cdr.txt
+EXPECT_OUT | 1 | the NEW row carries the pick made on the setup screen
+RUN | $T/app/ops/+x/civ_op.+x | $T/cdr.txt | verify
+EXPECT_EXIT | 0 | and replays
+# no duplicates: the picked civ is never also a rival; forged picks are refused
+RUN | $T/app/ops/+x/civ_op.+x | $T/ca/l.txt | seat | civ2 | human
+RUN | $T/app/ops/+x/civ_op.+x | $T/ca/l.txt | project | all | $T/dca4
+MKDIR | c7
+RUN | $T/app/ops/+x/civ_op.+x | $T/c7/l.txt | new | 4 | large | normal | 3 | random | zulus
+EXPECT_EXIT | 0 | the Zulus with three rivals
+RUN | $T/app/ops/+x/civ_op.+x | $T/c7/l.txt | ui | civ1
+EXPECT_OUT | party_1_label=Romans | rivals: Romans (index 1) first
+MKDIR | c8
+RUN | $T/app/ops/+x/civ_op.+x | $T/c8/l.txt | new | 4 | large | normal | 3 | random | english
+RUN | $T/app/ops/+x/civ_op.+x | $T/c8/l.txt | ui | civ1
+EXPECT_OUT | party_3_label=Chinese | the English are picked: the rivals are walked from the list start, skipping the pick: Romans, Egyptians, Chinese
+RUN | $T/app/ops/+x/civ_op.+x | $T/c8/l.txt | ui | civ1
+RUN | grep | -c | english | $T/c8/l.txt
+EXPECT_OUT | 1 | the English are named once in the ledger (the pick)
+RUN | $T/app/ops/+x/civ_op.+x | $T/c8/l.txt | new | 4 | large | normal | 3 | random | klingons
+EXPECT_EXIT | 4 | NEGATIVE-an-unknown-civ-is-refused-at-new
+RUN | cp | $T/cr/l.txt | $T/fp.txt
+RUN | sed | -i | 1s/\promans$/\paztecs/ | $T/fp.txt
+RUN | $T/app/ops/+x/civ_op.+x | $T/fp.txt | verify
+EXPECT_EXIT | 14 | NEGATIVE-a-hand-edited-civ-pick-is-refused (the start rows no longer match)
+RUN | cp | $T/cr/l.txt | $T/fq.txt
+RUN | sed | -i | 1s/\promans$/\pklingons/ | $T/fq.txt
+RUN | $T/app/ops/+x/civ_op.+x | $T/fq.txt | verify
+EXPECT_EXIT | 14 | NEGATIVE-an-unknown-civ-pick-in-the-ledger-is-refused
+# SABOTAGE s1: the pick may also be a rival (the skip clause removed)
+MKDIR | s1/ops/+x
+COPY | @.apps/civ-snes/rules.pdl | s1/rules.pdl
+COPY | @.apps/civ-snes/text.pdl | s1/text.pdl
+COPY | @.apps/civ-snes/ops/civ_op.c | s1/civ_op.c
+RUN | sed | -i | s/while (k == S->pick) k++; // | $T/s1/civ_op.c
+RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_op.c | $T/s1/civ_op.c
+EXPECT_EXIT | 1 | SABOTAGE s1: the mutant source differs (the sed matched)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/s1/ops/+x/civ_op.+x | $T/s1/civ_op.c
+EXPECT_EXIT | 0 | SABOTAGE s1: compiles
+MKDIR | s1g
+RUN | $T/s1/ops/+x/civ_op.+x | $T/s1g/l.txt | new | 4 | large | normal | 1 | random | romans
+RUN | $T/s1/ops/+x/civ_op.+x | $T/s1g/l.txt | ui | civ1
+EXPECT_OUT | party_1_label=Romans | SABOTAGE s1 CAUGHT: with the skip removed the Romans are both the player and the rival (the real op: the rival is the Egyptians)
+# SABOTAGE s2: the start on the earth ignores the civ (always the first civ's home)
+MKDIR | s2/ops/+x
+COPY | @.apps/civ-snes/rules.pdl | s2/rules.pdl
+COPY | @.apps/civ-snes/text.pdl | s2/text.pdl
+COPY | @.apps/civ-snes/ops/civ_op.c | s2/civ_op.c
+RUN | sed | -i | s/rule_civ(W->civid\[civ\], "lat"), lon = rule_civ(W->civid\[civ\], "lon")/rule_civ(0, "lat"), lon = rule_civ(0, "lon")/ | $T/s2/civ_op.c
+RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_op.c | $T/s2/civ_op.c
+EXPECT_EXIT | 1 | SABOTAGE s2: the mutant source differs
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/s2/ops/+x/civ_op.+x | $T/s2/civ_op.c
+EXPECT_EXIT | 0 | SABOTAGE s2: compiles
+MKDIR | s2g
+RUN | $T/s2/ops/+x/civ_op.+x | $T/s2g/l.txt | new | 4 | large | normal | 1 | earth | aztecs
+RUN | grep | -c | UNIT.u1.civ1.settler.10.13 | $T/s2g/l.txt
+EXPECT_OUT | 0 | SABOTAGE s2 CAUGHT: with the civ ignored the Aztecs start in Italy, not Mexico (the real op: 10,13, shown above)
+# SABOTAGE s3: the city tile colour ignores the owner civ
+MKDIR | s3/ops/+x
+COPY | @.apps/civ-snes/rules.pdl | s3/rules.pdl
+COPY | @.apps/civ-snes/text.pdl | s3/text.pdl
+COPY | @.apps/civ-snes/ops/civ_op.c | s3/civ_op.c
+RUN | sed | -i | s/tile\[5 + s\]\[0\] = (unsigned char)rule_civ(W->civid\[s\], "r");/tile[5 + s][0] = 7;/ | $T/s3/civ_op.c
+RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_op.c | $T/s3/civ_op.c
+EXPECT_EXIT | 1 | SABOTAGE s3: the mutant source differs
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/s3/ops/+x/civ_op.+x | $T/s3/civ_op.c
+EXPECT_EXIT | 0 | SABOTAGE s3: compiles
+RUN | $T/s3/ops/+x/civ_op.+x | $T/ca/l.txt | project | all | $T/ds3
+RUN | od | -An | -tu1 | -j | 6212 | -N | 3 | $T/ds3/cells.rgba
+EXPECT_OUT_LACKS | 40 200 200 | SABOTAGE s3 CAUGHT: a city tile that ignores the owner's colour no longer carries the Aztec red channel 40 (the real op: 40 200 200)
 CLEAN |

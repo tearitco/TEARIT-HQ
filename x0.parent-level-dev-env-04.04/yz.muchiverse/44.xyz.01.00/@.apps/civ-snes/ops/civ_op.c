@@ -35,7 +35,7 @@
 #define MAXU 256
 #define MAXC 64
 #define MAXCIV 5
-#define MAXR 96
+#define MAXR 256
 #define MAXROWS 4096
 #define LINE 256
 
@@ -49,7 +49,7 @@ static const char *DN[8] = { "n", "ne", "e", "se", "s", "sw", "w", "nw" };
 typedef struct { char name[40]; int v; } Rule;
 typedef struct { char id[20]; int civ, kind, x, y, mp, alive; } Unit;     /* kind 0 settler 1 warrior */
 typedef struct { char id[20]; int civ, x, y, size, build, stock; } City;
-typedef struct { int turn, w, h, nu, nc, nunits_made, ncities_made, nciv, size, diff, mapk; int seat_agent[MAXCIV];
+typedef struct { int turn, w, h, nu, nc, nunits_made, ncities_made, nciv, size, diff, mapk; int seat_agent[MAXCIV], civid[MAXCIV];
                  unsigned seed; int ter[MAXT]; Unit u[MAXU]; City c[MAXC]; unsigned char seen[MAXCIV][MAXT]; } World;
 
 static char rules_path[PATH_MAX + 32];
@@ -77,12 +77,18 @@ static int load_rules(const char *self) {
     fclose(f); rules_hash = h; return nrules ? 0 : 1; }
 
 /* ---------- setup names and presets (every number is a RULE row; D157 setup) ---------- */
-static const char *sizename[] = { "small", "medium", "large" };
+static const char *sizename[] = { "small", "medium", "large", "huge" };
+#define NSIZE 4
 static const char *diffname[] = { "easy", "normal", "hard" };
 static const char *mapname[] = { "random", "earth" };
 static int name_idx(const char *const *tab, int n, const char *s) { for (int i = 0; i < n; i++) if (!strcmp(tab[i], s)) return i; return -1; }
 static int rule_size(int size, const char *what) { char n[80]; snprintf(n, sizeof n, "size_%s_%s", sizename[size], what); return rule(n); }
 static int rule_diff(int diff, const char *what) { char n[80]; snprintf(n, sizeof n, "diff_%s_%s", diffname[diff], what); return rule(n); }
+static void text_for(const char *key, char *out, size_t n);
+/* ---------- the civs are DATA: numbers in RULE rows civ_<k>_{r,g,b,lat,lon,explore_pct} (k = 1..civ_count), words (id, name, leader, colour) in text.pdl ---------- */
+static int rule_civ(int k, const char *what) { char n[64]; snprintf(n, sizeof n, "civ_%d_%s", k + 1, what); return rule(n); }
+static void civ_word(int k, const char *what, char *o, size_t n) { char key[64]; snprintf(key, sizeof key, "civ_%d_%s", k + 1, what); text_for(key, o, n); }
+static int civ_index(const char *id) { char w[48]; for (int k = 0; k < rule("civ_count"); k++) { civ_word(k, "id", w, sizeof w); if (!strcmp(w, id)) return k; } return -1; }
 
 /* ---------- seeded hash and the world ---------- */
 static uint32_t mix(uint32_t s, int x, int y, int st) {
@@ -174,7 +180,7 @@ static void rowf(Rows *R, const char *fmt, ...) { if (R->n >= MAXROWS) return; v
 
 /* ---------- RULE: new (start units) ---------- */
 static int land_free(World *W, int x, int y) { return in_map(W, x, y) && W->ter[y * W->w + x] != WATER && !unit_at(W, x, y) && !city_at(W, x, y); }
-typedef struct { unsigned seed; int size, diff, rivals, mapk; } Setup;
+typedef struct { unsigned seed; int size, diff, rivals, mapk, pick; } Setup;
 static int place_near(World *W, int civ, int kind, int bx, int by, Rows *R) {
     for (int d = 0; d < 8; d++) { int k = (2 + d) & 7;     /* east first, then clockwise */
         if (land_free(W, bx + DX[k], by + DY[k])) {
@@ -182,23 +188,24 @@ static int place_near(World *W, int civ, int kind, int bx, int by, Rows *R) {
     return 0; }
 /* where a civ wants to start: random maps = four fixed spots of the map, earth = a latitude and longitude of the RULE rows */
 static void start_target(World *W, int civ, int *tx, int *ty) {
-    if (W->mapk == 1) { char n[48]; int lat, lon, top = rule("earth_lat_north"), bot = rule("earth_lat_south");
-        snprintf(n, sizeof n, "earth_start%d_lat", civ); lat = rule(n); snprintf(n, sizeof n, "earth_start%d_lon", civ); lon = rule(n);
+    if (W->mapk == 1) { int lat = rule_civ(W->civid[civ], "lat"), lon = rule_civ(W->civid[civ], "lon"), top = rule("earth_lat_north"), bot = rule("earth_lat_south");
         *tx = (lon + 180) * W->w / 360; *ty = (top - lat) * W->h / (top - bot); return; }
     *tx = civ == 1 ? W->w / 4 : civ == 2 ? (3 * W->w) / 4 : W->w / 2; *ty = civ <= 2 ? W->h / 2 : civ == 3 ? W->h / 4 : (3 * W->h) / 4; }
 static int do_new(World *W, const Setup *S, Rows *R) {
     unsigned seed = S->seed;
-    if (S->size < 0 || S->size > 2) return refuse("size is small medium or large");
+    if (S->size < 0 || S->size >= NSIZE) return refuse("size is small medium large or huge");
     if (S->diff < 0 || S->diff > 2) return refuse("difficulty is easy normal or hard");
     if (S->rivals < 1 || S->rivals > 3) return refuse("rivals are 1 to 3");
     if (S->mapk < 0 || S->mapk > 1) return refuse("map is random or earth");
+    if (S->pick < 0 || S->pick >= rule("civ_count")) return refuse("no such civ to play");
     memset(W, 0, sizeof *W); W->seed = seed; W->size = S->size; W->diff = S->diff; W->mapk = S->mapk; W->nciv = 1 + S->rivals;
+    W->civid[1] = S->pick; { int k = 0; for (int slot = 2; slot <= W->nciv; slot++) { while (k == S->pick) k++; if (k >= rule("civ_count")) return refuse("not enough civs for that many rivals"); W->civid[slot] = k++; } }
     W->w = rule_size(S->size, "w"); W->h = rule_size(S->size, "h");
     if (W->w * W->h > MAXT || W->w < 8 || W->h < 6) return refuse("map size out of range");
     int land = W->mapk == 1 ? gen_earth(W) : gen_terrain(W);
     if (land < 0) return refuse("the ETOPO5 earth data is missing");
     if (land < rule_size(S->size, "land")) return refuse("not enough land for this seed");
-    rowf(R, "NEW|%u|%d|%d|%016llx|%s|%s|%d|%s|%016llx", seed, W->w, W->h, (unsigned long long)rules_hash, sizename[S->size], diffname[S->diff], S->rivals, mapname[S->mapk], (unsigned long long)grid_hash(W));
+    { char cid[48]; civ_word(S->pick, "id", cid, sizeof cid); rowf(R, "NEW|%u|%d|%d|%016llx|%s|%s|%d|%s|%016llx|%s", seed, W->w, W->h, (unsigned long long)rules_hash, sizename[S->size], diffname[S->diff], S->rivals, mapname[S->mapk], (unsigned long long)grid_hash(W), cid); }
     for (int civ = 1; civ <= W->nciv; civ++) {
         int tx, ty, best = 1 << 30, bx = -1, by = -1; start_target(W, civ, &tx, &ty);
         for (int y = 0; y < W->h; y++) for (int x = 0; x < W->w; x++) if (W->ter[y * W->w + x] == GRASS && land_free(W, x, y)) {
@@ -265,7 +272,7 @@ static int candidates(World *W, int civ, Cand *out, int max) {
     for (int i = 0; i < W->nu && n < max; i++) { Unit *u = &W->u[i]; if (!u->alive || u->civ != civ || u->mp <= 0) continue;
         if (found_ok(W, u)) { out[n++] = (Cand){ rule("aiw_found"), 0, u, NULL, 0, 0 }; }
         for (int d = 0; d < 8 && n < max; d++) if (mp_ok_move(W, u, d)) {
-            int sc = rule("aiw_explore") * unseen_at(W, civ, u->x + DX[d], u->y + DY[d]) + rule("aiw_walk");
+            int sc = (rule("aiw_explore") * rule_civ(W->civid[civ], "explore_pct") / 100) * unseen_at(W, civ, u->x + DX[d], u->y + DY[d]) + rule("aiw_walk");
             if (u->kind == 0 && ncity_of(W, civ) == 0) sc += rule("aiw_walk");
             out[n++] = (Cand){ sc, 2, u, NULL, d, 0 }; } }
     for (int i = 0; i < W->nc && n < max; i++) { City *c = &W->c[i]; if (c->civ != civ) continue;
@@ -316,11 +323,11 @@ static int match_block(const Rows *R, int from, int at) {
     for (int i = from; i < R->n; i++) { if (at + i - from >= g_n) return bad(g_n, "a derived row is missing"); if (strcmp(g_lines[at + i - from], R->r[i])) { fprintf(stderr, "ledger line %d: expected %s\n", at + i - from + 1, R->r[i]); return bad(at + i - from, "a derived row differs from the rules"); } }
     return 0; }
 static int replay(World *W) {
-    static Rows R; if (g_n < 1) return bad(0, "empty ledger"); int at = 0; unsigned seed; int w, h, riv; unsigned long long hh, gh; char sz[16], df[16], mp[16];
-    if (sscanf(g_lines[0], "NEW|%u|%d|%d|%llx|%15[^|]|%15[^|]|%d|%15[^|]|%llx", &seed, &w, &h, &hh, sz, df, &riv, mp, &gh) != 9) return bad(0, "first row is not NEW (seed, size, difficulty, rivals, map)");
+    static Rows R; if (g_n < 1) return bad(0, "empty ledger"); int at = 0; unsigned seed; int w, h, riv; unsigned long long hh, gh; char sz[16], df[16], mp[16], pk[48];
+    if (sscanf(g_lines[0], "NEW|%u|%d|%d|%llx|%15[^|]|%15[^|]|%d|%15[^|]|%llx|%47s", &seed, &w, &h, &hh, sz, df, &riv, mp, &gh, pk) != 10) return bad(0, "first row is not NEW (seed, size, difficulty, rivals, map, civ)");
     if (hh != (unsigned long long)rules_hash) return bad(0, "rules.pdl changed after the game began (hash)");
-    Setup S = { seed, name_idx(sizename, 3, sz), name_idx(diffname, 3, df), riv, name_idx(mapname, 2, mp) };
-    if (S.size < 0 || S.diff < 0 || S.mapk < 0) return bad(0, "the setup in the NEW row is not a known size, difficulty or map");
+    Setup S = { seed, name_idx(sizename, NSIZE, sz), name_idx(diffname, 3, df), riv, name_idx(mapname, 2, mp), civ_index(pk) };
+    if (S.size < 0 || S.diff < 0 || S.mapk < 0 || S.pick < 0) return bad(0, "the setup in the NEW row is not a known size, difficulty, map or civ");
     R.n = 0; if (do_new(W, &S, &R)) return bad(0, msg);
     if (w != W->w || h != W->h) return bad(0, "map size differs from the rules");
     if (gh != (unsigned long long)grid_hash(W)) return bad(0, "the map grid differs from the one the game began with (source data changed)");
@@ -379,7 +386,11 @@ static void cmd_ui(World *W, int civ, const char *sel) {
     int has_settler = 0, moves_left = 0, ncity = ncity_of(W, civ);
     for (int i = 0; i < W->nu; i++) if (W->u[i].alive && W->u[i].civ == civ) { if (W->u[i].kind == 0) has_settler = 1; if (W->u[i].mp > 0) moves_left = 1; }
     const char *key = ncity == 0 && has_settler ? (u && u->kind == 0 ? (found_ok(W, u) ? "next_found" : "next_walk") : "next_pick") : ncity > 0 && W->turn == 0 ? "next_endturn" : moves_left ? "next_move" : "next_end";
-    text_for(key, t, sizeof t); printf("next=%s\n", t); }
+    text_for(key, t, sizeof t); printf("next=%s\n", t);
+    { char nm[48], ld[48], co[24]; civ_word(W->civid[civ], "name", nm, sizeof nm); civ_word(W->civid[civ], "leader", ld, sizeof ld); civ_word(W->civid[civ], "colour", co, sizeof co);
+      printf("civ=%s\nleader=%s\ncolour=%s\nrgb=%d,%d,%d\n", nm, ld, co, rule_civ(W->civid[civ], "r"), rule_civ(W->civid[civ], "g"), rule_civ(W->civid[civ], "b"));
+      for (int s = 1; s <= W->nciv; s++) { civ_word(W->civid[s], "name", nm, sizeof nm); printf("party_%d_label=%s%s\nparty_%d_id=civ_%d\nparty_%d_cls=%s\n", s - 1, s == civ ? "> " : "", nm, s - 1, s, s - 1, s == civ ? "active" : "idle"); }
+      printf("n_party=%d\n", W->nciv); } }
 static void cmd_status(World *W) {
     { int nu1 = 0, nu2 = 0; for (int i = 0; i < W->nu; i++) if (W->u[i].alive) { if (W->u[i].civ == 1) nu1++; else nu2++; } printf("turn=%d cities=%d/%d units=%d/%d seats=%s/%s civs=%d size=%s diff=%s map=%s\n", W->turn, ncity_of(W, 1), ncity_of(W, 2), nu1, nu2, W->seat_agent[1] ? "agent:basic" : "human", W->seat_agent[2] ? "agent:basic" : "human", W->nciv, sizename[W->size], diffname[W->diff], mapname[W->mapk]); } }
 
@@ -413,7 +424,6 @@ static int cmd_lesson(World *W, const char *file, int civ) {
 /* atlas tiles: 0 fog, 1 water, 2 grass, 3 forest, 4 hills, 5 mountain, 6 city civ1, 7 city civ2 (flat colours, a stopgap: placeholder art) */
 static const unsigned char TILE[10][3] = { {0,0,0}, {40,90,200}, {90,170,70}, {30,110,50}, {150,130,80}, {170,170,175}, {80,140,255}, {255,90,80}, {250,220,60}, {200,90,230} };
 /* unit colours: civ 1..4, [kind 0 settler, 1 warrior] */
-static const unsigned char UCOL[5][2][3] = { {{0}}, { {120,200,255}, {40,80,230} }, { {255,160,60}, {200,30,40} }, { {255,240,120}, {200,170,0} }, { {230,150,255}, {150,40,190} } };
 static int write_file(const char *path, const char *data, size_t n) {
     char tmp[PATH_MAX + 8]; snprintf(tmp, sizeof tmp, "%s.tmp", path); FILE *f = fopen(tmp, "w"); if (!f) return 5;
     int ok = fwrite(data, 1, n, f) == n; fclose(f); if (!ok || rename(tmp, path)) return 5; return 0; }
@@ -426,10 +436,13 @@ static int cmd_project(World *W, int civ, const char *dir) {
             nc += (size_t)snprintf(cells + nc, sizeof cells - nc, "%s%d,0", x ? " " : "", t); mapt[nm++] = (char)g; }
         cells[nc++] = '\n'; mapt[nm++] = '\n'; }
     for (int i = 0; i < W->nu; i++) { Unit *u = &W->u[i]; if (!u->alive || !vis(W, civ, u->x, u->y)) continue;
-        int r = UCOL[u->civ][u->kind][0], g = UCOL[u->civ][u->kind][1], b = UCOL[u->civ][u->kind][2];
+        int cr = rule_civ(W->civid[u->civ], "r"), cg = rule_civ(W->civid[u->civ], "g"), cb = rule_civ(W->civid[u->civ], "b"), lt = u->kind ? 0 : 90;      /* the piece wears its civ colour: the warrior as is, the settler lighter */
+        int r = cr + (255 - cr) * lt / 255, g = cg + (255 - cg) * lt / 255, b = cb + (255 - cb) * lt / 255;
         ne += (size_t)snprintf(ev + ne, sizeof ev - ne, "%d %d %d %d %d block 0 2 1\n", u->x, u->y, r, g, b); }
+    unsigned char tile[10][3]; memcpy(tile, TILE, sizeof tile);
+    for (int s = 1; s <= 4 && s <= W->nciv; s++) { tile[5 + s][0] = (unsigned char)rule_civ(W->civid[s], "r"); tile[5 + s][1] = (unsigned char)rule_civ(W->civid[s], "g"); tile[5 + s][2] = (unsigned char)rule_civ(W->civid[s], "b"); }      /* a city tile is its owner civ colour */
     for (int t = 0; t < 10; t++) for (int i = 0; i < 256; i++) { size_t o = ((size_t)t * 256 + (size_t)i) * 4; int edge = (i % 16 == 0 || i / 16 == 0) && t > 0, sh = edge ? 12 : 0;
-        atl[o] = (char)(TILE[t][0] > sh ? TILE[t][0] - sh : 0); atl[o + 1] = (char)(TILE[t][1] > sh ? TILE[t][1] - sh : 0); atl[o + 2] = (char)(TILE[t][2] > sh ? TILE[t][2] - sh : 0); atl[o + 3] = (char)255; }
+        atl[o] = (char)(tile[t][0] > sh ? tile[t][0] - sh : 0); atl[o + 1] = (char)(tile[t][1] > sh ? tile[t][1] - sh : 0); atl[o + 2] = (char)(tile[t][2] > sh ? tile[t][2] - sh : 0); atl[o + 3] = (char)255; }
     static const char *ext = "EXTRUDE | ~ | 1\nEXTRUDE | . | 1\nEXTRUDE | T | 2\nEXTRUDE | ^ | 3\nEXTRUDE | M | 5\nEXTRUDE | A | 2\nEXTRUDE | B | 2\nEXTRUDE | C | 2\nEXTRUDE | D | 2\nEXTRUDE | # | 1\n";
     int rc = 0;
     snprintf(p, sizeof p, "%s/cells.txt", dir); rc |= write_file(p, cells, nc);
@@ -443,18 +456,19 @@ static int cmd_project(World *W, int civ, const char *dir) {
     return rc ? 5 : 0; }
 
 /* ---------- setup: the choices before the NEW row. The draft file is a PREFERENCE (a cursor, changes no outcome); `start` commits it as ONE ledger row (NEW carries size, difficulty, rivals, map, seed, grid hash) ---------- */
-static const char *optname[] = { "Size", "Map", "Difficulty", "Rivals", "Seed" };
+static const char *optname[] = { "Size", "Map", "Difficulty", "Rivals", "Civ", "Seed" };
+#define NOPT 6
 typedef struct { Setup s; int opt; } Draft;
-static void draft_default(Draft *d) { d->s.seed = (unsigned)rule("default_seed"); d->s.size = rule("default_size"); d->s.diff = rule("default_diff"); d->s.rivals = rule("default_rivals"); d->s.mapk = rule("default_map"); d->opt = 0; }
+static void draft_default(Draft *d) { d->s.seed = (unsigned)rule("default_seed"); d->s.size = rule("default_size"); d->s.diff = rule("default_diff"); d->s.rivals = rule("default_rivals"); d->s.mapk = rule("default_map"); d->s.pick = rule("default_civ"); d->opt = 0; }
 static void draft_load(const char *path, Draft *d) {
     char ln[LINE]; unsigned long v; draft_default(d); FILE *f = fopen(path, "r"); if (!f) return;
     while (fgets(ln, sizeof ln, f)) { char k[24]; if (sscanf(ln, "%23[^=]=%lu", k, &v) == 2) {
-        if (!strcmp(k, "size") && v <= 2) d->s.size = (int)v; else if (!strcmp(k, "diff") && v <= 2) d->s.diff = (int)v;
+        if (!strcmp(k, "size") && v < NSIZE) d->s.size = (int)v; else if (!strcmp(k, "diff") && v <= 2) d->s.diff = (int)v;
         else if (!strcmp(k, "rivals") && v >= 1 && v <= 3) d->s.rivals = (int)v; else if (!strcmp(k, "map") && v <= 1) d->s.mapk = (int)v;
-        else if (!strcmp(k, "seed") && v <= (unsigned long)rule("seed_max")) d->s.seed = (unsigned)v; else if (!strcmp(k, "opt") && v <= 4) d->opt = (int)v; } }
+        else if (!strcmp(k, "seed") && v <= (unsigned long)rule("seed_max")) d->s.seed = (unsigned)v; else if (!strcmp(k, "pick") && v < (unsigned long)rule("civ_count")) d->s.pick = (int)v; else if (!strcmp(k, "opt") && v < NOPT) d->opt = (int)v; } }
     fclose(f); }
 static int draft_save(const char *path, const Draft *d) {
-    char b[160]; int n = snprintf(b, sizeof b, "size=%d\ndiff=%d\nrivals=%d\nmap=%d\nseed=%u\nopt=%d\n", d->s.size, d->s.diff, d->s.rivals, d->s.mapk, d->s.seed, d->opt);
+    char b[160]; int n = snprintf(b, sizeof b, "size=%d\ndiff=%d\nrivals=%d\nmap=%d\nseed=%u\npick=%d\nopt=%d\n", d->s.size, d->s.diff, d->s.rivals, d->s.mapk, d->s.seed, d->s.pick, d->opt);
     return write_file(path, b, (size_t)n); }
 static void draft_value(const Draft *d, int opt, char *o, size_t n) {
     switch (opt) {
@@ -462,29 +476,34 @@ static void draft_value(const Draft *d, int opt, char *o, size_t n) {
     case 1: snprintf(o, n, "%s", mapname[d->s.mapk]); break;
     case 2: snprintf(o, n, "%s", diffname[d->s.diff]); break;
     case 3: snprintf(o, n, "%d", d->s.rivals); break;
+    case 4: civ_word(d->s.pick, "name", o, n); break;
     default: snprintf(o, n, "%u", d->s.seed); } }
 static void draft_show(const Draft *d) {
     char v[64], t[160]; draft_value(d, d->opt, v, sizeof v);
-    printf("nick_line=New game: setup\nstat_line=%s: %s\n", optname[d->opt], v);
+    { char cn[48]; civ_word(d->s.pick, "name", cn, sizeof cn); printf("nick_line=Setup: you are %s\nstat_line=%s: %s\n", cn, optname[d->opt], v); }
     char a[48], b[48]; draft_value(d, 0, a, sizeof a); draft_value(d, 1, b, sizeof b); printf("stat_line2=%s, %s\n", a, b);
     text_for("setup_next", t, sizeof t); printf("next=%s\n", t);
-    for (int i = 0; i < 5; i++) { draft_value(d, i, v, sizeof v); printf("option%d=%s%s: %s\n", i + 1, i == d->opt ? "> " : "  ", optname[i], v); }
+    for (int i = 0; i < NOPT; i++) { draft_value(d, i, v, sizeof v); printf("option%d=%s%s: %s\n", i + 1, i == d->opt ? "> " : "  ", optname[i], v); }
+    for (int k = 0; k < rule("civ_count"); k++) { char nm[48], ld[48], co[24]; civ_word(k, "name", nm, sizeof nm); civ_word(k, "leader", ld, sizeof ld); civ_word(k, "colour", co, sizeof co);
+        printf("party_%d_label=%s%s\nparty_%d_id=civ_%d\nparty_%d_cls=%s\ncivline%d=%s%s: %s, %s\n", k, k == d->s.pick ? "> " : "", nm, k, k + 1, k, k == d->s.pick ? "active" : "idle", k + 1, k == d->s.pick ? "> " : "  ", nm, ld, co); }
+    printf("n_party=%d\n", rule("civ_count"));
     printf("opt=%d\n", d->opt); }
 static int draft_act(Draft *d, const char *act, const char *arg) {
     int smax = rule("seed_max");
     if (!strcmp(act, "show")) return 0;
     if (!strcmp(act, "reset")) { draft_default(d); return 0; }
-    if (!strcmp(act, "next")) { d->opt = (d->opt + 1) % 5; return 0; }
-    if (!strcmp(act, "prev")) { d->opt = (d->opt + 4) % 5; return 0; }
+    if (!strcmp(act, "next")) { d->opt = (d->opt + 1) % NOPT; return 0; }
+    if (!strcmp(act, "prev")) { d->opt = (d->opt + NOPT - 1) % NOPT; return 0; }
     if (!strcmp(act, "inc") || !strcmp(act, "dec")) { int up = act[0] == 'i';
         switch (d->opt) {
-        case 0: d->s.size = (d->s.size + (up ? 1 : 2)) % 3; break;
+        case 0: d->s.size = (d->s.size + (up ? 1 : NSIZE - 1)) % NSIZE; break;
         case 1: d->s.mapk = 1 - d->s.mapk; break;
         case 2: d->s.diff = (d->s.diff + (up ? 1 : 2)) % 3; break;
+        case 4: d->s.pick = (d->s.pick + (up ? 1 : rule("civ_count") - 1)) % rule("civ_count"); break;
         case 3: d->s.rivals = d->s.rivals + (up ? 1 : -1); if (d->s.rivals > 3) d->s.rivals = 1; if (d->s.rivals < 1) d->s.rivals = 3; break;
         default: if (up) d->s.seed = d->s.seed >= (unsigned)smax ? 0 : d->s.seed + 1; else d->s.seed = d->s.seed ? d->s.seed - 1 : (unsigned)smax; }
         return 0; }
-    if (!strcmp(act, "digit")) { if (d->opt != 4 || !arg || arg[0] < '0' || arg[0] > '9' || arg[1]) return refuse("digits type the seed: pick the Seed option first");
+    if (!strcmp(act, "digit")) { if (d->opt != 5 || !arg || arg[0] < '0' || arg[0] > '9' || arg[1]) return refuse("digits type the seed: pick the Seed option first");
         unsigned long v = (unsigned long)d->s.seed * 10 + (unsigned long)(arg[0] - '0'); if (v > (unsigned long)smax) return refuse("that seed is too long"); d->s.seed = (unsigned)v; return 0; }
     if (!strcmp(act, "back")) { d->s.seed /= 10; return 0; }
     if (!strcmp(act, "random")) { if (!arg || !*arg) return refuse("random needs a number"); d->s.seed = (unsigned)(strtoul(arg, NULL, 10) % ((unsigned long)smax + 1)); return 0; }
@@ -509,7 +528,7 @@ int main(int argc, char **argv) {
     if (load_rules(argv[0])) { fprintf(stderr, "civ_op: no rules.pdl\n"); return 5; }
     if (!strcmp(verb, "audit")) { if (argc < 5) return 2; return cmd_audit(argv[3], argv[4]); }
     if (!strcmp(verb, "world")) { if (argc < 4) { return 2; }       /* world <seed> [size] [map]: the terrain a setup would give, no ledger */
-        Setup S = { (unsigned)strtoul(argv[3], NULL, 10), argc > 4 ? name_idx(sizename, 3, argv[4]) : rule("default_size"), 1, 1, argc > 5 ? name_idx(mapname, 2, argv[5]) : 0 };
+        Setup S = { (unsigned)strtoul(argv[3], NULL, 10), argc > 4 ? name_idx(sizename, NSIZE, argv[4]) : rule("default_size"), 1, 1, argc > 5 ? name_idx(mapname, 2, argv[5]) : 0, 0 };
         if (S.size < 0 || S.mapk < 0) return 2;
         memset(&W, 0, sizeof W); W.seed = S.seed; W.size = S.size; W.mapk = S.mapk; W.w = rule_size(S.size, "w"); W.h = rule_size(S.size, "h"); int land = S.mapk ? gen_earth(&W) : gen_terrain(&W);
         if (land < 0) { printf("refused: the ETOPO5 earth data is missing\n"); return 5; }
@@ -519,6 +538,11 @@ int main(int argc, char **argv) {
         if (load_etopo()) { printf("refused: the ETOPO5 earth data is missing\n"); return 5; }
         int e = elev10(atoi(argv[3]), atoi(argv[4])); int k = e < rule("earth_sea") ? WATER : e >= rule("earth_mount") ? MOUNT : e >= rule("earth_hill") ? HILLS : GRASS;
         printf("elev=%d class=%s\n", e, k == WATER ? "water" : k == MOUNT ? "mountain" : k == HILLS ? "hills" : "land"); return 0; }
+    if (!strcmp(verb, "earthtile")) { if (argc < 6) return 2;      /* earthtile <size> <lat> <lon>: the tile of the earth world of that preset that holds a coordinate, its class and the grid hash */
+        int sz = name_idx(sizename, NSIZE, argv[3]); if (sz < 0) return 2; memset(&W, 0, sizeof W); W.size = sz; W.mapk = 1; W.w = rule_size(sz, "w"); W.h = rule_size(sz, "h");
+        if (gen_earth(&W) < 0) { printf("refused: the ETOPO5 earth data is missing\n"); return 5; }
+        int lat = atoi(argv[4]), lon = atoi(argv[5]), top = rule("earth_lat_north"), bot = rule("earth_lat_south"), x = (lon + 180) * W.w / 360, y = (top - lat) * W.h / (top - bot);
+        printf("tile=%d,%d water=%d class=%s hash=%016llx\n", x, y, W.ter[y * W.w + x] == WATER, tname[W.ter[y * W.w + x]], (unsigned long long)grid_hash(&W)); return 0; }
     if (!strcmp(verb, "setup")) { if (argc < 5) return 2; Draft d; draft_load(argv[3], &d); int rc0 = draft_act(&d, argv[4], argc > 5 ? argv[5] : NULL);
         if (rc0) { printf("refused: %s\n", msg); return rc0; }
         if (strcmp(argv[4], "show") && draft_save(argv[3], &d)) return 5;
@@ -527,8 +551,8 @@ int main(int argc, char **argv) {
         if (rc0) { printf("refused: %s\n", msg); return rc0; } return cmd_project(&W, 0, argv[4]); }
     if (!strcmp(verb, "new") || !strcmp(verb, "start")) {
         Setup S; if (!strcmp(verb, "start")) { if (argc < 4) return 2; Draft d; draft_load(argv[3], &d); S = d.s; }
-        else { if (argc < 4) return 2; S.seed = (unsigned)strtoul(argv[3], NULL, 10); S.size = argc > 4 ? name_idx(sizename, 3, argv[4]) : rule("default_size"); S.diff = argc > 5 ? name_idx(diffname, 3, argv[5]) : rule("default_diff");
-            S.rivals = argc > 6 ? atoi(argv[6]) : rule("default_rivals"); S.mapk = argc > 7 ? name_idx(mapname, 2, argv[7]) : rule("default_map"); }
+        else { if (argc < 4) return 2; S.seed = (unsigned)strtoul(argv[3], NULL, 10); S.size = argc > 4 ? name_idx(sizename, NSIZE, argv[4]) : rule("default_size"); S.diff = argc > 5 ? name_idx(diffname, 3, argv[5]) : rule("default_diff");
+            S.rivals = argc > 6 ? atoi(argv[6]) : rule("default_rivals"); S.mapk = argc > 7 ? name_idx(mapname, 2, argv[7]) : rule("default_map"); S.pick = argc > 8 ? civ_index(argv[8]) : rule("default_civ"); }
         struct stat st; if (stat(ledger, &st) == 0 && st.st_size > 0) { printf("refused: a ledger already exists\n"); return 4; }
         int rc = do_new(&W, &S, &R); if (rc) { printf("refused: %s\n", msg); return rc; }
         if (append_rows(ledger, &R)) { return 5; }

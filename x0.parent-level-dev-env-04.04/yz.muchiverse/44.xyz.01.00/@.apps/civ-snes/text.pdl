@@ -5,4 +5,36 @@ TEXT | next_found | Next: press B to found a city here
 TEXT | next_endturn | Next: press Space to end the turn
 TEXT | next_move | Next: move a unit, or Space to end the turn
 TEXT | next_end | Next: press Space to end the turn
-TEXT | setup_next | Up/Down pick, Left/Right change, Enter starts
+TEXT | setup_next | Up/Down pick, Left/Right change, Space starts
+TEXT | civ_1_id | romans
+TEXT | civ_1_name | Romans
+TEXT | civ_1_leader | Caesar
+TEXT | civ_1_colour | red
+TEXT | civ_2_id | egyptians
+TEXT | civ_2_name | Egyptians
+TEXT | civ_2_leader | Ramesses
+TEXT | civ_2_colour | gold
+TEXT | civ_3_id | chinese
+TEXT | civ_3_name | Chinese
+TEXT | civ_3_leader | Qin
+TEXT | civ_3_colour | green
+TEXT | civ_4_id | americans
+TEXT | civ_4_name | Americans
+TEXT | civ_4_leader | Lincoln
+TEXT | civ_4_colour | blue
+TEXT | civ_5_id | aztecs
+TEXT | civ_5_name | Aztecs
+TEXT | civ_5_leader | Montezuma
+TEXT | civ_5_colour | teal
+TEXT | civ_6_id | zulus
+TEXT | civ_6_name | Zulus
+TEXT | civ_6_leader | Shaka
+TEXT | civ_6_colour | orange
+TEXT | civ_7_id | mongols
+TEXT | civ_7_name | Mongols
+TEXT | civ_7_leader | Genghis
+TEXT | civ_7_colour | brown
+TEXT | civ_8_id | english
+TEXT | civ_8_name | English
+TEXT | civ_8_leader | Elizabeth
+TEXT | civ_8_colour | purple
