@@ -1,0 +1,108 @@
+# civ_snes_pages - the verb PAGES of civ-snes (D157): every rule verb is an event page (events/<verb>/, written by verbgen from verbs.pdl, registry COMMAND civ_verb) that runs civ_verb, which calls ONE rule op and re-projects the desk.
+# Scratch house under $T only (play_event.sh finds the house from the folder it is given). Scene: seed 4, see civ_snes.pdl for the hand-checked world.
+RESULTS | ../results/civ_snes_pages.txt
+CASE | verb-pages-are-the-path
+SCRATCH
+ENV | BLUEPRINTZ_DEBUG_FILE | /nonexistent
+MKDIR | house/xyzfs
+MKDIR | house/@.apps/civ-snes/ops/+x
+MKDIR | house/@.apps/civ-snes/play/world
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/house/@.apps/civ-snes/ops/+x/civ_op.+x | $HOUSE/@.apps/civ-snes/ops/civ_op.c
+EXPECT_EXIT | 0 | the rule op compiles
+RUN | gcc | -std=gnu11 | -Wall | -Wextra | -Werror | -O2 | -o | $T/house/@.apps/civ-snes/ops/+x/civ_verb.+x | $HOUSE/@.apps/civ-snes/ops/civ_verb.c
+EXPECT_EXIT | 0 | the verb engine compiles with -Werror
+COPY | @.apps/civ-snes/rules.pdl | house/@.apps/civ-snes/rules.pdl
+COPY | @.apps/civ-snes/text.pdl | house/@.apps/civ-snes/text.pdl
+COPYDIR | @.apps/civ-snes/events | house/@.apps/civ-snes/events
+RUN | grep | -c | ^COMMAND civ_verb$ | $HOUSE/#.ref/menu/event_commands.registry.pdl
+EXPECT_OUT | 1 | the registry names the command the pages run (so Blueprintz lists it)
+EXPECT_HAS | house/@.apps/civ-snes/events/move/event_pkg/pages/page_1/event.ir.pdl | type=civ_verb \p verb=move | the move page names the registered command
+EXPECT_HAS | house/@.apps/civ-snes/events/found/event_pkg/pages/page_1/event.ir.pdl | type=civ_verb \p verb=found | the found page names the registered command
+EXPECT_HAS | house/@.apps/civ-snes/events/build/event_pkg/pages/page_1/event.ir.pdl | type=civ_verb \p verb=build | the build page names the registered command
+EXPECT_HAS | house/@.apps/civ-snes/events/endturn/event_pkg/pages/page_1/event.ir.pdl | type=civ_verb \p verb=endturn | the endturn page names the registered command
+EXPECT_HAS | house/@.apps/civ-snes/events/seat/event_pkg/pages/page_1/event.ir.pdl | type=civ_verb \p verb=seat | the seat page names the registered command
+EXPECT_HAS | house/@.apps/civ-snes/events/endturn/event_pkg/pages/page_1/condition.pdl | COND \p trigger \p ui | a verb page has a ui trigger
+ENV | CIV_LEDGER | $T/led.txt
+ENV | CIV_DESK | $T/desk
+ENV | CIV_SEE | civ1
+RUN | $T/house/@.apps/civ-snes/ops/+x/civ_op.+x | $T/led.txt | new | 4
+EXPECT_EXIT | 0 | seed-4 ledger
+ENV | MUCHI_TARGET_ENT | $T/house/@.apps/civ-snes/play/world
+ENV | GAME_ARG | u2 n
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/house/@.apps/civ-snes/events/move | $T/house | ui
+EXPECT_EXIT | 0 | the move page was played
+EXPECT_HAS | led.txt | MOVE\pu2\p6\p7\p6\p6\p1 | a move page appended one MOVE row through the op
+EXPECT_HAS | house/@.apps/civ-snes/play/result.txt | ok | the page engine reports ok
+EXPECT_HAS | desk/events.txt | 6 6 40 80 230 block 0 2 1 | the desk was re-projected after the accepted verb (the warrior piece is on 6,6)
+EXPECT_HAS | desk/cells.txt | width=20 | the desk header is there
+ENV | GAME_ARG | u9 e
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/house/@.apps/civ-snes/events/move | $T/house | ui
+EXPECT_HAS | house/@.apps/civ-snes/play/result.txt | refused: | a refused move puts the rule's reason on the result file
+RUN | grep | -c | ^MOVE.u2 | $T/led.txt
+EXPECT_OUT | 1 | NEGATIVE-the-refused-move-added-no-row
+ENV | GAME_ARG | u1
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/house/@.apps/civ-snes/events/found | $T/house | ui
+EXPECT_HAS | led.txt | FOUND\pu1\pc1\p5\p7 | the found page founded a city where the settler stands
+EXPECT_HAS | desk/cells.txt | 6,0 | the desk now draws the human city tile
+ENV | GAME_ARG | c1 settler
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/house/@.apps/civ-snes/events/build | $T/house | ui
+EXPECT_HAS | led.txt | BUILD\pc1\psettler | the build page set production
+ENV | GAME_ARG |
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/house/@.apps/civ-snes/events/endturn | $T/house | ui
+EXPECT_HAS | house/@.apps/civ-snes/play/result.txt | ok | the endturn page ran
+EXPECT_HAS | led.txt | TURN\p1 | the endturn page appended the TURN row (the only thing that advances time)
+EXPECT_HAS | led.txt | FOUND\pu3\pc2\p15\p7 | and the rival agent played its turn inside the same verb (a derived row, recomputed on replay)
+ENV | GAME_ARG | civ2 human
+RUN | /bin/bash | $HOUSE/&.widgits/events-hq/ops/play_event.sh | $T/house/@.apps/civ-snes/events/seat | $T/house | ui
+EXPECT_HAS | led.txt | SEAT\pciv2\phuman | a seat swap through the page is a ledger row
+RUN | $T/house/@.apps/civ-snes/ops/+x/civ_op.+x | $T/led.txt | verify
+EXPECT_EXIT | 0 | everything the pages wrote replays
+RUN | grep | -c | ^MOVE.u2 | $T/led.txt
+EXPECT_OUT | 1 | exactly the one accepted move is in the ledger
+ENV | GAME_ARG | x
+RUN | $T/house/@.apps/civ-snes/ops/+x/civ_verb.+x | move
+EXPECT_EXIT | 2 | NEGATIVE-a-move-with-one-argument-never-reaches-the-op
+ENV | GAME_ARG | u1'x e
+RUN | $T/house/@.apps/civ-snes/ops/+x/civ_verb.+x | move
+EXPECT_EXIT | 2 | NEGATIVE-a-quote-in-an-argument-never-reaches-the-op
+ENV | GAME_ARG |
+RUN | $T/house/@.apps/civ-snes/ops/+x/civ_verb.+x | bogus
+EXPECT_EXIT | 2 | NEGATIVE-an-unknown-verb-is-refused-by-the-engine
+RUN | $T/house/@.apps/civ-snes/ops/+x/civ_verb.+x | found
+EXPECT_EXIT | 2 | NEGATIVE-found-without-a-unit-is-refused
+# ---- SABOTAGE: the verb engine without the projection leaves the desk stale
+MKDIR | mp/ops/+x
+MKDIR | h2/xyzfs
+MKDIR | h2/@.apps/civ-snes/ops/+x
+COPY | @.apps/civ-snes/ops/civ_verb.c | mp/civ_verb.c
+RUN | sed | -i | s/if (code == 0 \&\& desk\[0\])/if (0)/ | $T/mp/civ_verb.c
+RUN | cmp | -s | $HOUSE/@.apps/civ-snes/ops/civ_verb.c | $T/mp/civ_verb.c
+EXPECT_EXIT | 1 | SABOTAGE no-project: the mutant source differs from the real source (the sed matched)
+RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/h2/@.apps/civ-snes/ops/+x/civ_verb.+x | $T/mp/civ_verb.c
+EXPECT_EXIT | 0 | the mutant compiles
+RUN | cp | $T/house/@.apps/civ-snes/ops/+x/civ_op.+x | $T/h2/@.apps/civ-snes/ops/+x/civ_op.+x
+RUN | cp | $T/house/@.apps/civ-snes/rules.pdl | $T/h2/@.apps/civ-snes/rules.pdl
+ENV | CIV_LEDGER | $T/l2.txt
+ENV | CIV_DESK | $T/desk2
+RUN | $T/h2/@.apps/civ-snes/ops/+x/civ_op.+x | $T/l2.txt | new | 4
+ENV | GAME_ARG | u2 n
+RUN | $T/h2/@.apps/civ-snes/ops/+x/civ_verb.+x | move
+EXPECT_EXIT | 0 | the sabotaged engine still accepts the move
+EXPECT_NOFILE | desk2/cells.txt | SABOTAGE no-project CAUGHT: without the projection call the desk is not written (the real engine wrote desk/cells.txt, shown above)
+ENV | CIV_DESK | $T/desk3
+ENV | GAME_ARG | u2 n
+RUN | $T/house/@.apps/civ-snes/ops/+x/civ_verb.+x | move
+EXPECT_EXIT | 0 | CONTROL: the real engine on its own ledger projects
+EXPECT_EXISTS | desk3/cells.txt | CONTROL: the real engine wrote the desk for the same move
+CLEAN |
+CASE | the-manifest-covers-every-engine-verb
+SCRATCH
+RUN | $HOUSE/&.widgits/events-hq/ops/+x/verbgen.+x | check | $HOUSE/@.apps/civ-snes
+EXPECT_EXIT | 0 | verbgen check passes on the real app
+EXPECT_OUT | missing-from-manifest 0, not-in-source 0, no-package 0 | five engine verbs, five manifest rows, five pages
+MKDIR | neg/ops
+COPY | @.apps/civ-snes/ops/civ_verb.c | neg/ops/civ_verb.c
+WRITE | neg/verbs.pdl | GAME \p civ-snes \p civ_verb \p ops/+x/civ_verb.+x \p ops/civ_verb.c\nVERB \p move \p yes \p ui \p unit dir \p walk\n
+RUN | $HOUSE/&.widgits/events-hq/ops/+x/verbgen.+x | check | $T/neg
+EXPECT_EXIT | 1 | NEGATIVE-a-manifest-missing-engine-verbs-fails-the-check
+CLEAN |

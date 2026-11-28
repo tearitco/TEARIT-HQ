@@ -1999,3 +1999,12 @@ COMMAND rmmc_verb
   PARAMS verb,arg
   TEMPLATE exec "$D/@.apps/rmmc/ops/+x/rmmc_verb.+x" '{verb}'[ '{arg}']
 END
+
+# civ_verb = the rule verbs of the civ-snes book (the SNES-style Civ, D157). The engine reads GAME_ARG, calls ONE rule op (civ_op on the civ-snes ledger), re-projects the desk the 2D and 3D board read and writes play/result.txt; verb pages are written by verbgen from @.apps/civ-snes/verbs.pdl.
+COMMAND civ_verb
+  LABEL civ-snes: Run Verb
+  FIELD1 Verb:
+  FIELD2 Arg:
+  PARAMS verb,arg
+  TEMPLATE exec "$D/@.apps/civ-snes/ops/+x/civ_verb.+x" '{verb}'[ '{arg}']
+END
