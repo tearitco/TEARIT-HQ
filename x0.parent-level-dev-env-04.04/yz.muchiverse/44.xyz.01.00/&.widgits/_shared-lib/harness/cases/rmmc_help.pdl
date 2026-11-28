@@ -1,4 +1,4 @@
-# rmmc_help (2026-11-26): the Help tab says what each key does. Each help row names a key letter; keybinds.pdl owns the key code. A pair of rows here ties the two (b=98 g=103 m=109 space=32 0=48 Home=65360 p=112 o=111 ]=93 u=117), so changing a key without its help line (or the reverse) fails. Controls: a wrong code and a swapped line must NOT be found.
+# rmmc_help (2026-11-26): the Help tab says what each key does. Each help row names a key letter; keybinds.pdl owns the key code. A pair of rows here ties the two (b=98 g=103 m=109 space=32 0=48 Home=65360 y=121 u=117 i=105 o=111 p=112 l=108 ]=93 u=117), so changing a key without its help line (or the reverse) fails. Controls: a wrong code and a swapped line must NOT be found.
 RESULTS | ../results/rmmc_help.txt
 CASE | help-rows-agree-with-the-key-bindings
 SCRATCH
@@ -18,11 +18,17 @@ EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | GAMEKEY  
 EXPECT_HAS | $HOUSE/@.apps/rmmc/harness.pdl | 1-9: pick a slot | the Help row says: 1-9: pick a slot
 EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | GAMEKEY      \p slot9 \p 57 | key binding slot9 is code 57
 EXPECT_HAS | $HOUSE/@.apps/rmmc/harness.pdl | 1-9: pick a slot | the Help row says: 1-9: pick a slot
-EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | pov_mode_1_alt     \p 112 | p is first person
-EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | pov_mode_2_alt     \p 111 | o is third person
-EXPECT_HAS | $HOUSE/@.apps/rmmc/harness.pdl | P / O: view 1st/3rd | the Help row says P / O
+EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | pov_mode_1         \p 121 | y is first person
+EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | pov_mode_2         \p 117 | u is third person
+EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | pov_mode_3         \p 105 | i is free roam
+EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | pov_mode_4         \p 111 | o is bird eye
+EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | render_mode_toggle \p 112 | p toggles 2D and 3D
+EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | pov_mode_1_alt     \p 0 | the old p alias is retired
+EXPECT_HAS | $HOUSE/@.apps/rmmc/harness.pdl | Y U I O P: camera | the Help row says Y U I O P
 EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | possess_next            \p 93 | ] takes control
-EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | possess_release_alt     \p 117 | u lets go
-EXPECT_HAS | $HOUSE/@.apps/rmmc/harness.pdl | U: let go | the Help row says U
+EXPECT_HAS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | possess_release_alt     \p 108 | l lets go
+EXPECT_HAS | $HOUSE/@.apps/rmmc/harness.pdl | L: let go | the Help row says L
 EXPECT_LACKS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | GAMEKEY      \p mine \p 99 | CONTROL: a wrong code for mine is not there, so the checks above can fail
 EXPECT_LACKS | $HOUSE/@.apps/rmmc/harness.pdl | B: place block | CONTROL: a swapped Help line is not there
+EXPECT_LACKS | $HOUSE/@.apps/rmmc/rmmc-pchq/pieces/system/keybinds.pdl | pov_mode_1         \p 49 | CONTROL: the digit 1 is no longer the first person key (digits are the hotbar)
+EXPECT_LACKS | $HOUSE/@.apps/rmmc/harness.pdl | P / O: view 1st/3rd | CONTROL: the old Help row is gone

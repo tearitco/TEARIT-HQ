@@ -23,11 +23,16 @@ GAMEKEY      | slot9 | 57
 GAMEKEY      | page | 48
 GAMEKEY      | reset | 65360   # Home: back to the spawn point (press twice; X key number of Home, the renderer forwards a key without a house code as its raw number)
 
-KEY          | pov_mode_1_alt     | 112       # 'p'  first person (Minecraft view) while the hotbar owns the digits
-KEY          | pov_mode_2_alt     | 111       # 'o'  third person
+KEY          | render_mode_toggle | 112       # 'p'  toggle 2D <-> 3D (2026-11-27: camera keys are Y U I O P so the digits belong to the hotbar)
+KEY          | pov_mode_1         | 121       # 'y'  first person (Minecraft view)
+KEY          | pov_mode_2         | 117       # 'u'  third person
+KEY          | pov_mode_3         | 105       # 'i'  free roam (wasd pan)
+KEY          | pov_mode_4         | 111       # 'o'  bird's eye (wasd pan, no rotate)
+KEY          | pov_mode_1_alt     | 0         # retired 2026-11-27 (was p)
+KEY          | pov_mode_2_alt     | 0         # retired 2026-11-27 (was o)
 
 # Possession keys (owner 2026-11-26, plan 16.game/TUTORIAL-HARNESS-...-2026-11-26.md section 10). All optional rows; delete one and that key stops existing.
 KEY          | possess_next            | 93     # ]  take the next rig: token on the page (Asa, Ava...)
 KEY          | possess_prev            | 91     # [  take the previous one
-KEY          | possess_release_alt     | 117    # u  release (the second release key; '9' is the engine's own but a hotbar slot in rmmc)
+KEY          | possess_release_alt     | 108    # l  let go (release; was u, which is third person now; '9' is the engine's own but a hotbar slot in rmmc)
 KEY          | possess_enter_anywhere  | 1      # 1 = Enter with nothing under the cursor takes the next token; 0 = only Enter on its cell
