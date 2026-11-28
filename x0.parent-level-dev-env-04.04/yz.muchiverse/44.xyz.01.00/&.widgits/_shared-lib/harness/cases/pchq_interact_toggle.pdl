@@ -39,3 +39,22 @@ RUN         | sh | $T/@.apps/piececraft-hq/ops/pchq_board_action.sh | $T/bv | in
 EXPECT_LACKS | bv/pieces/apps/player_app/interact_relay.txt | 13 | NEGATIVE-leaving-does-not-append-Enter-to-the-game-relay
 EXPECT_LACKS | bv/pieces/keyboard/history.txt | KEY_PRESSED: 13 | NEGATIVE-and-not-to-the-history
 EXPECT_HAS   | bv/pieces/keyboard/history.txt | KEY_PRESSED: 27 | only-Esc
+
+# 2026-11-27 (same class as D149): the file verb engages In: when it is off, acts, then LEAVES it again (restore_interact). Leaving is Esc to the history; the old "toggle back off" sent Enter to BOTH the history and the game relay, where it is an ordinary game Enter (and takes the first rig: token with possess_enter_anywhere 1).
+# A background shell stands in for the engine: 0.6 s after the engage it writes In: = 1 (the real engine does that when it reads the Enter in the history); the script waits for it, then leaves.
+CASE    | file-verb-leaves-with-esc-not-enter
+SCRATCH |
+MKDIR   | #.desktop
+MKDIR   | bv/pieces/apps/player_app
+MKDIR   | bv/pieces/keyboard
+MKDIR   | bv/pieces/display
+COPY    | @.apps/piececraft-hq/ops/pchq_board_action.sh | @.apps/piececraft-hq/ops/pchq_board_action.sh
+WRITE   | bv/pieces/display/active_gui_is_typing.txt | 0\n
+WRITE   | bv/pieces/apps/player_app/interact_relay.txt |
+WRITE   | bv/pieces/keyboard/history.txt |
+SPAWN   | ENGINE | sh | -c | sleep 0.6; printf '1\n' > $T/bv/pieces/display/active_gui_is_typing.txt
+RUN         | sh | $T/@.apps/piececraft-hq/ops/pchq_board_action.sh | $T/bv | file | 0
+EXPECT_EXIT | 0 | file-runs
+EXPECT_HAS  | bv/pieces/keyboard/history.txt | KEY_PRESSED: 13 | engaged-with-Enter-in-the-history
+EXPECT_HAS  | bv/pieces/keyboard/history.txt | KEY_PRESSED: 27 | left-with-Esc-in-the-history
+EXPECT_LACKS | bv/pieces/apps/player_app/interact_relay.txt | 13 | NEGATIVE-no-Enter-reaches-the-game-relay-when-engaging-or-leaving

@@ -105,6 +105,11 @@ append_key() {
 engage_key() {
     printf 'KEY_PRESSED: 13\n' >> "$H2"
 }
+# LEAVING In: is Esc to the history, never Enter (2026-11-27, same class as D149): once In: is engaged Enter is only a game key (see the `interact` verb below), so the old "toggle back off" with
+# append_key 13 did not leave In: and its relay copy reached the engine as a game Enter (possess_enter_anywhere takes the first rig: token).
+leave_key() {
+    printf 'KEY_PRESSED: 27\n' >> "$H2"
+}
 
 interact_on() {
     [ -f "$TYPING" ] && [ "$(head -c 8 "$TYPING" 2>/dev/null | tr -dc 0-9)" != "" ] \
@@ -134,10 +139,10 @@ restore_interact() {
     i=0
     while [ "$i" -lt 40 ] && ! interact_on; do sleep 0.05; i=$((i + 1)); done
     interact_on || return 0            # engine never engaged / already exited - nothing to undo
-    append_key 13                      # toggle back off
+    leave_key                          # toggle back off (Esc to the history; was append_key 13)
     i=0
     while [ "$i" -lt 40 ] && interact_on; do sleep 0.05; i=$((i + 1)); done
-    interact_on && append_key 13       # toggle was missed under load - one retry
+    interact_on && leave_key         # toggle was missed under load - one retry
     return 0
 }
 
