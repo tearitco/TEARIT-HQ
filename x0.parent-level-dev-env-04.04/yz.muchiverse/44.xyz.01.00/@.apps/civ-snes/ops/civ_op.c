@@ -472,7 +472,8 @@ static int cmd_project(World *W, int civ, const char *dir, const char *sel) {
     unsigned char tile[10][3]; memcpy(tile, TILE, sizeof tile);
     for (int s = 1; s <= 4 && s <= W->nciv; s++) { tile[5 + s][0] = (unsigned char)rule_civ(W->civid[s], "r"); tile[5 + s][1] = (unsigned char)rule_civ(W->civid[s], "g"); tile[5 + s][2] = (unsigned char)rule_civ(W->civid[s], "b"); }      /* a city tile is its owner civ colour */
     memset(atl, 0, sizeof atl); for (int i = 0; i < 256; i++) atl[i * 4 + 3] = (char)255;      /* tile 0: unseen = black */
-    for (int i = 0; i < 256; i++) atl[(NTILES - 1) * 1024 + i * 4 + 3] = (char)255;      /* the fog tile: opaque black */
+    for (int i = 0; i < 256; i++) { char *p = atl + (NTILES - 1) * 1024 + i * 4; int px = i % 16, py = i / 16, ln = (py == 8 && px >= 2 && px <= 13);      /* the fog tile as the Grok civ drew it (202.snes-civ render.c: near-black 0.06,0.06,0.09 with a faint line 0.09,0.09,0.12 across the middle), opaque so the flat view does not paint sea */
+        p[0] = (char)(ln ? 23 : 15); p[1] = (char)(ln ? 23 : 15); p[2] = (char)(ln ? 31 : 23); p[3] = (char)255; }
     for (int k = 0; k < 5; k++) paint_tile((unsigned char *)atl + (size_t)(k + 1) * 1024, k, -1, tile[0]);
     for (int s = 1; s <= 4; s++) { unsigned char col[3] = { tile[5 + s][0], tile[5 + s][1], tile[5 + s][2] }; for (int kind = 0; kind < 3; kind++) for (int k = 0; k < 5; k++) paint_tile((unsigned char *)atl + (size_t)piece_tile(s, kind, k) * 1024, k, kind, col); }
     for (int i = 0; i < W->nc; i++) { City *c = &W->c[i]; if (!vis(W, civ, c->x, c->y)) continue;      /* a city is a tower in 3D: a brown trunk with a flag block of the owner's colour */
