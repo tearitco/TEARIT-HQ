@@ -10,6 +10,9 @@ window { width: 1074px; height: 556px; background-color: #14161c; font-family: D
   font-size: 10px; border: 1px solid #3a3a3a; border-width: 1; }
 .tab.pchq-tb.active, .tab.pchq-tb.interact-active {
   background-color: #2f5f8f; color: #ffffff; }
+/* D154: the engine process is gone, keys will not work: red, bold */
+.tab.pchq-tb.engine-off {
+  background-color: #b00020; color: #ffffff; font-weight: bold; }
 
 /* zero-width sidebar (only there to trigger the sidebar+panel layout) */
 .pchq-rail { width: 2px; }

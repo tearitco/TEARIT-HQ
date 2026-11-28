@@ -81,6 +81,23 @@ static void resolve_root(void) {
 static void pj(char *dst, size_t sz, const char *rel) {
     snprintf(dst, sz, "%s/%s", project_root, rel);
 }
+/* D155: the engine is respawned by this dispatcher while the board window is open (loop_guard no longer ends the loop on a crash). A broken engine (bad binary, no GPU) would be started on every tick, so a spawn is allowed at most once per ENGINE_SPAWN_GAP_MS; the stamp is a monotonic-ms file in the session (one small file, rewritten). */
+#define ENGINE_SPAWN_GAP_MS 5000
+/* D155: is the resident engine expected (the session has .gpu_enabled), missing (no live pid in .gpu_render.pid) and a respawn due (the 5 s gap since the last attempt has passed)? Read-only: it stamps nothing; engine_spawn_allowed() below does at the spawn site. Lets the tick respawn a dead engine in a window that nobody is touching, without a render every tick while it stays down. */
+static int engine_respawn_due(void) {
+    char gf[4400], gp[4400], sp[4400]; pj(gf, sizeof gf, "pieces/display/.gpu_enabled"); pj(gp, sizeof gp, "pieces/display/.gpu_render.pid"); pj(sp, sizeof sp, "pieces/display/.engine_spawn_ms");
+    if (access(gf, F_OK) != 0) return 0;
+    long pid = 0; FILE *pf = fopen(gp, "r"); if (pf) { if (fscanf(pf, "%ld", &pid) != 1) pid = 0; fclose(pf); }
+    if (pid > 0 && kill((pid_t)pid, 0) == 0) return 0;
+    long long last = 0, now = mono_ms(); FILE *f = fopen(sp, "r"); if (f) { if (fscanf(f, "%lld", &last) != 1) last = 0; fclose(f); }
+    return !(last > 0 && now >= last && now - last < ENGINE_SPAWN_GAP_MS);
+}
+static int engine_spawn_allowed(void) {
+    char sp[4400]; pj(sp, sizeof sp, "pieces/display/.engine_spawn_ms"); long long last = 0, now = mono_ms(); FILE *f = fopen(sp, "r");
+    if (f) { if (fscanf(f, "%lld", &last) != 1) last = 0; fclose(f); }
+    if (last > 0 && now >= last && now - last < ENGINE_SPAWN_GAP_MS) return 0;
+    f = fopen(sp, "w"); if (f) { fprintf(f, "%lld\n", now); fclose(f); } return 1;
+}
 
 /* fork+exec a board-viewer op with an argv vector, wait for it.
  * stdout/stderr -> /dev/null so a chatty op never pollutes the pal VM's
@@ -392,7 +409,8 @@ int main(void) {
      * see this frame anyway; the very next tick after restore picks up
      * cleanly since bv_screen_changed.txt / relay state were never
      * touched by this skip. */
-    if ((any_key || external_change || dropped_stale) && !minimized) {
+    int engine_due = engine_respawn_due();      /* D155 */
+    if ((any_key || external_change || dropped_stale || engine_due) && !minimized) {
         /* PCHQ-2D-TILE-VIEW.md: render_mode==0 -> the flat tile grid
          * (bv_render_2d), NOT the raymarch and NOT bv_compose_frame
          * (that's the legend/status text chrome we're dropping). It's a
@@ -455,7 +473,7 @@ int main(void) {
                  * the bv_compose_frame + marker below still fire so the
                  * window repaints even if the daemon is a beat behind. */
             } else {
-                if (gpu_enabled && !daemon_live) {
+                if (gpu_enabled && !daemon_live && engine_spawn_allowed()) {
                     pid_t dp = fork();
                     if (dp == 0) {
                         /* double-fork + detach so the daemon outlives this

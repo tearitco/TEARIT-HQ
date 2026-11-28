@@ -27,6 +27,8 @@
       <tab id="tb-set" class="pchq-tb" label="Settings ▾" onclick="ACTIVATE" target_id="tb-set"/>
       <tab id="tb-load" class="pchq-tb no-nav" label="${load_label}" onclick="void" show="${load_ok}"/>
       <tab id="tb-loadw" class="pchq-tb pchq-tb-warn no-nav" label="${load_label}" onclick="void" show="${load_warn}"/>
+      <!-- D154 (2026-11-27, owner: say if the engine is running; red when it is not expected to work): engine_label and engine_class come from pchq_board_projector (ui.txt); no-nav: it takes no number, so no nav number shifts; the click does nothing -->
+      <tab id="tb-engine" class="pchq-tb ${engine_class} no-nav" label="${engine_label}" onclick="void"/>
     </tabbar>
     <sidebar id="rail" class="pchq-rail sidebar">
       <repeat count="${n_party}" bind="party">

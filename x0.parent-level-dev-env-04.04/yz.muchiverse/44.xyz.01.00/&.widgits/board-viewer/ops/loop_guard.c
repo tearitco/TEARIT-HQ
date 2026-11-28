@@ -109,7 +109,7 @@ int main(int argc, char **argv) {
     if (here[0] && engine_process_here(here)) { guard_log("pid file %s is missing or dead but an engine process runs here: loop kept (%s)", pidfile, "process scan"); return 0; }
     { char idle[4200]; snprintf(idle, sizeof idle, "%s", pidfile); char *sl2 = strrchr(idle, '/'); snprintf(sl2 ? sl2 + 1 : idle, sizeof idle - (sl2 ? (size_t)(sl2 + 1 - idle) : 0), ".engine_idle_exit");      /* the engine left this when it exited by its own idle timeout */
       char root[3800] = ""; FILE *rf = fopen("pieces/system/real_project_root.txt", "r"); if (rf) { if (fgets(root, sizeof root, rf)) root[strcspn(root, "\r\n")] = 0; fclose(rf); }
-      if (access(idle, F_OK) == 0 && root[0] && board_window_alive(root)) { guard_log("engine exited on its idle timeout (%s) and the board window is open: loop kept, the next request respawns it", pidfile, ""); return 0; } }
+      if (root[0] && board_window_alive(root)) { if (access(idle, F_OK) != 0) { guard_log("engine died (%s, not an idle exit) and the board window is open: loop kept, the dispatcher respawns it (D155)", pidfile, ""); return 0; } guard_log("engine exited on its idle timeout (%s) and the board window is open: loop kept, the next request respawns it", pidfile, ""); return 0; } }
     if (marker && marker[0]) { int fd = open(marker, O_WRONLY | O_APPEND | O_CREAT, 0644); if (fd >= 0) { if (write(fd, "x", 1) < 0) { /* best effort */ } close(fd); } }
     { char b[24]; snprintf(b, sizeof b, "%d", (int)parent); guard_log("engine gone (pid file %s, no engine process in this session): ending loop pid %s", pidfile, b); }
     fprintf(stderr, "loop_guard: engine gone (%s), ending loop pid %d\n", pidfile, (int)parent);

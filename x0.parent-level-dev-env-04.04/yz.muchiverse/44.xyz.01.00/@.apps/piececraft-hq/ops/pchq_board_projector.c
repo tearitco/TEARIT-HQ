@@ -30,6 +30,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <limits.h>
@@ -424,6 +425,17 @@ static int renderer_says_minimized(const char *house) {
     fclose(f);
     return minimized;
 }
+/* ENGINE LABEL (D154, owner 2026-11-27: "it says playing on screen ... would be good if in red letters somewhere it said its not expected to work"): is the 3D engine process of this board alive? */
+/* The engine daemon writes <session>/pieces/display/.gpu_render.pid; a board that runs it has .gpu_enabled beside it. Alive = the pid answers kill(pid, 0) and is not a zombie. 1 alive, 0 dead, -1 this board has no daemon (one-shot renders). */
+static int pchq_engine_state(const char *bv_session) {
+    char gf[PATH_MAX], gp[PATH_MAX]; snprintf(gf, sizeof gf, "%s/pieces/display/.gpu_enabled", bv_session); snprintf(gp, sizeof gp, "%s/pieces/display/.gpu_render.pid", bv_session);
+    if (access(gf, F_OK) != 0) return -1;
+    long pid = 0; FILE *pf = fopen(gp, "r"); if (pf) { if (fscanf(pf, "%ld", &pid) != 1) pid = 0; fclose(pf); }
+    if (pid <= 0 || (kill((pid_t)pid, 0) != 0 && errno != EPERM)) return 0;
+    char sp[64], sl[512]; snprintf(sp, sizeof sp, "/proc/%ld/stat", pid); FILE *sf = fopen(sp, "r");
+    if (sf) { if (fgets(sl, sizeof sl, sf)) { char *rp = strrchr(sl, ')'); if (rp && rp[1] == ' ' && rp[2] == 'Z') { fclose(sf); return 0; } } fclose(sf); }
+    return 1;
+}
 static void write_window_minimized_flag(const char *bv_session, int minimized) {
     char path[PATH_MAX], tmp[PATH_MAX];
     snprintf(path, sizeof(path), "%s/pieces/display/window_minimized.txt", bv_session);
@@ -800,6 +812,8 @@ int main(int argc, char **argv) {
             snprintf(h2, sizeof(h2), "%s/pieces/keyboard/history.txt", bv);
         }
         int interact = have && file_has_nonzero(typing);
+        char engine_label[48] = "Engine: -", engine_class[16] = "";      /* D154: shown first in the toolbar; red (engine-off) when the daemon is gone */
+        if (have) { int es = pchq_engine_state(bv); if (es == 1) snprintf(engine_label, sizeof engine_label, "Engine: ON"); else if (es == 0) { snprintf(engine_label, sizeof engine_label, "ENGINE OFF - keys will not work"); snprintf(engine_class, sizeof engine_class, "engine-off"); } else snprintf(engine_label, sizeof engine_label, "Engine: on demand"); }
 #if !defined(_WIN32) && !defined(PCHQ_NO_ESC_FIRST)
         {   /* D117 (2026-11-22): ESC BACKS OUT ONE LEVEL on every board of this projector (owner 2026-11-05; petslike_core publishes it for its boards): while the xelector holds a possession, publish
              * <board>/state/esc_first.txt = 57 ('9', the release key) ONCE per possession; khtpm_core_render sends it for the next Esc and deletes the file, so the first Esc releases, the second leaves In.
@@ -1013,12 +1027,12 @@ int main(int argc, char **argv) {
             "bv_session=%s\ncanvas_raw=%s\nno_session=%s\n"
             "bv_h1=%s\nbv_h2=%s\ninteract_class=%s\ninteract_armed=%d\n"
             "interact_label=%s\nclock=%s\nplayer_label=%s\nplaytest_label=%s\n"
-            "book_label=%s\npage_label=%s\n"
+            "book_label=%s\npage_label=%s\nengine_label=%s\nengine_class=%s\n"
             "menu_open=%s\nfile_menu_open=%s\ndesk_menu_open=%s\n",
             bv, raw, have ? "" : "1",
             h1, h2, interact ? "interact-active" : "", interact ? 1 : 0,
             interact ? "ON" : "off", clock_s, player_label, playtest_label,
-            book_label, page_label,
+            book_label, page_label, engine_label, engine_class,
             menu_open,
             strcmp(menu_open, "file") == 0 ? "1" : "",
             strcmp(menu_open, "desk") == 0 ? "1" : "");
