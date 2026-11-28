@@ -5,6 +5,8 @@ RESULTS | ../results/civ_snes_tutorial.txt
 CASE | a-stranger-finishes-lesson-1-from-the-words-only
 SCRATCH
 MKDIR | app/ops/+x
+MKDIR | #.NNEST_ASSETS/rta-sources/earth-moth
+RUN | sh | -c | for d in "$HOUSE/../../../#.NNEST_ASSETS" "$HOUSE/../../#.NNEST_ASSETS"; do if [ -f "$d/rta-sources/earth-moth/ETOPO5.DAT" ]; then ln -s "$d/rta-sources/earth-moth/ETOPO5.DAT" "$T/#.NNEST_ASSETS/rta-sources/earth-moth/ETOPO5.DAT"; fi; done
 COPY | @.apps/civ-snes/rules.pdl | app/rules.pdl
 COPY | @.apps/civ-snes/text.pdl | app/text.pdl
 COPY | @.apps/civ-snes/tutorial.pdl | app/tutorial.pdl
@@ -140,4 +142,52 @@ RUN | gcc | -std=gnu11 | -w | -O2 | -o | $T/ls1/ops/+x/civ_op.+x | $T/ls1/civ_op
 EXPECT_EXIT | 0 | SABOTAGE ls1: compiles
 RUN | $T/ls1/ops/+x/civ_op.+x | $T/none.txt | lesson | $T/ls1/tutorial.pdl | civ1
 EXPECT_OUT | step=2/5 | SABOTAGE ls1 CAUGHT: with no ledger the setup step is skipped (the real op: step=1/5, shown above)
+# ================= A STRANGER GETS THROUGH THE SETUP FROM THE SCREEN'S WORDS ONLY (owner 2026-11-28): the screen says "Up/Down pick, Left/Right change, Space starts"; the stranger presses what it names, reads each option name on the screen, picks civ, size, difficulty, rivals and the earth map, presses Space, and the NEW row records exactly those choices. HYPOTHESIS written before the run: (a) every key word on the screen has a key in keys.pdl, (b) Down shows the six option names in order, (c) the picked values appear as words on the screen, (d) the NEW row carries them, (e) a screen without a key word, or a keys.pdl without the key, FAILS at that step.
+RUN | grep | -c | -E | ^TEXT +[\p] +setup_next +[\p] +Up/Down.*Left/Right.*Space | $T/app/text.pdl
+EXPECT_OUT | 1 | the setup sentence names Up/Down, Left/Right and Space
+RUN | grep | -c | -E | ^SETUPKEY +[\p] +(up\pdown\pleft\pright\pspace) +[\p] | $T/app/keys.pdl
+EXPECT_OUT | 5 | each word on the screen is a real key (up down left right space)
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/st_draft.txt | show
+EXPECT_OUT | next=Up/Down pick, Left/Right change, Space starts | the screen shows the sentence
+EXPECT_OUT | stat_line=Size: | the first screen line names the option Size
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/st_draft.txt | dec
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/st_draft.txt | dec
+EXPECT_OUT | stat_line=Size: small 20x14 | Left twice: large to medium to small, read on the screen
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/st_draft.txt | next
+EXPECT_OUT | stat_line=Map: random | Down: the screen now says Map
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/st_draft.txt | inc
+EXPECT_OUT | stat_line=Map: earth | Right: earth
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/st_draft.txt | next
+EXPECT_OUT | stat_line=Difficulty: | Down: Difficulty
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/st_draft.txt | inc
+EXPECT_OUT | stat_line=Difficulty: hard | Right: hard
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/st_draft.txt | next
+EXPECT_OUT | stat_line=Rivals: | Down: Rivals
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/st_draft.txt | inc
+EXPECT_OUT | stat_line=Rivals: 2 | Right: 2 rivals
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/st_draft.txt | next
+EXPECT_OUT | stat_line=Civ: Romans | Down: Civ (the default Romans)
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/st_draft.txt | inc
+EXPECT_OUT | stat_line=Civ: Egyptians | Right: Egyptians
+RUN | $T/app/ops/+x/civ_op.+x | - | setup | $T/st_draft.txt | next
+EXPECT_OUT | stat_line=Seed: | Down: Seed (the sixth and last option)
+RUN | $T/app/ops/+x/civ_op.+x | $T/st.txt | start | $T/st_draft.txt
+EXPECT_EXIT | 0 | Space starts the game
+RUN | grep | -c | -E | ^NEW.*[\p]small[\p]hard[\p]2[\p]earth[\p] | $T/st.txt
+EXPECT_OUT | 1 | the NEW row carries exactly what the stranger saw: small, hard, 2 rivals, earth
+RUN | $T/app/ops/+x/civ_op.+x | $T/st.txt | lesson | $T/app/tutorial.pdl | civ1
+EXPECT_OUT | step=2/5 | and the lesson moves on to the walk step
+MKDIR | smut
+COPY | @.apps/civ-snes/text.pdl | smut/text.pdl
+COPY | @.apps/civ-snes/keys.pdl | smut/keys.pdl
+RUN | sed | -i | s#, Space starts##;s#, Left/Right change## | $T/smut/text.pdl
+RUN | cmp | -s | $HOUSE/@.apps/civ-snes/text.pdl | $T/smut/text.pdl
+EXPECT_EXIT | 1 | SABOTAGE st1: the mutant text differs (the sed matched)
+RUN | grep | -c | -E | ^TEXT +[\p] +setup_next +[\p] +Up/Down.*Left/Right.*Space | $T/smut/text.pdl
+EXPECT_OUT | 0 | SABOTAGE st1 CAUGHT: a screen that does not name Space and Left/Right fails the stranger at the sentence step (the real text: 1)
+RUN | sed | -i | /^SETUPKEY [\p] down /d | $T/smut/keys.pdl
+RUN | cmp | -s | $HOUSE/@.apps/civ-snes/keys.pdl | $T/smut/keys.pdl
+EXPECT_EXIT | 1 | SABOTAGE st2: the mutant keys differ (the sed matched)
+RUN | grep | -c | -E | ^SETUPKEY +[\p] +(up\pdown\pleft\pright\pspace) +[\p] | $T/smut/keys.pdl
+EXPECT_OUT | 4 | SABOTAGE st2 CAUGHT: with no key for Down the stranger cannot read the screen's word (4 of 5; the real keys: 5)
 CLEAN |

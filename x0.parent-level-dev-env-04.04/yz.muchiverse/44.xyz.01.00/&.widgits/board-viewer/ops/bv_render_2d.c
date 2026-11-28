@@ -1819,7 +1819,9 @@ int main(void) {
     /* --- ground tiles (skipped when the desk picture was blitted) --- */
     int floor_z = -1;
     { char mani[PATH_BUF]; snprintf(mani, sizeof(mani), "%s/pieces/system/board_manifest.txt", focused_root[0] ? focused_root : fpr); floor_z = read_kv_int(mani, "floor_z", -1); }
-    if (!map_ok && !side_mode && p2d_atlas_main(px, W, H, style, read_kv_int(st, "view_2d_zoom", 0), sel_x, sel_y, cur_z, floor_z, &ox, &oy, &cell, &cols, &rows)) map_ok = 2;
+    /* a desk drawn from cells.txt+cells.rgba shows ONE z-slice (the cells one level above floor_z); a session whose bv_state.txt has no current_z (a book whose game token is not an engine piece, civ-snes 2026-11-28) read 0 here and drew a blank blue field, while the 3D engine and bv_menu_input default to the hero level: with no current_z written, the flat desk slice is floor_z+1, the same height a possess-commit would write */
+    int atlas_z = (floor_z >= 0 && read_kv_int(st, "current_z", -9999) == -9999) ? floor_z + 1 : cur_z;
+    if (!map_ok && !side_mode && p2d_atlas_main(px, W, H, style, read_kv_int(st, "view_2d_zoom", 0), sel_x, sel_y, atlas_z, floor_z, &ox, &oy, &cell, &cols, &rows)) map_ok = 2;
     if (!map_ok)
     for (int scy = 0; scy < rows; scy++) {
         for (int scx = 0; scx < cols; scx++) {

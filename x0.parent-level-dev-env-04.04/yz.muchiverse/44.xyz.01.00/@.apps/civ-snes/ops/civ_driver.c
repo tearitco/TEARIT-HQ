@@ -48,14 +48,6 @@ static void kv(const char *text, const char *key, char *out, size_t osz) { out[0
 static void bump_view(const char *pkg) { if (!pkg || !pkg[0]) return; char p[P + 160], ln[P + 40], ses[P] = ""; snprintf(p, sizeof p, "%.4000s/../board/state/ui.txt", pkg); FILE *f = fopen(p, "r"); if (!f) return;
     while (fgets(ln, sizeof ln, f)) if (!strncmp(ln, "bv_session=", 11)) { snprintf(ses, sizeof ses, "%.4000s", ln + 11); ses[strcspn(ses, "\r\n")] = 0; }
     fclose(f); if (!ses[0]) return; snprintf(p, sizeof p, "%.4000s/pieces/display/bv_screen_changed.txt", ses); FILE *m = fopen(p, "a"); if (m) { fputc('.', m); fclose(m); } }
-/* the flat view (bv_render_2d p2d_atlas_main) draws the slice at the cursor's z: a cell shows only when pos_z == floor_z + 1 (every civ cell is one level high). The editor's pos_z for a possessed token is its own default (18 over floor_z 16), which drew a blank field: the driver puts the cursor on the level of the map, as rmmc_driver sync_view does for its character. Written only when it differs. */
-static void sync_z(const char *pkg) { if (!pkg || !pkg[0]) return; char p[P + 160], ln[300]; int floor_z = -1; snprintf(p, sizeof p, "%.4000s/pieces/system/board_manifest.txt", pkg); FILE *f = fopen(p, "r");
-    while (f && fgets(ln, sizeof ln, f)) { if (!strncmp(ln, "floor_z=", 8)) floor_z = atoi(ln + 8); }
-    if (f) fclose(f);
-    if (floor_z < 0) return;
-    snprintf(p, sizeof p, "%.4000s/pieces/xelector_01/state.txt", pkg); f = fopen(p, "r"); if (!f) return; char out[4096]; size_t on = 0; int poss = 0, same = 0, have = 0; int z = floor_z + 1;
-    while (fgets(ln, sizeof ln, f) && on < sizeof out - 400) { if (!strncmp(ln, "possessed_id=rig:civ", 20)) poss = 1; if (!strncmp(ln, "pos_z=", 6)) { have = 1; if (atoi(ln + 6) == z) same = 1; on += (size_t)snprintf(out + on, sizeof out - on, "pos_z=%d\n", z); } else on += (size_t)snprintf(out + on, sizeof out - on, "%s", ln); }
-    fclose(f); if (poss && have && !same) { f = fopen(p, "w"); if (f) { fwrite(out, 1, on, f); fclose(f); bump_view(pkg); } } }
 static char house[P], book[P], opb[P], verbb[P], led[P], desk[P], draft[P], selp[P], tut[P], play_dir[P];
 static char sel[24] = "";
 static int ledger_started(void) { struct stat st; return stat(led, &st) == 0 && st.st_size > 0; }
@@ -140,11 +132,10 @@ int main(int argc, char **argv) {
                 const char *gk = NULL; for (int i = 0; i < ngk; i++) if (GK[i].code == code) gk = GK[i].name; if (!gk) continue;
                 int rc = ledger_started() ? game_key(gk) : setup_key(gk, pkg); if (rc && !first_refusal) first_refusal = rc;
                 { char kt[520]; snprintf(kt, sizeof kt, "key %.20s: %.150s", gk, msg); snprintf(msg, sizeof msg, "%s", kt); }
-                last_key = now_ms(); last_feed = 0; bump_view(pkg); sync_z(pkg); }
+                last_key = now_ms(); last_feed = 0; bump_view(pkg); }
             fclose(f); }
         if (strcmp(msg, shown)) { snprintf(shown, sizeof shown, "%s", msg); shown_at = now_ms(); } else if (now_ms() - shown_at > 8000 && strcmp(msg, HINT) && strcmp(msg, "waiting for keys")) { snprintf(msg, sizeof msg, "%s", HINT); last_feed = 0; }
         { static int was = -1; int st = ledger_started(); if (was != st) { if (was >= 0) { sel_fix(0); project_desk(); bump_view(pkg); } was = st; } }      /* the ledger appeared or went away (a new game): re-project the desk at once */
-        { static long zt = 0; if (now_ms() - zt > 1500) { zt = now_ms(); sync_z(pkg); } }
         long ls = file_size(led), ds = file_size(draft); int ch = ls != seen_led || ds != seen_dr; seen_led = ls; seen_dr = ds;
         if (feed && (last_feed == 0 || now_ms() - last_feed >= 300) && (last_key > last_feed || ch || now_ms() - last_feed >= 30000)) { last_feed = now_ms(); make_feed(feed); }
         if (once) return first_refusal;
